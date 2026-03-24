@@ -1,0 +1,239 @@
+import { Router } from 'express';
+import { supabase } from '../db/supabase';
+import { auth, requireAthlete, requireCoach, AuthRequest } from '../middleware/auth';
+import { asyncHandler } from '../utils/asyncHandler';
+import { validate } from '../middleware/validate';
+import { raceResultSchema, raceResultUpdateSchema, weeklyQuerySchema } from '../schemas';
+import { computeAllWeeks } from '../services/progressService';
+
+const router = Router();
+
+// ── Athlete Weekly Summaries ────────────────────────────────────────────────
+
+// GET /api/athlete/progress/weekly — Get weekly summaries (last 12 weeks)
+router.get(
+  '/progress/weekly',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const parsed = weeklyQuerySchema.safeParse(req.query);
+    const weeks = parsed.success ? parsed.data.weeks : 12;
+
+    const { data, error } = await supabase
+      .from('weekly_summaries')
+      .select('*')
+      .eq('athlete_id', req.athlete.id)
+      .order('week_start', { ascending: false })
+      .limit(weeks);
+
+    if (error) return res.status(400).json({ error: error.message });
+    res.json((data || []).reverse()); // oldest first for charting
+  })
+);
+
+// POST /api/athlete/progress/compute — Recompute weekly summaries from activities
+router.post(
+  '/progress/compute',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const parsed = weeklyQuerySchema.safeParse(req.body);
+    const weeks = parsed.success ? parsed.data.weeks : 12;
+
+    const summaries = await computeAllWeeks(req.athlete.id, weeks);
+    res.json({ computed: summaries.length, summaries });
+  })
+);
+
+// ── Race Results ────────────────────────────────────────────────────────────
+
+// GET /api/athlete/races/results — Get race results
+router.get(
+  '/races/results',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { data, error } = await supabase
+      .from('race_results')
+      .select('*')
+      .eq('athlete_id', req.athlete.id)
+      .order('race_date', { ascending: false });
+
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data || []);
+  })
+);
+
+// POST /api/athlete/races/results — Add race result
+router.post(
+  '/races/results',
+  auth,
+  requireAthlete,
+  validate(raceResultSchema),
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { data, error } = await supabase
+      .from('race_results')
+      .insert({ ...req.body, athlete_id: req.athlete.id })
+      .select()
+      .single();
+
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data);
+  })
+);
+
+// PATCH /api/athlete/races/results/:id — Update race result
+router.patch(
+  '/races/results/:id',
+  auth,
+  requireAthlete,
+  validate(raceResultUpdateSchema),
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { data, error } = await supabase
+      .from('race_results')
+      .update(req.body)
+      .eq('id', req.params.id)
+      .eq('athlete_id', req.athlete.id)
+      .select()
+      .single();
+
+    if (error) return res.status(400).json({ error: error.message });
+    if (!data) return res.status(404).json({ error: 'Result not found' });
+    res.json(data);
+  })
+);
+
+// DELETE /api/athlete/races/results/:id — Delete race result
+router.delete(
+  '/races/results/:id',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { error } = await supabase
+      .from('race_results')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('athlete_id', req.athlete.id);
+
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ ok: true });
+  })
+);
+
+// ── Coach Team Progress ─────────────────────────────────────────────────────
+
+// GET /api/coach/team/progress — Team progress overview
+router.get(
+  '/progress',
+  auth,
+  requireCoach,
+  asyncHandler(async (req: AuthRequest, res) => {
+    // Get coach's team
+    const { data: team } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('coach_id', req.coach.id)
+      .single();
+
+    if (!team) return res.status(404).json({ error: 'No team found' });
+
+    // Get team member athlete IDs
+    const { data: members } = await supabase
+      .from('team_members')
+      .select(`
+        athlete_id,
+        status,
+        athlete_profiles!athlete_id (id, name, weekly_volume_miles, primary_events)
+      `)
+      .eq('team_id', team.id)
+      .eq('status', 'active');
+
+    if (!members || members.length === 0) return res.json([]);
+
+    const athleteIds = members.map((m: any) => m.athlete_id);
+
+    // Get latest weekly summary for each athlete (most recent week)
+    const { data: summaries } = await supabase
+      .from('weekly_summaries')
+      .select('*')
+      .in('athlete_id', athleteIds)
+      .order('week_start', { ascending: false });
+
+    // Group: latest summary per athlete
+    const latestByAthlete: Record<string, any> = {};
+    for (const s of summaries || []) {
+      if (!latestByAthlete[s.athlete_id]) {
+        latestByAthlete[s.athlete_id] = s;
+      }
+    }
+
+    const result = members.map((m: any) => ({
+      athlete: m.athlete_profiles,
+      member_status: m.status,
+      latest_week: latestByAthlete[m.athlete_id] || null
+    }));
+
+    res.json(result);
+  })
+);
+
+// GET /api/coach/team/athletes/:id/progress — Single athlete detailed progress
+router.get(
+  '/athletes/:id/progress',
+  auth,
+  requireCoach,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const athleteId = req.params.id;
+
+    // Verify athlete is on coach's team
+    const { data: team } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('coach_id', req.coach.id)
+      .single();
+
+    if (!team) return res.status(404).json({ error: 'No team found' });
+
+    const { data: member } = await supabase
+      .from('team_members')
+      .select('id')
+      .eq('team_id', team.id)
+      .eq('athlete_id', athleteId)
+      .single();
+
+    if (!member) return res.status(403).json({ error: 'Athlete is not on your team' });
+
+    const parsed = weeklyQuerySchema.safeParse(req.query);
+    const weeks = parsed.success ? parsed.data.weeks : 12;
+
+    // Get weekly summaries
+    const { data: summaries } = await supabase
+      .from('weekly_summaries')
+      .select('*')
+      .eq('athlete_id', athleteId)
+      .order('week_start', { ascending: false })
+      .limit(weeks);
+
+    // Get race results
+    const { data: races } = await supabase
+      .from('race_results')
+      .select('*')
+      .eq('athlete_id', athleteId)
+      .order('race_date', { ascending: false });
+
+    // Get athlete profile
+    const { data: profile } = await supabase
+      .from('athlete_profiles')
+      .select('id, name, weekly_volume_miles, primary_events')
+      .eq('id', athleteId)
+      .single();
+
+    res.json({
+      profile,
+      summaries: (summaries || []).reverse(),
+      races: races || []
+    });
+  })
+);
+
+export default router;
