@@ -8,7 +8,11 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   OPENAI_API_KEY: z.string().min(1),
   PORT: z.string().default('3001'),
-  FRONTEND_URL: z.string().url().default('http://localhost:5173')
+  FRONTEND_URL: z.string().url().default('http://localhost:5173'),
+  STRAVA_CLIENT_ID: z.string().optional(),
+  STRAVA_CLIENT_SECRET: z.string().optional(),
+  STRAVA_REDIRECT_URI: z.string().optional(),
+  STRAVA_WEBHOOK_VERIFY_TOKEN: z.string().optional()
 });
 
 const result = envSchema.safeParse(process.env);
