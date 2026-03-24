@@ -8,6 +8,7 @@ import coachRouter from './routes/coach';
 import botsRouter from './routes/bots';
 import athleteRouter from './routes/athlete';
 import teamRouter from './routes/team';
+import stravaRouter from './routes/strava';
 
 import { apiLimiter } from './middleware/rateLimit';
 import { errorHandler } from './middleware/errorHandler';
@@ -41,6 +42,8 @@ app.use('/api/bots', botsRouter);
 app.use('/api/athlete', athleteRouter);
 app.use('/api/coach/team', teamRouter);
 app.use('/api/athlete', teamRouter);
+app.use('/api/strava', stravaRouter);
+app.use('/api/athlete', stravaRouter);
 
 app.use(errorHandler);
 

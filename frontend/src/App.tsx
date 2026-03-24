@@ -10,6 +10,8 @@ import { RaceCalendar } from './pages/RaceCalendar';
 import { SeasonPlan } from './pages/SeasonPlan';
 import { Chat } from './pages/Chat';
 import { JoinTeam } from './pages/JoinTeam';
+import { AthleteSettings } from './pages/AthleteSettings';
+import { Activities } from './pages/Activities';
 
 function RequireCoach({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
@@ -51,6 +53,8 @@ export default function App() {
         <Route path="/athlete/races" element={<RequireAthlete><RaceCalendar /></RequireAthlete>} />
         <Route path="/athlete/join" element={<RequireAthlete><JoinTeam /></RequireAthlete>} />
         <Route path="/athlete/chat" element={<RequireAthlete><Chat /></RequireAthlete>} />
+        <Route path="/athlete/settings" element={<RequireAthlete><AthleteSettings /></RequireAthlete>} />
+        <Route path="/athlete/activities" element={<RequireAthlete><Activities /></RequireAthlete>} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

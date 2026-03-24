@@ -89,3 +89,22 @@ export const teamCreateSchema = z.object({
 export const memberStatusSchema = z.object({
   status: z.enum(['active', 'injured', 'inactive'])
 });
+
+// ── Strava ──────────────────────────────────────────────────────────────────
+
+export const stravaCallbackSchema = z.object({
+  code: z.string().min(1),
+  state: z.string().uuid(),
+  scope: z.string().optional()
+});
+
+export const activitiesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  per_page: z.coerce.number().int().min(1).max(100).default(20),
+  after: z.string().optional(),
+  before: z.string().optional()
+});
+
+export const syncSchema = z.object({
+  days: z.number().int().min(1).max(365).default(30)
+});
