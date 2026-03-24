@@ -138,3 +138,9 @@ export const raceResultUpdateSchema = z.object({
 export const weeklyQuerySchema = z.object({
   weeks: z.coerce.number().int().min(1).max(52).default(12)
 });
+
+// ── Billing ────────────────────────────────────────────────────────────────
+
+export const checkoutSchema = z.object({
+  plan_type: z.enum(['coach_team', 'athlete_individual'])
+});
