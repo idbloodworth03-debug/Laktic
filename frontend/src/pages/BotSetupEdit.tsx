@@ -150,7 +150,7 @@ export function BotSetupEdit() {
                 day={DAYS[wo.day_of_week - 1]}
                 wo={wo}
                 saving={savingDay === wo.day_of_week}
-                onChange={(field, val) => updateWo(wo.day_of_week, field, val)}
+                onChange={(field: keyof Workout, val: string) => updateWo(wo.day_of_week, field, val)}
                 onSave={() => saveWorkout(wo)}
                 onDelete={() => deleteWorkout(wo.day_of_week)}
               />
