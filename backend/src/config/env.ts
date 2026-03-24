@@ -12,7 +12,12 @@ const envSchema = z.object({
   STRAVA_CLIENT_ID: z.string().optional(),
   STRAVA_CLIENT_SECRET: z.string().optional(),
   STRAVA_REDIRECT_URI: z.string().optional(),
-  STRAVA_WEBHOOK_VERIFY_TOKEN: z.string().optional()
+  STRAVA_WEBHOOK_VERIFY_TOKEN: z.string().optional(),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_PUBLISHABLE_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_COACH_PRICE_ID: z.string().optional(),
+  STRIPE_ATHLETE_PRICE_ID: z.string().optional()
 });
 
 const result = envSchema.safeParse(process.env);

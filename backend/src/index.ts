@@ -10,11 +10,15 @@ import athleteRouter from './routes/athlete';
 import teamRouter from './routes/team';
 import stravaRouter from './routes/strava';
 import progressRouter from './routes/progress';
+import billingRouter from './routes/billing';
 
 import { apiLimiter } from './middleware/rateLimit';
 import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
+
+// Stripe webhook needs raw body BEFORE JSON parser for signature verification
+app.use('/api/billing/webhook', express.raw({ type: 'application/json' }));
 
 app.use(helmet());
 app.use(
@@ -47,6 +51,7 @@ app.use('/api/strava', stravaRouter);
 app.use('/api/athlete', stravaRouter);
 app.use('/api/athlete', progressRouter);
 app.use('/api/coach/team', progressRouter);
+app.use('/api/billing', billingRouter);
 
 app.use(errorHandler);
 

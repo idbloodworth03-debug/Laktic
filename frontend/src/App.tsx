@@ -14,6 +14,8 @@ import { AthleteSettings } from './pages/AthleteSettings';
 import { Activities } from './pages/Activities';
 import { AthleteProgress } from './pages/AthleteProgress';
 import { CoachTeamProgress } from './pages/CoachTeamProgress';
+import { Pricing } from './pages/Pricing';
+import { BillingStatus } from './pages/BillingStatus';
 
 function RequireCoach({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
@@ -31,6 +33,13 @@ function RequireAthlete({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const role = useAuthStore(s => s.role);
+  const loc = useLocation();
+  if (!role) return <Navigate to="/" state={{ from: loc }} replace />;
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -41,6 +50,10 @@ export default function App() {
         <Route path="/register/athlete" element={<AthleteRegister />} />
         <Route path="/login/coach" element={<CoachLogin />} />
         <Route path="/login/athlete" element={<AthleteLogin />} />
+        <Route path="/pricing" element={<Pricing />} />
+
+        {/* Billing (any authenticated user) */}
+        <Route path="/billing" element={<RequireAuth><BillingStatus /></RequireAuth>} />
 
         {/* Coach protected */}
         <Route path="/coach/dashboard" element={<RequireCoach><CoachDashboard /></RequireCoach>} />
