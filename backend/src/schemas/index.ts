@@ -78,3 +78,14 @@ const raceSchema = z.object({
 export const racesSchema = z.object({
   races: z.array(raceSchema).max(50)
 });
+
+// ── Teams ───────────────────────────────────────────────────────────────────
+
+export const teamCreateSchema = z.object({
+  name: z.string().min(1).max(200),
+  default_bot_id: z.string().uuid().optional()
+});
+
+export const memberStatusSchema = z.object({
+  status: z.enum(['active', 'injured', 'inactive'])
+});
