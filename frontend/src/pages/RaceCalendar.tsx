@@ -3,16 +3,55 @@ import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { Navbar, Button, Input, Card, Toggle, Alert } from '../components/ui';
+import { Navbar, Button, Input, Card, Toggle, Alert, Badge } from '../components/ui';
 
 type Race = { name: string; date: string; is_goal_race: boolean; notes: string };
+type RaceResult = {
+  id: string;
+  race_name: string;
+  race_date: string;
+  distance: string;
+  finish_time: string;
+  pace_per_mile: string | null;
+  placement: string | null;
+  is_pr: boolean;
+  conditions: string | null;
+  notes: string | null;
+};
+
+type ResultForm = {
+  race_name: string;
+  race_date: string;
+  distance: string;
+  finish_time: string;
+  pace_per_mile: string;
+  placement: string;
+  is_pr: boolean;
+  conditions: string;
+  notes: string;
+};
 
 function emptyRace(): Race { return { name: '', date: '', is_goal_race: false, notes: '' }; }
+
+function emptyResult(race?: Race): ResultForm {
+  return {
+    race_name: race?.name || '',
+    race_date: race?.date || '',
+    distance: '',
+    finish_time: '',
+    pace_per_mile: '',
+    placement: '',
+    is_pr: false,
+    conditions: '',
+    notes: ''
+  };
+}
 
 export function RaceCalendar() {
   const { profile, clearAuth } = useAuthStore();
   const nav = useNavigate();
   const [races, setRaces] = useState<Race[]>([]);
+  const [results, setResults] = useState<RaceResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
@@ -20,11 +59,18 @@ export function RaceCalendar() {
   const [error, setError] = useState('');
   const [newRace, setNewRace] = useState<Race>(emptyRace());
   const [addingRace, setAddingRace] = useState(false);
+  const [loggingResult, setLoggingResult] = useState<number | null>(null);
+  const [resultForm, setResultForm] = useState<ResultForm>(emptyResult());
+  const [savingResult, setSavingResult] = useState(false);
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
   useEffect(() => {
-    apiFetch('/api/athlete/season').then(({ season }) => {
-      if (season) setRaces(season.race_calendar || []);
+    Promise.all([
+      apiFetch('/api/athlete/season'),
+      apiFetch('/api/athlete/races/results')
+    ]).then(([seasonData, resultsData]) => {
+      if (seasonData.season) setRaces(seasonData.season.race_calendar || []);
+      setResults(resultsData);
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
@@ -66,6 +112,44 @@ export function RaceCalendar() {
     finally { setRegenerating(false); }
   };
 
+  const isPastRace = (date: string) => new Date(date + 'T23:59:59') < new Date();
+  const hasResult = (race: Race) => results.some(r => r.race_name === race.name && r.race_date === race.date);
+
+  const startLogResult = (idx: number) => {
+    setLoggingResult(idx);
+    setResultForm(emptyResult(races[idx]));
+  };
+
+  const saveResult = async () => {
+    if (!resultForm.finish_time || !resultForm.distance) {
+      setError('Finish time and distance are required');
+      return;
+    }
+    setSavingResult(true);
+    setError('');
+    try {
+      const newResult = await apiFetch('/api/athlete/races/results', {
+        method: 'POST',
+        body: JSON.stringify(resultForm)
+      });
+      setResults(prev => [newResult, ...prev]);
+      setLoggingResult(null);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSavingResult(false);
+    }
+  };
+
+  const deleteResult = async (id: string) => {
+    try {
+      await apiFetch(`/api/athlete/races/results/${id}`, { method: 'DELETE' });
+      setResults(prev => prev.filter(r => r.id !== id));
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
   return (
     <div className="min-h-screen">
       <Navbar role="athlete" name={profile?.name} onLogout={logout} />
@@ -76,7 +160,8 @@ export function RaceCalendar() {
             <p className="text-sm text-[var(--muted)] mt-1">Goal races drive your season periodization. Non-goal races reduce volume 20%.</p>
           </div>
           <div className="flex gap-2">
-            <Link to="/athlete/plan"><Button variant="ghost" size="sm">← Plan</Button></Link>
+            <Link to="/athlete/progress"><Button variant="ghost" size="sm">Progress</Button></Link>
+            <Link to="/athlete/plan"><Button variant="ghost" size="sm">Plan</Button></Link>
           </div>
         </div>
 
@@ -103,19 +188,48 @@ export function RaceCalendar() {
             <>
               <div className="flex flex-col gap-3 mb-4">
                 {races.map((race, idx) => (
-                  <div key={idx} className={`flex items-center justify-between gap-4 p-3 rounded-lg border ${race.is_goal_race ? 'border-brand-700/50 bg-brand-900/10' : 'border-[var(--border)] bg-dark-700'}`}>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{race.name}</span>
-                        {race.is_goal_race && <span className="text-xs text-brand-400 font-medium">★ Goal Race</span>}
+                  <div key={idx} className={`p-3 rounded-lg border ${race.is_goal_race ? 'border-brand-700/50 bg-brand-900/10' : 'border-[var(--border)] bg-dark-700'}`}>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{race.name}</span>
+                          {race.is_goal_race && <span className="text-xs text-brand-400 font-medium">Goal Race</span>}
+                          {hasResult(race) && <Badge label="Result Logged" color="green" />}
+                        </div>
+                        <div className="text-xs text-[var(--muted)] mt-0.5">{new Date(race.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                        {race.notes && <div className="text-xs text-[var(--muted)] mt-0.5 italic">{race.notes}</div>}
                       </div>
-                      <div className="text-xs text-[var(--muted)] mt-0.5">{new Date(race.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                      {race.notes && <div className="text-xs text-[var(--muted)] mt-0.5 italic">{race.notes}</div>}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {isPastRace(race.date) && !hasResult(race) && (
+                          <Button variant="secondary" size="sm" onClick={() => startLogResult(idx)}>Log Result</Button>
+                        )}
+                        <Toggle checked={race.is_goal_race} onChange={() => toggleGoal(idx)} label="Goal" />
+                        <Button variant="ghost" size="sm" onClick={() => removeRace(idx)} className="text-red-400">Remove</Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <Toggle checked={race.is_goal_race} onChange={() => toggleGoal(idx)} label="Goal" />
-                      <Button variant="ghost" size="sm" onClick={() => removeRace(idx)} className="text-red-400">Remove</Button>
-                    </div>
+
+                    {loggingResult === idx && (
+                      <div className="border-t border-[var(--border)] mt-3 pt-3">
+                        <h4 className="text-sm font-medium mb-3">Log Race Result</h4>
+                        <div className="flex flex-col gap-3">
+                          <div className="grid grid-cols-3 gap-3">
+                            <Input label="Distance" value={resultForm.distance} onChange={e => setResultForm(f => ({ ...f, distance: e.target.value }))} placeholder="e.g. 5K" />
+                            <Input label="Finish Time" value={resultForm.finish_time} onChange={e => setResultForm(f => ({ ...f, finish_time: e.target.value }))} placeholder="e.g. 18:32" />
+                            <Input label="Pace/Mile" value={resultForm.pace_per_mile} onChange={e => setResultForm(f => ({ ...f, pace_per_mile: e.target.value }))} placeholder="e.g. 5:58" />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <Input label="Placement" value={resultForm.placement} onChange={e => setResultForm(f => ({ ...f, placement: e.target.value }))} placeholder="e.g. 3rd overall" />
+                            <Input label="Conditions" value={resultForm.conditions} onChange={e => setResultForm(f => ({ ...f, conditions: e.target.value }))} placeholder="e.g. hot, windy" />
+                          </div>
+                          <Input label="Notes" value={resultForm.notes} onChange={e => setResultForm(f => ({ ...f, notes: e.target.value }))} placeholder="How did it feel?" />
+                          <Toggle checked={resultForm.is_pr} onChange={v => setResultForm(f => ({ ...f, is_pr: v }))} label="This is a personal record (PR)" />
+                          <div className="flex gap-2 justify-end">
+                            <Button variant="ghost" size="sm" onClick={() => setLoggingResult(null)}>Cancel</Button>
+                            <Button size="sm" loading={savingResult} onClick={saveResult}>Save Result</Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -144,6 +258,30 @@ export function RaceCalendar() {
             </div>
           )}
         </Card>
+
+        {results.length > 0 && (
+          <Card title="Race Results" className="mt-6">
+            <div className="flex flex-col gap-3">
+              {results.map(result => (
+                <div key={result.id} className="flex items-center justify-between p-3 bg-dark-700 rounded-lg border border-[var(--border)]">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {result.is_pr && <Badge label="PR" color="amber" />}
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{result.race_name}</div>
+                      <div className="text-xs text-[var(--muted)]">
+                        {result.distance} - {new Date(result.race_date + 'T00:00:00').toLocaleDateString()} - {result.finish_time}
+                        {result.pace_per_mile && ` (${result.pace_per_mile}/mi)`}
+                        {result.placement && ` - ${result.placement}`}
+                      </div>
+                      {result.notes && <div className="text-xs text-[var(--muted)] mt-0.5 italic">{result.notes}</div>}
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => deleteResult(result.id)} className="text-red-400 shrink-0">Delete</Button>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );

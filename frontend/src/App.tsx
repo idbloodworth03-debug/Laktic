@@ -12,6 +12,8 @@ import { Chat } from './pages/Chat';
 import { JoinTeam } from './pages/JoinTeam';
 import { AthleteSettings } from './pages/AthleteSettings';
 import { Activities } from './pages/Activities';
+import { AthleteProgress } from './pages/AthleteProgress';
+import { CoachTeamProgress } from './pages/CoachTeamProgress';
 
 function RequireCoach({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
@@ -45,6 +47,7 @@ export default function App() {
         <Route path="/coach/bot/setup" element={<RequireCoach><BotSetupEdit /></RequireCoach>} />
         <Route path="/coach/bot/edit" element={<RequireCoach><BotSetupEdit /></RequireCoach>} />
         <Route path="/coach/knowledge" element={<RequireCoach><KnowledgeDocuments /></RequireCoach>} />
+        <Route path="/coach/progress" element={<RequireCoach><CoachTeamProgress /></RequireCoach>} />
 
         {/* Athlete protected */}
         <Route path="/athlete/browse" element={<RequireAthlete><BrowseBots /></RequireAthlete>} />
@@ -55,6 +58,7 @@ export default function App() {
         <Route path="/athlete/chat" element={<RequireAthlete><Chat /></RequireAthlete>} />
         <Route path="/athlete/settings" element={<RequireAthlete><AthleteSettings /></RequireAthlete>} />
         <Route path="/athlete/activities" element={<RequireAthlete><Activities /></RequireAthlete>} />
+        <Route path="/athlete/progress" element={<RequireAthlete><AthleteProgress /></RequireAthlete>} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
