@@ -108,3 +108,33 @@ export const activitiesQuerySchema = z.object({
 export const syncSchema = z.object({
   days: z.number().int().min(1).max(365).default(30)
 });
+
+// -- Progress ----------------------------------------------------------------
+
+export const raceResultSchema = z.object({
+  race_name: z.string().min(1).max(200),
+  race_date: z.string().min(1),
+  distance: z.string().min(1).max(100),
+  finish_time: z.string().min(1).max(50),
+  pace_per_mile: z.string().max(20).optional(),
+  placement: z.string().max(100).optional(),
+  is_pr: z.boolean().optional().default(false),
+  conditions: z.string().max(500).optional(),
+  notes: z.string().max(2000).optional()
+});
+
+export const raceResultUpdateSchema = z.object({
+  race_name: z.string().min(1).max(200).optional(),
+  race_date: z.string().min(1).optional(),
+  distance: z.string().min(1).max(100).optional(),
+  finish_time: z.string().min(1).max(50).optional(),
+  pace_per_mile: z.string().max(20).optional(),
+  placement: z.string().max(100).optional(),
+  is_pr: z.boolean().optional(),
+  conditions: z.string().max(500).optional(),
+  notes: z.string().max(2000).optional()
+});
+
+export const weeklyQuerySchema = z.object({
+  weeks: z.coerce.number().int().min(1).max(52).default(12)
+});
