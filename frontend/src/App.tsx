@@ -9,6 +9,7 @@ import { BrowseBots, BotDetail } from './pages/BotPages';
 import { RaceCalendar } from './pages/RaceCalendar';
 import { SeasonPlan } from './pages/SeasonPlan';
 import { Chat } from './pages/Chat';
+import { JoinTeam } from './pages/JoinTeam';
 
 function RequireCoach({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="/athlete/bots/:botId" element={<RequireAthlete><BotDetail /></RequireAthlete>} />
         <Route path="/athlete/plan" element={<RequireAthlete><SeasonPlan /></RequireAthlete>} />
         <Route path="/athlete/races" element={<RequireAthlete><RaceCalendar /></RequireAthlete>} />
+        <Route path="/athlete/join" element={<RequireAthlete><JoinTeam /></RequireAthlete>} />
         <Route path="/athlete/chat" element={<RequireAthlete><Chat /></RequireAthlete>} />
 
         {/* Fallback */}

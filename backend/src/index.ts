@@ -7,6 +7,7 @@ import identityRouter from './routes/identity';
 import coachRouter from './routes/coach';
 import botsRouter from './routes/bots';
 import athleteRouter from './routes/athlete';
+import teamRouter from './routes/team';
 
 import { apiLimiter } from './middleware/rateLimit';
 import { errorHandler } from './middleware/errorHandler';
@@ -38,6 +39,8 @@ app.use('/api', identityRouter);
 app.use('/api/coach', coachRouter);
 app.use('/api/bots', botsRouter);
 app.use('/api/athlete', athleteRouter);
+app.use('/api/coach/team', teamRouter);
+app.use('/api/athlete', teamRouter);
 
 app.use(errorHandler);
 
