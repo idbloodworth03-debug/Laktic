@@ -100,8 +100,8 @@ export function CoachDashboard() {
       <div className="max-w-4xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8 fade-up">
           <div>
-            <h1 className="font-display text-2xl font-bold">Coach Dashboard</h1>
-            <p className="text-sm text-[var(--muted)] mt-1">
+            <h1 className="font-display text-2xl font-bold text-[var(--text)]">Coach Dashboard</h1>
+            <p className="text-sm text-[var(--muted)] mt-1 leading-snug">
               {bot?.is_published
                 ? 'Your bot is live. Athletes subscribe and train with your methods autonomously.'
                 : 'Set up your bot to start coaching athletes.'}
@@ -112,12 +112,7 @@ export function CoachDashboard() {
               <Button variant="primary">Create Your Bot</Button>
             </Link>
           )}
-          {bot && !bot.is_published && (
-            <Link to="/coach/bot/edit">
-              <Button variant="secondary">Edit Bot</Button>
-            </Link>
-          )}
-          {bot?.is_published && (
+          {bot && (
             <Link to="/coach/bot/edit">
               <Button variant="secondary">Edit Bot</Button>
             </Link>
@@ -133,15 +128,15 @@ export function CoachDashboard() {
         )}
 
         {bot && (
-          <div className="flex flex-col gap-6 fade-up-1">
+          <div className="flex flex-col gap-5 fade-up-1">
             {/* Bot header */}
             <Card>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-2">
-                    <h2 className="font-display text-xl font-semibold">{bot.name}</h2>
+                    <h2 className="font-display text-xl font-semibold text-[var(--text)]">{bot.name}</h2>
                     {bot.is_published
-                      ? <Badge label="Published" color="green" />
+                      ? <Badge label="Published" color="green" dot />
                       : <Badge label="Draft" color="gray" />}
                   </div>
                   <div className="flex gap-2 mb-3">
@@ -150,21 +145,21 @@ export function CoachDashboard() {
                   </div>
                   <p className="text-sm text-[var(--muted)] leading-relaxed line-clamp-3">{bot.philosophy}</p>
                 </div>
-                <div className="flex flex-col items-end gap-2 shrink-0">
-                  <div className="text-right text-sm text-[var(--muted)]">
-                    <div>{workouts.length}/7 workouts</div>
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  <div className="text-right text-xs text-[var(--muted)] space-y-0.5">
+                    <div className={`font-medium ${workouts.length >= 5 ? 'text-brand-400' : 'text-[var(--muted)]'}`}>{workouts.length}/7 workouts</div>
                     <div>{knowledge.length} knowledge docs</div>
                   </div>
                 </div>
               </div>
 
               {!bot.is_published && (
-                <div className="mt-4 pt-4 border-t border-[var(--border)] flex items-center justify-between gap-4">
-                  <div className="text-sm text-[var(--muted)]">
-                    Ready to publish? Make sure you have 5+ workouts and at least one knowledge document.
-                    {' '}<Link to="/coach/knowledge" className="text-brand-400 hover:underline">Upload training documents</Link>
+                <div className="mt-4 pt-4 border-t border-[var(--border)]/70 flex items-center justify-between gap-4">
+                  <div className="text-sm text-[var(--muted)] leading-snug">
+                    Ready to publish? Add 5+ workouts and at least one knowledge document.
+                    {' '}<Link to="/coach/knowledge" className="text-brand-400 hover:text-brand-300 transition-colors">Upload training documents →</Link>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
+                  <div className="flex flex-col items-end gap-1 shrink-0">
                     <Button onClick={handlePublish} loading={publishing} variant="primary">Publish Bot</Button>
                     {publishError && <span className="text-xs text-red-400">{publishError}</span>}
                   </div>
@@ -198,7 +193,7 @@ export function CoachDashboard() {
                   </div>
                 ) : (
                   <div className="text-center py-4">
-                    <p className="text-sm text-[var(--muted)] mb-3">
+                    <p className="text-sm text-[var(--muted)] mb-4 leading-relaxed">
                       Create a team to manage your athletes and share your coaching bot.
                     </p>
                     <Button onClick={() => setShowCreateTeam(true)} variant="primary">
@@ -209,16 +204,16 @@ export function CoachDashboard() {
               ) : (
                 <div className="flex flex-col gap-4">
                   {/* Invite code section */}
-                  <div className="flex items-center justify-between bg-dark-700 rounded-lg px-4 py-3">
+                  <div className="flex items-center justify-between bg-[var(--surface2)] border border-[var(--border)] rounded-xl px-4 py-3">
                     <div>
-                      <div className="text-xs text-[var(--muted)] mb-1">Invite Code</div>
-                      <div className="font-mono text-lg font-bold tracking-widest text-brand-400">
+                      <div className="text-xs text-[var(--muted)] uppercase tracking-wide mb-1">Invite Code</div>
+                      <div className="font-mono text-xl font-bold tracking-[0.25em] text-brand-400">
                         {team.invite_code}
                       </div>
                     </div>
                     <div className="flex gap-2">
                       <Button onClick={copyInviteCode} variant="secondary" size="sm">
-                        {codeCopied ? 'Copied!' : 'Copy'}
+                        {codeCopied ? '✓ Copied' : 'Copy'}
                       </Button>
                       <Button onClick={handleRegenerateInvite} variant="ghost" size="sm">
                         Regenerate
@@ -230,12 +225,12 @@ export function CoachDashboard() {
 
                   {/* Member list */}
                   {members.length === 0 ? (
-                    <div className="text-sm text-[var(--muted)] text-center py-6">
+                    <div className="text-sm text-[var(--muted)] text-center py-6 leading-relaxed">
                       No athletes yet. Share your invite code to get started.
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-1">
-                      <div className="text-xs text-[var(--muted)] font-medium mb-1">
+                    <div className="flex flex-col gap-0.5">
+                      <div className="text-xs text-[var(--muted)] uppercase tracking-wide mb-2">
                         {members.length} athlete{members.length !== 1 ? 's' : ''}
                       </div>
                       {members.map((m: any) => {
@@ -243,14 +238,14 @@ export function CoachDashboard() {
                         return (
                           <div
                             key={m.id}
-                            className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-dark-700 transition-colors"
+                            className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-[var(--surface2)] transition-colors"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-dark-600 border border-[var(--border)] flex items-center justify-center text-xs font-medium">
+                              <div className="w-8 h-8 rounded-full bg-[var(--surface2)] border border-[var(--border2)] flex items-center justify-center text-xs font-semibold text-brand-400">
                                 {athlete?.name?.charAt(0)?.toUpperCase() || '?'}
                               </div>
                               <div>
-                                <div className="text-sm font-medium">{athlete?.name || 'Unknown'}</div>
+                                <div className="text-sm font-medium text-[var(--text)]">{athlete?.name || 'Unknown'}</div>
                                 <div className="text-xs text-[var(--muted)]">
                                   Joined {new Date(m.joined_at).toLocaleDateString()}
                                 </div>
@@ -259,6 +254,7 @@ export function CoachDashboard() {
                             <Badge
                               label={m.status}
                               color={STATUS_COLORS[m.status] || 'gray'}
+                              dot
                             />
                           </div>
                         );
@@ -275,22 +271,26 @@ export function CoachDashboard() {
                 {DAYS.map((day, i) => {
                   const wo = workouts.find((w: any) => w.day_of_week === i + 1);
                   return (
-                    <div key={day} className={`rounded-lg border p-2 text-center min-h-[80px] flex flex-col gap-1 ${wo ? 'border-[var(--border)] bg-dark-700' : 'border-dashed border-dark-500'}`}>
-                      <div className="text-xs font-medium text-[var(--muted)]">{day}</div>
+                    <div key={day} className={`rounded-lg border p-2 text-center min-h-[80px] flex flex-col gap-1 transition-colors ${
+                      wo
+                        ? 'border-[var(--border)] bg-[var(--surface2)] hover:border-[var(--border2)]'
+                        : 'border-dashed border-[var(--border)] opacity-40'
+                    }`}>
+                      <div className="text-xs font-medium text-[var(--muted)] uppercase tracking-wide">{day}</div>
                       {wo ? (
                         <>
-                          <div className="text-xs font-medium leading-tight">{wo.title}</div>
-                          {wo.distance_miles && <div className="text-xs text-brand-400">{wo.distance_miles}mi</div>}
-                          {wo.ai_adjustable && <div className="text-xs text-purple-400">AI</div>}
+                          <div className="text-xs font-medium leading-tight text-[var(--text)]">{wo.title}</div>
+                          {wo.distance_miles && <div className="text-xs text-brand-400 font-medium">{wo.distance_miles}mi</div>}
+                          {wo.ai_adjustable && <div className="text-[10px] text-purple-400 font-medium">AI</div>}
                         </>
                       ) : (
-                        <div className="text-xs text-dark-500 mt-2">Rest</div>
+                        <div className="text-xs text-[var(--muted2)] mt-2">Rest</div>
                       )}
                     </div>
                   );
                 })}
               </div>
-              <Link to="/coach/bot/edit" className="inline-block mt-3">
+              <Link to="/coach/bot/edit" className="inline-block mt-4">
                 <Button variant="ghost" size="sm">Edit Template</Button>
               </Link>
             </Card>
@@ -298,19 +298,23 @@ export function CoachDashboard() {
             {/* Knowledge docs */}
             <Card title="Training Knowledge Documents">
               {knowledge.length === 0 ? (
-                <div className="text-sm text-[var(--muted)] text-center py-4">No documents yet. Upload your coaching materials to make the AI smarter.</div>
+                <div className="text-sm text-[var(--muted)] text-center py-4 leading-relaxed">
+                  No documents yet. Upload your coaching materials to make the AI smarter.
+                </div>
               ) : (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1.5">
                   {knowledge.slice(0, 5).map((doc: any) => (
-                    <div key={doc.id} className="flex items-center justify-between py-2 border-b border-[var(--border)] last:border-0">
-                      <span className="text-sm">{doc.title}</span>
+                    <div key={doc.id} className="flex items-center justify-between py-2 border-b border-[var(--border)]/60 last:border-0">
+                      <span className="text-sm text-[var(--text)]">{doc.title}</span>
                       <Badge label={doc.document_type.replace('_', ' ')} color="gray" />
                     </div>
                   ))}
-                  {knowledge.length > 5 && <div className="text-xs text-[var(--muted)] text-center">+{knowledge.length - 5} more</div>}
+                  {knowledge.length > 5 && (
+                    <div className="text-xs text-[var(--muted)] text-center pt-1">+{knowledge.length - 5} more</div>
+                  )}
                 </div>
               )}
-              <Link to="/coach/knowledge" className="inline-block mt-3">
+              <Link to="/coach/knowledge" className="inline-block mt-4">
                 <Button variant={knowledge.length === 0 ? 'primary' : 'ghost'} size="sm">
                   {knowledge.length === 0 ? 'Upload Documents' : 'Manage Documents'}
                 </Button>

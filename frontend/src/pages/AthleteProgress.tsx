@@ -36,16 +36,20 @@ function BarChart({ data, label }: { data: { label: string; value: number }[]; l
   const maxVal = Math.max(...data.map(d => d.value), 1);
   return (
     <div>
-      <div className="text-xs text-[var(--muted)] mb-2 font-medium">{label}</div>
+      {label && <div className="text-xs text-[var(--muted)] mb-3 font-medium uppercase tracking-wide">{label}</div>}
       <div className="flex items-end gap-1" style={{ height: 120 }}>
         {data.map((d, i) => (
-          <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
+          <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
             <div
-              className="w-full bg-brand-500 rounded-t-sm min-h-[2px] transition-all"
-              style={{ height: `${Math.max((d.value / maxVal) * 100, 2)}%` }}
+              className="w-full rounded-t min-h-[2px] transition-all duration-500"
+              style={{
+                height: `${Math.max((d.value / maxVal) * 100, 2)}%`,
+                background: `linear-gradient(to top, #16a34a, #22c55e)`,
+                opacity: d.value > 0 ? 1 : 0.2,
+              }}
               title={`${d.label}: ${d.value}`}
             />
-            <div className="text-[10px] text-[var(--muted)] mt-1 truncate w-full text-center">{d.label}</div>
+            <div className="text-[9px] text-[var(--muted)] truncate w-full text-center leading-tight">{d.label}</div>
           </div>
         ))}
       </div>
@@ -63,20 +67,23 @@ function PaceTrend({ data }: { data: { label: string; seconds: number }[] }) {
 
   return (
     <div>
-      <div className="text-xs text-[var(--muted)] mb-2 font-medium">Avg Pace / Mile (lower is faster)</div>
+      <div className="text-xs text-[var(--muted)] mb-3 font-medium uppercase tracking-wide">Avg Pace / Mile — lower is faster</div>
       <div className="flex items-end gap-1" style={{ height: 80 }}>
         {data.map((d, i) => {
-          const pct = d.seconds > 0 ? ((d.seconds - minS) / range) * 80 + 20 : 0;
+          const pct = d.seconds > 0 ? ((d.seconds - minS) / range) * 75 + 25 : 0;
           return (
-            <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
+            <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
               {d.seconds > 0 && (
                 <div
-                  className="w-full bg-blue-500 rounded-t-sm min-h-[2px]"
-                  style={{ height: `${pct}%` }}
+                  className="w-full rounded-t min-h-[2px]"
+                  style={{
+                    height: `${pct}%`,
+                    background: 'linear-gradient(to top, #1d4ed8, #60a5fa)',
+                  }}
                   title={`${d.label}: ${formatPace(d.seconds)}`}
                 />
               )}
-              <div className="text-[10px] text-[var(--muted)] mt-1 truncate w-full text-center">{d.label}</div>
+              <div className="text-[9px] text-[var(--muted)] truncate w-full text-center leading-tight">{d.label}</div>
             </div>
           );
         })}
@@ -160,9 +167,9 @@ export function AthleteProgress() {
     <div className="min-h-screen">
       <Navbar role="athlete" name={profile?.name} onLogout={logout} />
       <div className="max-w-3xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 fade-up">
           <div>
-            <h1 className="font-display text-2xl font-bold">Training Progress</h1>
+            <h1 className="font-display text-2xl font-bold text-[var(--text)]">Training Progress</h1>
             <p className="text-sm text-[var(--muted)] mt-1">Weekly volume, pace trends, and race results</p>
           </div>
           <div className="flex gap-2">
@@ -172,31 +179,34 @@ export function AthleteProgress() {
           </div>
         </div>
 
-        {error && <Alert type="error" message={error} onClose={() => setError('')} />}
+        {error && <div className="mb-4"><Alert type="error" message={error} onClose={() => setError('')} /></div>}
 
         {loading ? (
           <div className="flex items-center justify-center py-20"><Spinner size="lg" /></div>
         ) : (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-5 fade-up-1">
             {/* Current Week Stats */}
             {currentWeek && (
               <Card title="This Week">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <StatBox label="Distance" value={`${currentWeek.total_distance_miles.toFixed(1)} mi`} />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <StatBox label="Distance" value={`${currentWeek.total_distance_miles.toFixed(1)} mi`} accent />
                   <StatBox label="Runs" value={String(currentWeek.run_count)} />
                   <StatBox label="Avg Pace" value={currentWeek.avg_pace_per_mile || '--'} />
                   <StatBox label="Avg HR" value={currentWeek.avg_heartrate ? `${currentWeek.avg_heartrate} bpm` : '--'} />
                 </div>
                 {currentWeek.compliance_pct !== null && (
-                  <div className="mt-3 flex items-center gap-2">
-                    <div className="text-xs text-[var(--muted)]">Plan Compliance</div>
-                    <div className="flex-1 h-2 bg-dark-700 rounded-full overflow-hidden">
+                  <div className="mt-4 flex items-center gap-3">
+                    <div className="text-xs text-[var(--muted)] uppercase tracking-wide shrink-0">Plan Compliance</div>
+                    <div className="flex-1 h-1.5 bg-[var(--surface2)] rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full ${currentWeek.compliance_pct >= 80 ? 'bg-brand-500' : currentWeek.compliance_pct >= 50 ? 'bg-amber-500' : 'bg-red-500'}`}
+                        className={`h-full rounded-full transition-all ${
+                          currentWeek.compliance_pct >= 80 ? 'bg-gradient-to-r from-brand-600 to-brand-500'
+                          : currentWeek.compliance_pct >= 50 ? 'bg-gradient-to-r from-amber-700 to-amber-500'
+                          : 'bg-gradient-to-r from-red-800 to-red-500'}`}
                         style={{ width: `${currentWeek.compliance_pct}%` }}
                       />
                     </div>
-                    <span className="text-xs font-medium">{currentWeek.compliance_pct}%</span>
+                    <span className="text-xs font-semibold text-[var(--text)] shrink-0">{currentWeek.compliance_pct}%</span>
                   </div>
                 )}
               </Card>
@@ -221,15 +231,15 @@ export function AthleteProgress() {
               <Card title="Personal Records">
                 <div className="flex flex-col gap-2">
                   {prs.map(pr => (
-                    <div key={pr.id} className="flex items-center justify-between p-3 bg-dark-700 rounded-lg border border-[var(--border)]">
+                    <div key={pr.id} className="flex items-center justify-between p-3 bg-[var(--surface2)] rounded-lg border border-[var(--border)] border-l-2 border-l-amber-500">
                       <div className="flex items-center gap-3">
                         <Badge label="PR" color="amber" />
                         <div>
-                          <div className="text-sm font-medium">{pr.race_name}</div>
-                          <div className="text-xs text-[var(--muted)]">{pr.distance} &middot; {new Date(pr.race_date + 'T00:00:00').toLocaleDateString()}</div>
+                          <div className="text-sm font-medium text-[var(--text)]">{pr.race_name}</div>
+                          <div className="text-xs text-[var(--muted)]">{pr.distance} · {new Date(pr.race_date + 'T00:00:00').toLocaleDateString()}</div>
                         </div>
                       </div>
-                      <div className="text-sm font-semibold text-brand-400">{pr.finish_time}</div>
+                      <div className="text-sm font-bold text-brand-400 font-mono">{pr.finish_time}</div>
                     </div>
                   ))}
                 </div>
@@ -239,7 +249,9 @@ export function AthleteProgress() {
             {summaries.length === 0 && races.length === 0 && (
               <Card>
                 <div className="text-center py-8">
-                  <p className="text-sm text-[var(--muted)] mb-4">No progress data yet. Connect Strava and sync activities, then click Refresh Data.</p>
+                  <p className="text-sm text-[var(--muted)] mb-5 leading-relaxed">
+                    No progress data yet. Connect Strava and sync activities, then click Refresh Data.
+                  </p>
                   <Button onClick={recompute} loading={computing}>Compute Weekly Summaries</Button>
                 </div>
               </Card>
@@ -251,11 +263,11 @@ export function AthleteProgress() {
   );
 }
 
-function StatBox({ label, value }: { label: string; value: string }) {
+function StatBox({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="bg-dark-700 rounded-lg p-3 border border-[var(--border)]">
-      <div className="text-xs text-[var(--muted)] mb-1">{label}</div>
-      <div className="text-lg font-semibold font-display">{value}</div>
+    <div className={`rounded-lg p-3 border ${accent ? 'bg-brand-950/30 border-brand-900/40' : 'bg-[var(--surface2)] border-[var(--border)]'}`}>
+      <div className="text-[10px] text-[var(--muted)] uppercase tracking-wide mb-1">{label}</div>
+      <div className={`text-lg font-bold font-display ${accent ? 'text-brand-400' : 'text-[var(--text)]'}`}>{value}</div>
     </div>
   );
 }

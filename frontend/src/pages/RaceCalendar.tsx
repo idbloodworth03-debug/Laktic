@@ -58,7 +58,7 @@ function MonthView({ races, results }: { races: Race[]; results: RaceResult[] })
 
   const racesByDate: Record<string, Race[]> = {};
   races.forEach(r => {
-    const key = r.date; // YYYY-MM-DD
+    const key = r.date;
     if (!racesByDate[key]) racesByDate[key] = [];
     racesByDate[key].push(r);
   });
@@ -78,32 +78,43 @@ function MonthView({ races, results }: { races: Race[]; results: RaceResult[] })
     ...Array(firstDay).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1)
   ];
-  // pad to complete last row
   while (cells.length % 7 !== 0) cells.push(null);
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <button onClick={prevMonth} className="px-2 py-1 rounded hover:bg-dark-600 text-[var(--muted)] hover:text-[var(--text)] transition-colors">‹</button>
-        <span className="font-medium text-sm">{monthLabel}</span>
-        <button onClick={nextMonth} className="px-2 py-1 rounded hover:bg-dark-600 text-[var(--muted)] hover:text-[var(--text)] transition-colors">›</button>
+        <button onClick={prevMonth} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors text-lg">‹</button>
+        <span className="font-display font-semibold text-sm text-[var(--text)]">{monthLabel}</span>
+        <button onClick={nextMonth} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors text-lg">›</button>
       </div>
-      <div className="grid grid-cols-7 text-center text-xs text-[var(--muted)] mb-1">
-        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d}>{d}</div>)}
+      <div className="grid grid-cols-7 text-center mb-1">
+        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+          <div key={d} className="text-[10px] text-[var(--muted)] uppercase tracking-wide py-1">{d}</div>
+        ))}
       </div>
-      <div className="grid grid-cols-7 gap-px bg-[var(--border)] rounded-lg overflow-hidden">
+      <div className="grid grid-cols-7 gap-px bg-[var(--border)] rounded-xl overflow-hidden">
         {cells.map((day, i) => {
           const dateKey = day ? `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : '';
           const dayRaces = dateKey ? (racesByDate[dateKey] || []) : [];
           const isToday = day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
           return (
-            <div key={i} className={`bg-dark-800 min-h-[72px] p-1.5 ${!day ? 'opacity-30' : ''}`}>
+            <div key={i} className={`bg-[var(--surface2)] min-h-[72px] p-1.5 ${!day ? 'opacity-20' : ''}`}>
               {day && (
                 <>
-                  <div className={`text-xs w-6 h-6 flex items-center justify-center rounded-full mb-1 ${isToday ? 'bg-brand-500 text-white font-bold' : 'text-[var(--muted)]'}`}>{day}</div>
+                  <div className={`text-xs w-6 h-6 flex items-center justify-center rounded-full mb-1 font-medium ${
+                    isToday
+                      ? 'bg-brand-500 text-white font-bold shadow-glow-sm'
+                      : 'text-[var(--muted)]'
+                  }`}>{day}</div>
                   <div className="flex flex-col gap-0.5">
                     {dayRaces.map((race, ri) => (
-                      <div key={ri} className={`text-[10px] leading-tight px-1 py-0.5 rounded truncate ${race.is_goal_race ? 'bg-brand-900/60 text-brand-300' : 'bg-dark-600 text-[var(--text)]'}`} title={race.name}>
+                      <div key={ri}
+                        className={`text-[10px] leading-tight px-1.5 py-0.5 rounded-md truncate font-medium ${
+                          race.is_goal_race
+                            ? 'bg-purple-950/60 text-purple-300 border border-purple-900/40'
+                            : 'bg-[var(--surface3)] text-[var(--text2)] border border-[var(--border2)]'
+                        }`}
+                        title={race.name}>
                         {race.is_goal_race && '★ '}{race.name}{hasResult(race) ? ' ✓' : ''}
                       </div>
                     ))}
@@ -114,9 +125,13 @@ function MonthView({ races, results }: { races: Race[]; results: RaceResult[] })
           );
         })}
       </div>
-      <div className="flex items-center gap-4 mt-3 text-[10px] text-[var(--muted)]">
-        <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-brand-900/60"></span> Goal race</span>
-        <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-dark-600"></span> Race</span>
+      <div className="flex items-center gap-5 mt-3 text-[10px] text-[var(--muted)]">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-2 h-2 rounded-sm bg-purple-900/60 border border-purple-900/40" /> Goal race
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-2 h-2 rounded-sm bg-[var(--surface3)] border border-[var(--border2)]" /> Race
+        </span>
         <span>✓ Result logged</span>
       </div>
     </div>
@@ -231,10 +246,12 @@ export function RaceCalendar() {
     <div className="min-h-screen">
       <Navbar role="athlete" name={profile?.name} onLogout={logout} />
       <div className="max-w-2xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 fade-up">
           <div>
-            <h1 className="font-display text-2xl font-bold">Race Calendar</h1>
-            <p className="text-sm text-[var(--muted)] mt-1">Goal races drive your season periodization. Non-goal races reduce volume 20%.</p>
+            <h1 className="font-display text-2xl font-bold text-[var(--text)]">Race Calendar</h1>
+            <p className="text-sm text-[var(--muted)] mt-1 leading-snug">
+              Goal races drive your season periodization. Non-goal races reduce volume 20%.
+            </p>
           </div>
           <div className="flex gap-2">
             <Link to="/athlete/progress"><Button variant="ghost" size="sm">Progress</Button></Link>
@@ -242,129 +259,160 @@ export function RaceCalendar() {
           </div>
         </div>
 
-        {error && <Alert type="error" message={error} onClose={() => setError('')} />}
+        <div className="space-y-3">
+          {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
-        {showBanner && (
-          <Alert
-            type="info"
-            message="Race calendar updated. Use Regenerate Plan to rebuild your schedule around the new dates."
-            onClose={() => setShowBanner(false)}
-            action={<Button size="sm" onClick={regenerate} loading={regenerating}>Regenerate Plan</Button>}
-          />
-        )}
+          {showBanner && (
+            <Alert
+              type="info"
+              message="Race calendar updated. Use Regenerate Plan to rebuild your schedule around the new dates."
+              onClose={() => setShowBanner(false)}
+              action={<Button size="sm" onClick={regenerate} loading={regenerating}>Regenerate Plan</Button>}
+            />
+          )}
+        </div>
 
-        <div className="flex gap-1 mt-4 mb-2">
-          <button onClick={() => setCalView('list')} className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${calView === 'list' ? 'bg-brand-500 text-white' : 'text-[var(--muted)] hover:text-[var(--text)] hover:bg-dark-700'}`}>List</button>
-          <button onClick={() => setCalView('month')} className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${calView === 'month' ? 'bg-brand-500 text-white' : 'text-[var(--muted)] hover:text-[var(--text)] hover:bg-dark-700'}`}>Month</button>
+        {/* View toggle */}
+        <div className="flex gap-1 mt-5 mb-3 p-1 bg-[var(--surface2)] rounded-lg w-fit border border-[var(--border)]">
+          <button onClick={() => setCalView('list')}
+            className={`px-4 py-1.5 text-sm rounded-md font-medium transition-all ${
+              calView === 'list'
+                ? 'bg-[var(--surface3)] text-[var(--text)] border border-[var(--border2)] shadow-sm'
+                : 'text-[var(--muted)] hover:text-[var(--text2)]'
+            }`}>List</button>
+          <button onClick={() => setCalView('month')}
+            className={`px-4 py-1.5 text-sm rounded-md font-medium transition-all ${
+              calView === 'month'
+                ? 'bg-[var(--surface3)] text-[var(--text)] border border-[var(--border2)] shadow-sm'
+                : 'text-[var(--muted)] hover:text-[var(--text2)]'
+            }`}>Month</button>
         </div>
 
         {calView === 'month' && (
           <Card className="mt-2">
-            {loading ? <div className="text-sm text-[var(--muted)] text-center py-4">Loading...</div> : <MonthView races={races} results={results} />}
+            {loading
+              ? <div className="text-sm text-[var(--muted)] text-center py-4">Loading...</div>
+              : <MonthView races={races} results={results} />}
           </Card>
         )}
 
-        {calView === 'list' && <Card className="mt-4">
-          {loading ? (
-            <div className="text-sm text-[var(--muted)] text-center py-4">Loading...</div>
-          ) : races.length === 0 && !addingRace ? (
-            <div className="text-center py-8">
-              <p className="text-sm text-[var(--muted)] mb-4">No races scheduled. Add your races to get a periodized season plan.</p>
-              <Button onClick={() => setAddingRace(true)}>+ Add Your First Race</Button>
-            </div>
-          ) : (
-            <>
-              <div className="flex flex-col gap-3 mb-4">
-                {races.map((race, idx) => (
-                  <div key={idx} className={`p-3 rounded-lg border ${race.is_goal_race ? 'border-brand-700/50 bg-brand-900/10' : 'border-[var(--border)] bg-dark-700'}`}>
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm">{race.name}</span>
-                          {race.is_goal_race && <span className="text-xs text-brand-400 font-medium">Goal Race</span>}
-                          {hasResult(race) && <Badge label="Result Logged" color="green" />}
+        {calView === 'list' && (
+          <Card className="mt-2">
+            {loading ? (
+              <div className="text-sm text-[var(--muted)] text-center py-4">Loading...</div>
+            ) : races.length === 0 && !addingRace ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-[var(--muted)] mb-5 leading-relaxed">
+                  No races scheduled. Add your races to get a periodized season plan.
+                </p>
+                <Button onClick={() => setAddingRace(true)}>+ Add Your First Race</Button>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-col gap-2.5 mb-4">
+                  {races.map((race, idx) => (
+                    <div key={idx} className={`p-4 rounded-xl border transition-colors ${
+                      race.is_goal_race
+                        ? 'border-purple-800/50 bg-purple-950/20 border-l-2 border-l-purple-500'
+                        : 'border-[var(--border)] bg-[var(--surface2)] hover:border-[var(--border2)]'
+                    }`}>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="font-medium text-sm text-[var(--text)]">{race.name}</span>
+                            {race.is_goal_race && (
+                              <span className="text-xs text-purple-400 font-medium">★ Goal Race</span>
+                            )}
+                            {hasResult(race) && <Badge label="Result Logged" color="green" dot />}
+                          </div>
+                          <div className="text-xs text-[var(--muted)]">
+                            {new Date(race.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                          </div>
+                          {race.notes && <div className="text-xs text-[var(--muted)] mt-0.5 italic">{race.notes}</div>}
                         </div>
-                        <div className="text-xs text-[var(--muted)] mt-0.5">{new Date(race.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                        {race.notes && <div className="text-xs text-[var(--muted)] mt-0.5 italic">{race.notes}</div>}
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          {isPastRace(race.date) && !hasResult(race) && (
+                            <Button variant="secondary" size="sm" onClick={() => startLogResult(idx)}>Log Result</Button>
+                          )}
+                          <Toggle checked={race.is_goal_race} onChange={() => toggleGoal(idx)} label="Goal" />
+                          <Button variant="ghost" size="sm" onClick={() => removeRace(idx)} className="!text-red-400">Remove</Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {isPastRace(race.date) && !hasResult(race) && (
-                          <Button variant="secondary" size="sm" onClick={() => startLogResult(idx)}>Log Result</Button>
-                        )}
-                        <Toggle checked={race.is_goal_race} onChange={() => toggleGoal(idx)} label="Goal" />
-                        <Button variant="ghost" size="sm" onClick={() => removeRace(idx)} className="text-red-400">Remove</Button>
-                      </div>
+
+                      {loggingResult === idx && (
+                        <div className="border-t border-[var(--border)]/70 mt-4 pt-4">
+                          <h4 className="text-sm font-semibold text-[var(--text)] mb-3">Log Race Result</h4>
+                          <div className="flex flex-col gap-3">
+                            <div className="grid grid-cols-3 gap-3">
+                              <Input label="Distance" value={resultForm.distance} onChange={e => setResultForm(f => ({ ...f, distance: e.target.value }))} placeholder="e.g. 5K" />
+                              <Input label="Finish Time" value={resultForm.finish_time} onChange={e => setResultForm(f => ({ ...f, finish_time: e.target.value }))} placeholder="e.g. 18:32" />
+                              <Input label="Pace/Mile" value={resultForm.pace_per_mile} onChange={e => setResultForm(f => ({ ...f, pace_per_mile: e.target.value }))} placeholder="e.g. 5:58" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <Input label="Placement" value={resultForm.placement} onChange={e => setResultForm(f => ({ ...f, placement: e.target.value }))} placeholder="e.g. 3rd overall" />
+                              <Input label="Conditions" value={resultForm.conditions} onChange={e => setResultForm(f => ({ ...f, conditions: e.target.value }))} placeholder="e.g. hot, windy" />
+                            </div>
+                            <Input label="Notes" value={resultForm.notes} onChange={e => setResultForm(f => ({ ...f, notes: e.target.value }))} placeholder="How did it feel?" />
+                            <Toggle checked={resultForm.is_pr} onChange={v => setResultForm(f => ({ ...f, is_pr: v }))} label="This is a personal record (PR)" />
+                            <div className="flex gap-2 justify-end">
+                              <Button variant="ghost" size="sm" onClick={() => setLoggingResult(null)}>Cancel</Button>
+                              <Button size="sm" loading={savingResult} onClick={saveResult}>Save Result</Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
+                  ))}
+                </div>
 
-                    {loggingResult === idx && (
-                      <div className="border-t border-[var(--border)] mt-3 pt-3">
-                        <h4 className="text-sm font-medium mb-3">Log Race Result</h4>
-                        <div className="flex flex-col gap-3">
-                          <div className="grid grid-cols-3 gap-3">
-                            <Input label="Distance" value={resultForm.distance} onChange={e => setResultForm(f => ({ ...f, distance: e.target.value }))} placeholder="e.g. 5K" />
-                            <Input label="Finish Time" value={resultForm.finish_time} onChange={e => setResultForm(f => ({ ...f, finish_time: e.target.value }))} placeholder="e.g. 18:32" />
-                            <Input label="Pace/Mile" value={resultForm.pace_per_mile} onChange={e => setResultForm(f => ({ ...f, pace_per_mile: e.target.value }))} placeholder="e.g. 5:58" />
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <Input label="Placement" value={resultForm.placement} onChange={e => setResultForm(f => ({ ...f, placement: e.target.value }))} placeholder="e.g. 3rd overall" />
-                            <Input label="Conditions" value={resultForm.conditions} onChange={e => setResultForm(f => ({ ...f, conditions: e.target.value }))} placeholder="e.g. hot, windy" />
-                          </div>
-                          <Input label="Notes" value={resultForm.notes} onChange={e => setResultForm(f => ({ ...f, notes: e.target.value }))} placeholder="How did it feel?" />
-                          <Toggle checked={resultForm.is_pr} onChange={v => setResultForm(f => ({ ...f, is_pr: v }))} label="This is a personal record (PR)" />
-                          <div className="flex gap-2 justify-end">
-                            <Button variant="ghost" size="sm" onClick={() => setLoggingResult(null)}>Cancel</Button>
-                            <Button size="sm" loading={savingResult} onClick={saveResult}>Save Result</Button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                {!addingRace && (
+                  <Button variant="ghost" size="sm" onClick={() => setAddingRace(true)}>+ Add Race</Button>
+                )}
+              </>
+            )}
+
+            {addingRace && (
+              <div className="border-t border-[var(--border)]/70 pt-4 mt-2">
+                <h4 className="text-sm font-semibold text-[var(--text)] mb-3">Add Race</h4>
+                <div className="flex flex-col gap-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input label="Race name" value={newRace.name} onChange={e => setNewRace(r => ({ ...r, name: e.target.value }))} placeholder="e.g. State Championships" />
+                    <Input label="Date" type="date" value={newRace.date} onChange={e => setNewRace(r => ({ ...r, date: e.target.value }))} />
                   </div>
-                ))}
-              </div>
-
-              {!addingRace && (
-                <Button variant="ghost" size="sm" onClick={() => setAddingRace(true)}>+ Add Race</Button>
-              )}
-            </>
-          )}
-
-          {addingRace && (
-            <div className="border-t border-[var(--border)] pt-4 mt-2">
-              <h4 className="text-sm font-medium mb-3">Add Race</h4>
-              <div className="flex flex-col gap-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <Input label="Race name" value={newRace.name} onChange={e => setNewRace(r => ({ ...r, name: e.target.value }))} placeholder="e.g. State Championships" />
-                  <Input label="Date" type="date" value={newRace.date} onChange={e => setNewRace(r => ({ ...r, date: e.target.value }))} />
-                </div>
-                <Input label="Notes (optional)" value={newRace.notes} onChange={e => setNewRace(r => ({ ...r, notes: e.target.value }))} placeholder="e.g. conference meet, need to peak" />
-                <Toggle checked={newRace.is_goal_race} onChange={v => setNewRace(r => ({ ...r, is_goal_race: v }))} label="This is a goal race (full taper)" />
-                <div className="flex gap-2 justify-end">
-                  <Button variant="ghost" size="sm" onClick={() => { setAddingRace(false); setNewRace(emptyRace()); }}>Cancel</Button>
-                  <Button size="sm" loading={saving} onClick={addRace}>Add Race</Button>
+                  <Input label="Notes (optional)" value={newRace.notes} onChange={e => setNewRace(r => ({ ...r, notes: e.target.value }))} placeholder="e.g. conference meet, need to peak" />
+                  <Toggle checked={newRace.is_goal_race} onChange={v => setNewRace(r => ({ ...r, is_goal_race: v }))} label="This is a goal race (full taper)" />
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="ghost" size="sm" onClick={() => { setAddingRace(false); setNewRace(emptyRace()); }}>Cancel</Button>
+                    <Button size="sm" loading={saving} onClick={addRace}>Add Race</Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </Card>}
+            )}
+          </Card>
+        )}
 
         {results.length > 0 && (
-          <Card title="Race Results" className="mt-6">
-            <div className="flex flex-col gap-3">
+          <Card title="Race Results" className="mt-5">
+            <div className="flex flex-col gap-2.5">
               {results.map(result => (
-                <div key={result.id} className="flex items-center justify-between p-3 bg-dark-700 rounded-lg border border-[var(--border)]">
+                <div key={result.id} className={`flex items-center justify-between p-3 rounded-xl border ${
+                  result.is_pr
+                    ? 'bg-amber-950/20 border-amber-900/40 border-l-2 border-l-amber-500'
+                    : 'bg-[var(--surface2)] border-[var(--border)]'
+                }`}>
                   <div className="flex items-center gap-3 min-w-0">
                     {result.is_pr && <Badge label="PR" color="amber" />}
                     <div className="min-w-0">
-                      <div className="text-sm font-medium truncate">{result.race_name}</div>
+                      <div className="text-sm font-medium text-[var(--text)] truncate">{result.race_name}</div>
                       <div className="text-xs text-[var(--muted)]">
-                        {result.distance} - {new Date(result.race_date + 'T00:00:00').toLocaleDateString()} - {result.finish_time}
+                        {result.distance} · {new Date(result.race_date + 'T00:00:00').toLocaleDateString()} · {result.finish_time}
                         {result.pace_per_mile && ` (${result.pace_per_mile}/mi)`}
-                        {result.placement && ` - ${result.placement}`}
+                        {result.placement && ` · ${result.placement}`}
                       </div>
                       {result.notes && <div className="text-xs text-[var(--muted)] mt-0.5 italic">{result.notes}</div>}
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => deleteResult(result.id)} className="text-red-400 shrink-0">Delete</Button>
+                  <Button variant="ghost" size="sm" onClick={() => deleteResult(result.id)} className="!text-red-400 shrink-0">Delete</Button>
                 </div>
               ))}
             </div>

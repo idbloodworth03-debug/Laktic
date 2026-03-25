@@ -25,7 +25,6 @@ export function AthleteSettings() {
     fetchStravaStatus();
     if (searchParams.get('strava') === 'connected') {
       setAlert({ type: 'success', message: 'Strava connected successfully! Syncing your recent activities...' });
-      // Auto-trigger initial sync after connecting
       triggerSync();
     }
   }, []);
@@ -82,16 +81,16 @@ export function AthleteSettings() {
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <Navbar role={role || undefined} name={profile?.name} onLogout={clearAuth} />
-      <div className="max-w-2xl mx-auto px-6 py-8">
-        <h1 className="font-display text-2xl font-bold mb-6">Settings</h1>
+      <div className="max-w-2xl mx-auto px-6 py-10">
+        <h1 className="font-display text-2xl font-bold text-[var(--text)] mb-6 fade-up">Settings</h1>
 
         {alert && (
-          <div className="mb-6">
+          <div className="mb-5">
             <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
           </div>
         )}
 
-        <Card title="Strava Integration">
+        <Card title="Strava Integration" className="fade-up-1">
           {loading ? (
             <div className="flex justify-center py-8">
               <Spinner />
@@ -99,24 +98,24 @@ export function AthleteSettings() {
           ) : stravaStatus?.connected ? (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <Badge label="Connected" color="green" />
+                <Badge label="Connected" color="green" dot />
                 <span className="text-sm text-[var(--muted)]">
                   Strava Athlete #{stravaStatus.strava_athlete_id}
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 bg-[var(--surface2)] rounded-xl p-4 border border-[var(--border)]">
                 <div>
-                  <span className="text-[var(--muted)]">Connected</span>
-                  <p className="text-[var(--text)]">
+                  <div className="text-[10px] text-[var(--muted)] uppercase tracking-wide mb-1">Connected</div>
+                  <p className="text-sm text-[var(--text)] font-medium">
                     {stravaStatus.connected_at
                       ? new Date(stravaStatus.connected_at).toLocaleDateString()
                       : 'N/A'}
                   </p>
                 </div>
                 <div>
-                  <span className="text-[var(--muted)]">Last sync</span>
-                  <p className="text-[var(--text)]">
+                  <div className="text-[10px] text-[var(--muted)] uppercase tracking-wide mb-1">Last sync</div>
+                  <p className="text-sm text-[var(--text)] font-medium">
                     {stravaStatus.last_sync_at
                       ? new Date(stravaStatus.last_sync_at).toLocaleString()
                       : 'Never'}
@@ -124,7 +123,7 @@ export function AthleteSettings() {
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-1">
                 <Button onClick={triggerSync} loading={syncing} size="sm">
                   Sync Activities
                 </Button>
@@ -140,7 +139,7 @@ export function AthleteSettings() {
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-sm text-[var(--muted)]">
+              <p className="text-sm text-[var(--muted)] leading-relaxed">
                 Connect your Strava account to automatically sync your running activities,
                 including pace, distance, heart rate, and elevation data.
               </p>
