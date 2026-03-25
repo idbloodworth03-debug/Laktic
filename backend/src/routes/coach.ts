@@ -11,6 +11,7 @@ import {
   knowledgeCreateSchema,
   knowledgeUpdateSchema
 } from '../schemas';
+import { sendCoachWelcomeEmail } from '../services/emailService';
 
 const router = Router();
 
@@ -29,6 +30,11 @@ router.post(
       .single();
 
     if (error) return res.status(400).json({ error: error.message });
+
+    // Fire-and-forget welcome email (non-blocking)
+    const userEmail = req.user!.email;
+    if (userEmail) sendCoachWelcomeEmail(userEmail, name).catch(() => {});
+
     res.json(data);
   })
 );

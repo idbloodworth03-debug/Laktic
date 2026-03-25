@@ -1,8 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 
-import { Landing, CoachRegister, AthleteRegister, CoachLogin, AthleteLogin } from './pages/AuthPages';
+import { Landing, CoachRegister, AthleteRegister, CoachLogin, AthleteLogin, PasswordResetRequest, PasswordResetConfirm } from './pages/AuthPages';
 import { CoachDashboard } from './pages/CoachDashboard';
+import { CoachOnboarding } from './pages/CoachOnboarding';
 import { BotSetupEdit } from './pages/BotSetupEdit';
 import { KnowledgeDocuments } from './pages/KnowledgeDocuments';
 import { BrowseBots, BotDetail } from './pages/BotPages';
@@ -10,6 +11,7 @@ import { RaceCalendar } from './pages/RaceCalendar';
 import { SeasonPlan } from './pages/SeasonPlan';
 import { Chat } from './pages/Chat';
 import { JoinTeam } from './pages/JoinTeam';
+import { AthleteOnboarding } from './pages/AthleteOnboarding';
 import { AthleteSettings } from './pages/AthleteSettings';
 import { Activities } from './pages/Activities';
 import { AthleteProgress } from './pages/AthleteProgress';
@@ -41,8 +43,11 @@ export default function App() {
         <Route path="/register/athlete" element={<AthleteRegister />} />
         <Route path="/login/coach" element={<CoachLogin />} />
         <Route path="/login/athlete" element={<AthleteLogin />} />
+        <Route path="/reset-password" element={<PasswordResetRequest />} />
+        <Route path="/reset-password/new" element={<PasswordResetConfirm />} />
 
         {/* Coach protected */}
+        <Route path="/coach/onboarding" element={<RequireCoach><CoachOnboarding /></RequireCoach>} />
         <Route path="/coach/dashboard" element={<RequireCoach><CoachDashboard /></RequireCoach>} />
         <Route path="/coach/bot/setup" element={<RequireCoach><BotSetupEdit /></RequireCoach>} />
         <Route path="/coach/bot/edit" element={<RequireCoach><BotSetupEdit /></RequireCoach>} />
@@ -50,6 +55,7 @@ export default function App() {
         <Route path="/coach/progress" element={<RequireCoach><CoachTeamProgress /></RequireCoach>} />
 
         {/* Athlete protected */}
+        <Route path="/athlete/onboarding" element={<RequireAthlete><AthleteOnboarding /></RequireAthlete>} />
         <Route path="/athlete/browse" element={<RequireAthlete><BrowseBots /></RequireAthlete>} />
         <Route path="/athlete/bots/:botId" element={<RequireAthlete><BotDetail /></RequireAthlete>} />
         <Route path="/athlete/plan" element={<RequireAthlete><SeasonPlan /></RequireAthlete>} />
