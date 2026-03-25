@@ -27,7 +27,6 @@ interface ActivitiesResponse {
 
 function formatPace(speedMs: number): string {
   if (!speedMs || speedMs === 0) return '--';
-  // speed is m/s, convert to min/mile
   const paceSecondsPerMile = 1609.34 / speedMs;
   const mins = Math.floor(paceSecondsPerMile / 60);
   const secs = Math.round(paceSecondsPerMile % 60);
@@ -58,6 +57,14 @@ function activityColor(type: string): 'green' | 'blue' | 'amber' | 'purple' | 'g
   return 'gray';
 }
 
+const ACCENT_BORDER: Record<string, string> = {
+  green: 'border-l-brand-500',
+  blue: 'border-l-blue-500',
+  amber: 'border-l-amber-500',
+  purple: 'border-l-purple-500',
+  gray: 'border-l-[var(--border2)]',
+};
+
 export function Activities() {
   const { role, profile, clearAuth } = useAuthStore();
   const [data, setData] = useState<ActivitiesResponse | null>(null);
@@ -84,8 +91,8 @@ export function Activities() {
     <div className="min-h-screen bg-[var(--bg)]">
       <Navbar role={role || undefined} name={profile?.name} onLogout={clearAuth} />
       <div className="max-w-3xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="font-display text-2xl font-bold">Activities</h1>
+        <div className="flex items-center justify-between mb-6 fade-up">
+          <h1 className="font-display text-2xl font-bold text-[var(--text)]">Activities</h1>
         </div>
 
         {loading ? (
@@ -104,65 +111,45 @@ export function Activities() {
           />
         ) : (
           <>
-            <div className="space-y-3">
-              {data.activities.map((a) => (
-                <Card key={a.id} className="!p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge label={a.activity_type} color={activityColor(a.activity_type)} />
-                        <span className="text-xs text-[var(--muted)]">
-                          {new Date(a.start_date).toLocaleDateString(undefined, {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric'
-                          })}
-                        </span>
+            <div className="space-y-2.5 fade-up-1">
+              {data.activities.map((a) => {
+                const color = activityColor(a.activity_type);
+                return (
+                  <div key={a.id} className={`bg-[var(--surface)] border border-[var(--border)] border-l-2 ${ACCENT_BORDER[color]} rounded-xl p-4 shadow-card hover:border-[var(--border2)] transition-colors`}>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Badge label={a.activity_type} color={color} />
+                          <span className="text-xs text-[var(--muted)]">
+                            {new Date(a.start_date).toLocaleDateString(undefined, {
+                              weekday: 'short', month: 'short', day: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                        <h3 className="font-medium text-sm text-[var(--text)] truncate">
+                          {a.name || 'Untitled Activity'}
+                        </h3>
                       </div>
-                      <h3 className="font-medium text-sm text-[var(--text)] truncate">
-                        {a.name || 'Untitled Activity'}
-                      </h3>
+                      <Badge label={a.source} color="gray" />
                     </div>
-                    <Badge label={a.source} color="gray" />
-                  </div>
 
-                  <div className="grid grid-cols-4 gap-4 mt-3 text-center">
-                    <div>
-                      <span className="block text-xs text-[var(--muted)]">Distance</span>
-                      <span className="text-sm font-medium text-[var(--text)]">
-                        {formatDistance(a.distance_meters)}
-                      </span>
+                    <div className="grid grid-cols-4 gap-3 mt-3">
+                      <StatCell label="Distance" value={formatDistance(a.distance_meters)} />
+                      <StatCell label="Pace" value={formatPace(a.average_speed)} />
+                      <StatCell label="Duration" value={formatDuration(a.moving_time_seconds)} />
+                      <StatCell label="Avg HR" value={a.average_heartrate ? `${Math.round(a.average_heartrate)} bpm` : '--'} />
                     </div>
-                    <div>
-                      <span className="block text-xs text-[var(--muted)]">Pace</span>
-                      <span className="text-sm font-medium text-[var(--text)]">
-                        {formatPace(a.average_speed)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="block text-xs text-[var(--muted)]">Duration</span>
-                      <span className="text-sm font-medium text-[var(--text)]">
-                        {formatDuration(a.moving_time_seconds)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="block text-xs text-[var(--muted)]">HR</span>
-                      <span className="text-sm font-medium text-[var(--text)]">
-                        {a.average_heartrate ? `${Math.round(a.average_heartrate)} bpm` : '--'}
-                      </span>
-                    </div>
-                  </div>
 
-                  {a.total_elevation_gain > 0 && (
-                    <div className="mt-2 text-xs text-[var(--muted)]">
-                      Elevation: +{Math.round(a.total_elevation_gain * 3.28084)} ft
-                    </div>
-                  )}
-                </Card>
-              ))}
+                    {a.total_elevation_gain > 0 && (
+                      <div className="mt-2 text-xs text-[var(--muted)]">
+                        ↑ {Math.round(a.total_elevation_gain * 3.28084)} ft elevation
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Pagination */}
             {data.total_pages > 1 && (
               <div className="flex items-center justify-center gap-4 mt-6">
                 <Button
@@ -189,6 +176,15 @@ export function Activities() {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function StatCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="text-center">
+      <span className="block text-[10px] text-[var(--muted)] uppercase tracking-wide mb-0.5">{label}</span>
+      <span className="text-sm font-semibold text-[var(--text)]">{value}</span>
     </div>
   );
 }
