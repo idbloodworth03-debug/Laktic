@@ -47,6 +47,82 @@ function emptyResult(race?: Race): ResultForm {
   };
 }
 
+function MonthView({ races, results }: { races: Race[]; results: RaceResult[] }) {
+  const today = new Date();
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const monthLabel = new Date(viewYear, viewMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const racesByDate: Record<string, Race[]> = {};
+  races.forEach(r => {
+    const key = r.date; // YYYY-MM-DD
+    if (!racesByDate[key]) racesByDate[key] = [];
+    racesByDate[key].push(r);
+  });
+
+  const hasResult = (race: Race) => results.some(r => r.race_name === race.name && r.race_date === race.date);
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  };
+
+  const cells: (number | null)[] = [
+    ...Array(firstDay).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1)
+  ];
+  // pad to complete last row
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={prevMonth} className="px-2 py-1 rounded hover:bg-dark-600 text-[var(--muted)] hover:text-[var(--text)] transition-colors">‹</button>
+        <span className="font-medium text-sm">{monthLabel}</span>
+        <button onClick={nextMonth} className="px-2 py-1 rounded hover:bg-dark-600 text-[var(--muted)] hover:text-[var(--text)] transition-colors">›</button>
+      </div>
+      <div className="grid grid-cols-7 text-center text-xs text-[var(--muted)] mb-1">
+        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d}>{d}</div>)}
+      </div>
+      <div className="grid grid-cols-7 gap-px bg-[var(--border)] rounded-lg overflow-hidden">
+        {cells.map((day, i) => {
+          const dateKey = day ? `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : '';
+          const dayRaces = dateKey ? (racesByDate[dateKey] || []) : [];
+          const isToday = day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
+          return (
+            <div key={i} className={`bg-dark-800 min-h-[72px] p-1.5 ${!day ? 'opacity-30' : ''}`}>
+              {day && (
+                <>
+                  <div className={`text-xs w-6 h-6 flex items-center justify-center rounded-full mb-1 ${isToday ? 'bg-brand-500 text-white font-bold' : 'text-[var(--muted)]'}`}>{day}</div>
+                  <div className="flex flex-col gap-0.5">
+                    {dayRaces.map((race, ri) => (
+                      <div key={ri} className={`text-[10px] leading-tight px-1 py-0.5 rounded truncate ${race.is_goal_race ? 'bg-brand-900/60 text-brand-300' : 'bg-dark-600 text-[var(--text)]'}`} title={race.name}>
+                        {race.is_goal_race && '★ '}{race.name}{hasResult(race) ? ' ✓' : ''}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-4 mt-3 text-[10px] text-[var(--muted)]">
+        <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-brand-900/60"></span> Goal race</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-dark-600"></span> Race</span>
+        <span>✓ Result logged</span>
+      </div>
+    </div>
+  );
+}
+
 export function RaceCalendar() {
   const { profile, clearAuth } = useAuthStore();
   const nav = useNavigate();
@@ -62,6 +138,7 @@ export function RaceCalendar() {
   const [loggingResult, setLoggingResult] = useState<number | null>(null);
   const [resultForm, setResultForm] = useState<ResultForm>(emptyResult());
   const [savingResult, setSavingResult] = useState(false);
+  const [calView, setCalView] = useState<'list' | 'month'>('list');
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
   useEffect(() => {
@@ -176,7 +253,18 @@ export function RaceCalendar() {
           />
         )}
 
-        <Card className="mt-4">
+        <div className="flex gap-1 mt-4 mb-2">
+          <button onClick={() => setCalView('list')} className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${calView === 'list' ? 'bg-brand-500 text-white' : 'text-[var(--muted)] hover:text-[var(--text)] hover:bg-dark-700'}`}>List</button>
+          <button onClick={() => setCalView('month')} className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${calView === 'month' ? 'bg-brand-500 text-white' : 'text-[var(--muted)] hover:text-[var(--text)] hover:bg-dark-700'}`}>Month</button>
+        </div>
+
+        {calView === 'month' && (
+          <Card className="mt-2">
+            {loading ? <div className="text-sm text-[var(--muted)] text-center py-4">Loading...</div> : <MonthView races={races} results={results} />}
+          </Card>
+        )}
+
+        {calView === 'list' && <Card className="mt-4">
           {loading ? (
             <div className="text-sm text-[var(--muted)] text-center py-4">Loading...</div>
           ) : races.length === 0 && !addingRace ? (
@@ -257,7 +345,7 @@ export function RaceCalendar() {
               </div>
             </div>
           )}
-        </Card>
+        </Card>}
 
         {results.length > 0 && (
           <Card title="Race Results" className="mt-6">
