@@ -64,11 +64,16 @@ export function BotSetupEdit() {
   const saveDraft = async () => {
     setSaving(true); setError('');
     try {
+      const payload = {
+        ...botForm,
+        event_focus: botForm.event_focus || null,
+        level_focus: botForm.level_focus || null,
+      };
       if (!bot) {
-        const created = await apiFetch('/api/coach/bot', { method: 'POST', body: JSON.stringify(botForm) });
+        const created = await apiFetch('/api/coach/bot', { method: 'POST', body: JSON.stringify(payload) });
         setBot(created);
       } else {
-        await apiFetch('/api/coach/bot', { method: 'PATCH', body: JSON.stringify(botForm) });
+        await apiFetch('/api/coach/bot', { method: 'PATCH', body: JSON.stringify(payload) });
       }
       setSaved(true); setTimeout(() => setSaved(false), 2000);
     } catch (e: any) { setError(e.message); }

@@ -160,7 +160,12 @@ export function CoachOnboarding() {
     if (!botForm.name || !botForm.philosophy) { setError('Bot name and philosophy are required'); return; }
     setError(''); setBotSaving(true);
     try {
-      const created = await apiFetch('/api/coach/bot', { method: 'POST', body: JSON.stringify(botForm) });
+      const payload = {
+        ...botForm,
+        event_focus: botForm.event_focus || null,
+        level_focus: botForm.level_focus || null,
+      };
+      const created = await apiFetch('/api/coach/bot', { method: 'POST', body: JSON.stringify(payload) });
       setBotId(created.id);
       setStep(2);
     } catch (e: any) {
