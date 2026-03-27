@@ -49,13 +49,13 @@ export function Landing() {
       </div>
 
       {/* Hero */}
-      <div className="relative z-10 flex flex-col items-center text-center px-6 pt-20 pb-16 fade-up">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-700/40 bg-brand-900/30 text-brand-400 text-xs font-medium mb-8">
+      <div className="relative z-10 flex flex-col items-center text-center px-6 pt-16 pb-12 fade-up">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-700/40 bg-brand-900/30 text-brand-400 text-xs font-medium mb-7">
           <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
           Now in early access
         </div>
 
-        <h1 className="font-display font-black text-5xl sm:text-6xl md:text-7xl tracking-tighter leading-[0.95] mb-6 max-w-3xl">
+        <h1 className="font-display font-black text-4xl sm:text-5xl tracking-tighter leading-[1.1] mb-5 max-w-2xl">
           <span className="text-gradient">AI coaching</span>
           <br />
           <span className="text-[var(--text)]">built on your</span>
@@ -63,18 +63,18 @@ export function Landing() {
           <span className="text-[var(--text)]">coach's method.</span>
         </h1>
 
-        <p className="text-[var(--muted)] text-lg max-w-xl leading-relaxed mb-10">
+        <p className="text-[var(--muted)] text-base max-w-lg leading-relaxed mb-9">
           Coaches upload their philosophy once. Every athlete gets a personalized season plan, adaptive workouts, and a coaching bot — available 24/7.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm sm:max-w-md">
+        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs sm:max-w-sm">
           <Link to="/register/athlete" className="flex-1">
-            <Button variant="primary" className="w-full" size="lg">
+            <Button variant="primary" className="w-full" size="xl">
               Get My Plan →
             </Button>
           </Link>
           <Link to="/register/coach" className="flex-1">
-            <Button variant="secondary" className="w-full" size="lg">
+            <Button variant="secondary" className="w-full" size="xl">
               I'm a Coach
             </Button>
           </Link>

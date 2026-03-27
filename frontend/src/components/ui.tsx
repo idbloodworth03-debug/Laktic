@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   loading?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 export function Button({
   variant = 'primary', loading, size = 'md', children, disabled, className = '', ...rest
@@ -22,6 +22,7 @@ export function Button({
     sm: 'px-3 py-1.5 text-xs',
     md: 'px-4 py-2 text-sm',
     lg: 'px-6 py-2.5 text-sm',
+    xl: 'px-8 py-3.5 text-base',
   };
   const variants = {
     primary:   'bg-gradient-to-b from-brand-500 to-brand-600 hover:from-brand-400 hover:to-brand-500 text-white shadow-btn-primary hover:shadow-btn-primary-hover focus-visible:ring-brand-500/50',
