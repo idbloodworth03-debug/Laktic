@@ -8,9 +8,10 @@ interface Props {
   rows?: number;
   placeholder?: string;
   label?: string;
+  context?: 'philosophy' | 'knowledge_doc' | 'coach_bio' | 'coach_credentials';
 }
 
-export function PhilosophyEnhancer({ value, onChange, rows = 7, placeholder, label = 'Coaching philosophy' }: Props) {
+export function PhilosophyEnhancer({ value, onChange, rows = 7, placeholder, label = 'Coaching philosophy', context = 'philosophy' }: Props) {
   const [enhancing, setEnhancing] = useState(false);
   const [enhanced, setEnhanced] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -25,7 +26,7 @@ export function PhilosophyEnhancer({ value, onChange, rows = 7, placeholder, lab
     try {
       const result = await apiFetch('/api/coach/enhance-philosophy', {
         method: 'POST',
-        body: JSON.stringify({ philosophy: value }),
+        body: JSON.stringify({ philosophy: value, context }),
       });
       setEnhanced(result.enhanced);
     } catch (e: any) {

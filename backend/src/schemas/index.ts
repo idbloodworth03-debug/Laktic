@@ -234,5 +234,6 @@ export const feedPostSchema = z.object({
 // ── AI Enhancement ───────────────────────────────────────────────────────────
 
 export const enhancePhilosophySchema = z.object({
-  philosophy: z.string().min(10).max(5000)
+  philosophy: z.string().min(10).max(5000),
+  context: z.enum(['philosophy', 'knowledge_doc', 'coach_bio', 'coach_credentials']).optional().default('philosophy'),
 });

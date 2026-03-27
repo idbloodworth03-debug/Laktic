@@ -17,7 +17,8 @@ import {
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const ENHANCE_SYSTEM_PROMPT = `You are an expert coaching consultant who specialises in writing high-performance AI coaching system prompts for running and endurance sports coaches.
+const ENHANCE_PROMPTS: Record<string, string> = {
+  philosophy: `You are an expert coaching consultant who specialises in writing high-performance AI coaching system prompts for running and endurance sports coaches.
 
 Your task is to take a coach's raw coaching philosophy and rewrite it into a richer, more structured version that will produce significantly better AI-generated training plans.
 
@@ -32,7 +33,47 @@ The output must:
 8. Write in first person as the coach ("I believe...", "My athletes...", "I structure...")
 9. Aim for 3–5 focused paragraphs. Do not pad with generic advice.
 
-Return ONLY the enhanced philosophy text. No preamble, no explanation, no markdown formatting.`;
+Return ONLY the enhanced philosophy text. No preamble, no explanation, no markdown formatting.`,
+
+  knowledge_doc: `You are an expert running coach and technical writer. Your task is to take raw coaching notes, a sample training week, training block, taper protocol, injury rules, or FAQ and rewrite them into a clear, structured, AI-readable coaching document.
+
+The output must:
+1. Preserve every specific workout, rule, distance, and instruction the coach wrote — never invent content
+2. Organise content clearly with consistent structure (e.g. day-by-day format for sample weeks, numbered rules for protocols)
+3. Make implicit logic explicit — if a workout serves a specific purpose, state it
+4. Use precise, instructional language — this document will be read by an AI system when building training plans
+5. Expand abbreviations and shorthand into full descriptions athletes and AI can understand
+6. For sample weeks: include workout type, effort level, approximate distance, and purpose for each day
+7. For injury rules: state the condition, the modification, and when to resume normal training
+8. Keep the same document type and scope — do not add sections that weren't in the original
+
+Return ONLY the enhanced document text. No preamble, no explanation, no markdown headers unless they were in the original.`,
+
+  coach_bio: `You are a professional copywriter specialising in sports coaching profiles. Your task is to rewrite a coach's rough bio into a compelling, specific, and credible marketplace profile.
+
+The output must:
+1. Preserve every fact the coach stated — never invent achievements, results, or credentials
+2. Lead with the most impressive or distinctive aspect of their background
+3. Be specific rather than generic — replace vague claims with concrete details where the coach provided them
+4. Highlight what makes this coach's approach distinctive or effective
+5. Use confident, professional third-person or first-person voice (match whatever the coach used)
+6. Keep a natural, human tone — not corporate or stiff
+7. Aim for 3–4 punchy sentences. No padding.
+
+Return ONLY the enhanced bio text. No preamble, no explanation.`,
+
+  coach_credentials: `You are a professional sports career writer. Your task is to take a coach's rough list of credentials and experience and rewrite it as a clear, impressive, and credible credentials section.
+
+The output must:
+1. Preserve every certification, year, athlete, result, and institution the coach mentioned — never fabricate anything
+2. Lead with the most impressive or relevant credential
+3. Group related items logically (certifications, coaching history, notable athletes, personal results)
+4. Use specific, concrete language — "8 years coaching D1 collegiate distance runners" not "extensive experience"
+5. Keep it scannable — use short sentences or a natural list-style flow
+6. Stay factual and grounded — do not hype or embellish beyond what was stated
+
+Return ONLY the enhanced credentials text. No preamble, no explanation.`,
+};
 
 const router = Router();
 
@@ -418,13 +459,14 @@ router.post(
   requireCoach,
   validate(enhancePhilosophySchema),
   asyncHandler(async (req: AuthRequest, res) => {
-    const { philosophy } = req.body;
+    const { philosophy, context = 'philosophy' } = req.body;
+    const systemPrompt = ENHANCE_PROMPTS[context] ?? ENHANCE_PROMPTS.philosophy;
 
     const result = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
-        { role: 'system', content: ENHANCE_SYSTEM_PROMPT },
-        { role: 'user', content: `Here is the coach's current philosophy:\n\n${philosophy}\n\nPlease enhance it.` },
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Here is the content to enhance:\n\n${philosophy}\n\nPlease enhance it.` },
       ],
     });
 

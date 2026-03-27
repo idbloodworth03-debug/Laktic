@@ -317,10 +317,11 @@ export function CoachOnboarding() {
           <Input label="Title" value={docForm.title} onChange={e => setDocForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Base Building Sample Week" />
           <Select label="Document type" value={docForm.document_type} onChange={e => setDocForm(f => ({ ...f, document_type: e.target.value }))} options={DOC_TYPE_OPTIONS} />
         </div>
-        <Textarea
+        <PhilosophyEnhancer
           label="Content"
+          context="knowledge_doc"
           value={docForm.content_text}
-          onChange={e => setDocForm(f => ({ ...f, content_text: e.target.value }))}
+          onChange={v => setDocForm(f => ({ ...f, content_text: v }))}
           rows={6}
           placeholder="Paste your coaching material here — sample week breakdowns, injury protocols, taper guidelines, FAQs..."
         />
