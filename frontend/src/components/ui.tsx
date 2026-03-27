@@ -152,7 +152,7 @@ export function Navbar({ role, name, onLogout }: NavbarProps) {
     <nav className="surface-glass border-b border-[var(--border)] px-8 py-4 flex items-center justify-between sticky top-0 z-40">
       <div className="flex items-center gap-3">
         <a
-          href={role === 'coach' ? '/coach/dashboard' : role === 'athlete' ? '/athlete/browse' : '/'}
+          href={role === 'coach' ? '/coach/dashboard' : role === 'athlete' ? '/athlete/plan' : '/'}
           className="font-display font-black text-xl tracking-tight text-gradient hover:opacity-80 transition-opacity"
         >LAKTIC</a>
         {role && <Badge label={role} color={role === 'coach' ? 'blue' : 'green'} dot />}
