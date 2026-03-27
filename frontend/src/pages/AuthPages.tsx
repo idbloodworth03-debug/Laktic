@@ -32,10 +32,18 @@ export function Landing() {
         backgroundImage: 'linear-gradient(var(--green) 1px, transparent 1px), linear-gradient(90deg, var(--green) 1px, transparent 1px)',
         backgroundSize: '48px 48px',
       }} />
-      {/* Top glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-brand-500/10 blur-[100px] pointer-events-none" />
-      {/* Bottom glow */}
-      <div className="absolute bottom-0 right-1/4 w-[400px] h-[300px] rounded-full bg-brand-600/8 blur-[80px] pointer-events-none" />
+      {/* Orb 1 — top-center */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 pointer-events-none">
+        <div className="landing-orb-1 w-[800px] h-[400px] rounded-full bg-brand-500/10 blur-[100px]" />
+      </div>
+      {/* Orb 2 — bottom-right */}
+      <div className="absolute bottom-0 right-1/4 pointer-events-none">
+        <div className="landing-orb-2 w-[400px] h-[300px] rounded-full bg-brand-600/10 blur-[80px]" />
+      </div>
+      {/* Orb 3 — mid-left */}
+      <div className="absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none">
+        <div className="landing-orb-3 w-[350px] h-[350px] rounded-full bg-brand-400/8 blur-[90px]" />
+      </div>
 
       {/* Nav bar */}
       <div className="relative z-10 flex items-center justify-between px-8 pt-6">
