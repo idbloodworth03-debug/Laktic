@@ -120,6 +120,7 @@ export function BotSetupEdit() {
           <h3 className="font-display font-semibold mb-4">Bot Identity</h3>
           <div className="flex flex-col gap-4">
             <Input label="Bot name" value={botForm.name} onChange={e => setBotForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Coach Smith's Distance Training" />
+            <p style={{color:'red',fontWeight:'bold'}}>ENHANCE BUTTON TEST</p>
             <PhilosophyEnhancer
               value={botForm.philosophy}
               onChange={v => setBotForm(f => ({ ...f, philosophy: v }))}
