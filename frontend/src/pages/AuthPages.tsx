@@ -64,11 +64,11 @@ export function Landing() {
         </div>
 
         <h1 className="font-hero font-extrabold text-5xl sm:text-6xl tracking-tight leading-[1.05] mb-5 max-w-2xl">
-          <span className="text-gradient">AI coaching</span>
+          <span className="text-gradient">From your coach's</span>
           <br />
-          <span className="text-[var(--text)]">built on your</span>
+          <span className="text-[var(--text)]">philosophy to</span>
           <br />
-          <span className="text-[var(--text)]">coach's method.</span>
+          <span className="text-[var(--text)]">your finish line.</span>
         </h1>
 
         <p className="text-[var(--muted)] text-base max-w-lg leading-relaxed mb-9">
