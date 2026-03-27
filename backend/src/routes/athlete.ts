@@ -7,7 +7,7 @@ import { getWeekStartDate } from '../utils/dateUtils';
 import { asyncHandler } from '../utils/asyncHandler';
 import { validate } from '../middleware/validate';
 import { aiLimiter } from '../middleware/rateLimit';
-import { athleteProfileSchema, athleteProfileUpdateSchema, chatMessageSchema, racesSchema } from '../schemas';
+import { athleteProfileSchema, athleteProfileUpdateSchema, chatMessageSchema, racesSchema, directMessageSchema } from '../schemas';
 import { sendAthleteWelcomeEmail } from '../services/emailService';
 
 const router = Router();
@@ -316,6 +316,83 @@ router.post(
 
     const updatedDays = planUpdates?.map((u: any) => u.date) || [];
     res.json({ botReply, planUpdated: planWasUpdated, updatedDays });
+  })
+);
+
+// DELETE /api/athlete/chat — Clear bot chat history
+router.delete(
+  '/chat',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { data: season } = await supabase
+      .from('athlete_seasons')
+      .select('id')
+      .eq('athlete_id', req.athlete.id)
+      .eq('status', 'active')
+      .single();
+
+    if (season) {
+      await supabase.from('chat_messages').delete().eq('season_id', season.id);
+    }
+    res.json({ ok: true });
+  })
+);
+
+// GET /api/athlete/messages — Direct messages with coach
+router.get(
+  '/messages',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { data: member } = await supabase
+      .from('team_members')
+      .select('teams!team_id(coach_id)')
+      .eq('athlete_id', req.athlete.id)
+      .single();
+
+    if (!member) return res.json([]);
+    const coachId = (member as any).teams?.coach_id;
+    if (!coachId) return res.json([]);
+
+    const { data: messages } = await supabase
+      .from('direct_messages')
+      .select('*')
+      .eq('athlete_id', req.athlete.id)
+      .eq('coach_id', coachId)
+      .order('created_at', { ascending: true });
+
+    res.json(messages || []);
+  })
+);
+
+// POST /api/athlete/messages — Send direct message to coach
+router.post(
+  '/messages',
+  auth,
+  requireAthlete,
+  validate(directMessageSchema),
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { message } = req.body;
+
+    const { data: member } = await supabase
+      .from('team_members')
+      .select('teams!team_id(coach_id)')
+      .eq('athlete_id', req.athlete.id)
+      .single();
+
+    if (!member) return res.status(404).json({ error: 'Not on any team' });
+    const coachId = (member as any).teams?.coach_id;
+    if (!coachId) return res.status(404).json({ error: 'No coach found' });
+
+    const { data, error } = await supabase
+      .from('direct_messages')
+      .insert({ athlete_id: req.athlete.id, coach_id: coachId, sender_role: 'athlete', content: message })
+      .select()
+      .single();
+
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data);
   })
 );
 

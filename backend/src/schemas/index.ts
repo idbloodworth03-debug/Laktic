@@ -139,6 +139,12 @@ export const weeklyQuerySchema = z.object({
   weeks: z.coerce.number().int().min(1).max(52).default(12)
 });
 
+// ── Direct Messages ─────────────────────────────────────────────────────────
+
+export const directMessageSchema = z.object({
+  message: z.string().min(1).max(5000)
+});
+
 // ── Billing ────────────────────────────────────────────────────────────────
 
 export const checkoutSchema = z.object({
