@@ -75,7 +75,7 @@ export function PhilosophyEnhancer({ value, onChange, rows = 7, placeholder, lab
             variant="secondary"
             size="sm"
             onClick={handleEnhance}
-            disabled={enhancing || value.trim().length < 10}
+            disabled={enhancing}
             loading={enhancing}
           >
             {enhancing ? 'Enhancing…' : '✨ Enhance with AI'}
