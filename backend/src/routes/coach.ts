@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '../db/supabase';
 import { auth, requireCoach, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -10,8 +11,28 @@ import {
   botUpdateSchema,
   workoutSchema,
   knowledgeCreateSchema,
-  knowledgeUpdateSchema
+  knowledgeUpdateSchema,
+  enhancePhilosophySchema
 } from '../schemas';
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+
+const ENHANCE_SYSTEM_PROMPT = `You are an expert coaching consultant who specialises in writing high-performance AI coaching system prompts for running and endurance sports coaches.
+
+Your task is to take a coach's raw coaching philosophy and rewrite it into a richer, more structured version that will produce significantly better AI-generated training plans.
+
+The output must:
+1. Preserve every idea and value the coach expressed — never invent facts about their career or credentials
+2. Make training principles explicit and specific (e.g. "80% of weekly volume at easy aerobic effort, 20% at threshold or above")
+3. Specify workout structure preferences (types of sessions per week, long run approach, speed work philosophy)
+4. Define periodization and progression logic (base building, sharpening, taper, recovery weeks)
+5. State athlete communication style and motivational approach
+6. Include guidance on how to handle injury, fatigue, and missed sessions
+7. Use clear, instructional language — this text will be read by an AI system every time it builds a training plan
+8. Write in first person as the coach ("I believe...", "My athletes...", "I structure...")
+9. Aim for 3–5 focused paragraphs. Do not pad with generic advice.
+
+Return ONLY the enhanced philosophy text. No preamble, no explanation, no markdown formatting.`;
 
 const router = Router();
 
@@ -387,6 +408,31 @@ router.delete(
   asyncHandler(async (req: AuthRequest, res) => {
     await supabase.from('coach_knowledge_documents').delete().eq('id', req.params.id);
     res.json({ ok: true });
+  })
+);
+
+// POST /api/coach/enhance-philosophy — AI-enhance a coaching philosophy draft
+router.post(
+  '/enhance-philosophy',
+  auth,
+  requireCoach,
+  validate(enhancePhilosophySchema),
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { philosophy } = req.body;
+
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-1.5-flash',
+      systemInstruction: ENHANCE_SYSTEM_PROMPT,
+    });
+
+    const result = await model.generateContent(
+      `Here is the coach's current philosophy:\n\n${philosophy}\n\nPlease enhance it.`
+    );
+
+    const enhanced = result.response.text().trim();
+    if (!enhanced) return res.status(500).json({ error: 'Enhancement returned empty response' });
+
+    res.json({ enhanced });
   })
 );
 

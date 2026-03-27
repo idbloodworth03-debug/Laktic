@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { Button, Input, Textarea, Select, Toggle } from '../components/ui';
+import { PhilosophyEnhancer } from '../components/PhilosophyEnhancer';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Workout = {
@@ -259,10 +260,9 @@ export function CoachOnboarding() {
           onChange={e => setBotForm(f => ({ ...f, name: e.target.value }))}
           placeholder="e.g. Coach Smith's Distance Training"
         />
-        <Textarea
-          label="Coaching philosophy"
+        <PhilosophyEnhancer
           value={botForm.philosophy}
-          onChange={e => setBotForm(f => ({ ...f, philosophy: e.target.value }))}
+          onChange={v => setBotForm(f => ({ ...f, philosophy: v }))}
           rows={7}
           placeholder="Describe your coaching philosophy in detail. Include: training principles, periodization approach, workout types you believe in, how you approach recovery, how you motivate athletes, what you expect in terms of effort and consistency..."
         />

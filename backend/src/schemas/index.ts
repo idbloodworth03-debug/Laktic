@@ -230,3 +230,9 @@ export const marketplaceRejectSchema = z.object({
 export const feedPostSchema = z.object({
   body: z.string().min(1).max(500)
 });
+
+// ── AI Enhancement ───────────────────────────────────────────────────────────
+
+export const enhancePhilosophySchema = z.object({
+  philosophy: z.string().min(10).max(5000)
+});
