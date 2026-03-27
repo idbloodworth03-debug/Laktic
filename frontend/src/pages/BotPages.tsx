@@ -44,10 +44,10 @@ export function BrowseBots() {
   return (
     <div className="min-h-screen">
       <Navbar role="athlete" name={profile?.name} onLogout={logout} />
-      <div className="max-w-5xl mx-auto px-6 py-10">
+      <div className="max-w-6xl mx-auto px-6 py-10">
         <div className="flex items-end justify-between mb-6 fade-up">
           <div>
-            <h1 className="font-display text-2xl font-bold">Find Your Coach Bot</h1>
+            <h1 className="font-display text-3xl font-bold">Find Your Coach Bot</h1>
             <p className="text-sm text-[var(--muted)] mt-1">Subscribe to get a personalized season plan built on your coach's methods.</p>
           </div>
           <div className="flex gap-3">
@@ -121,7 +121,7 @@ export function BotDetail() {
   return (
     <div className="min-h-screen">
       <Navbar role="athlete" name={profile?.name} onLogout={logout} />
-      <div className="max-w-3xl mx-auto px-6 py-10">
+      <div className="max-w-4xl mx-auto px-6 py-10">
         <Link to="/athlete/browse"><Button variant="ghost" size="sm" className="mb-6">← Browse Bots</Button></Link>
 
         <div className="fade-up">

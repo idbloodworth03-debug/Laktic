@@ -82,10 +82,10 @@ export function CoachTeamProgress() {
   return (
     <div className="min-h-screen">
       <Navbar role="coach" name={profile?.name} onLogout={logout} />
-      <div className="max-w-4xl mx-auto px-6 py-10">
+      <div className="max-w-5xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="font-display text-2xl font-bold">Team Progress</h1>
+            <h1 className="font-display text-3xl font-bold">Team Progress</h1>
             <p className="text-sm text-[var(--muted)] mt-1">Overview of your athletes' training progress</p>
           </div>
           <div className="flex gap-2">

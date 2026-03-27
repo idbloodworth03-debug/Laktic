@@ -101,7 +101,7 @@ export function Textarea({ label, error, className = '', ...rest }: TextareaProp
 interface CardProps { title?: string; children: React.ReactNode; className?: string; }
 export function Card({ title, children, className = '' }: CardProps) {
   return (
-    <div className={`bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 shadow-card ${className}`}>
+    <div className={`bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 shadow-card ${className}`}>
       {title && (
         <div className="pb-3 mb-4 border-b border-[var(--border)]/70">
           <h3 className="font-display text-sm font-semibold text-[var(--text)] tracking-tight">
@@ -148,7 +148,7 @@ export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
 interface NavbarProps { role?: string; name?: string; onLogout?: () => void; }
 export function Navbar({ role, name, onLogout }: NavbarProps) {
   return (
-    <nav className="surface-glass border-b border-[var(--border)] px-6 py-3.5 flex items-center justify-between sticky top-0 z-40">
+    <nav className="surface-glass border-b border-[var(--border)] px-8 py-4 flex items-center justify-between sticky top-0 z-40">
       <div className="flex items-center gap-3">
         <span className="font-display font-black text-xl tracking-tight text-gradient">LAKTIC</span>
         {role && <Badge label={role} color={role === 'coach' ? 'blue' : 'green'} dot />}
