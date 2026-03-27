@@ -68,7 +68,7 @@ export function CoachRegister() {
         body: JSON.stringify({ name: form.name, school_or_org: form.school_or_org })
       });
       setAuth(data.session, 'coach', profile);
-      nav('/coach/dashboard');
+      nav('/coach/onboarding');
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
   };
@@ -106,7 +106,7 @@ export function AthleteRegister() {
         body: JSON.stringify({ name: form.name, weekly_volume_miles: parseFloat(form.weekly_volume_miles), primary_events: events, pr_mile: form.pr_mile, pr_5k: form.pr_5k })
       });
       setAuth(data.session, 'athlete', profile);
-      nav('/athlete/browse');
+      nav('/athlete/join');
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
   };
@@ -161,7 +161,11 @@ export function CoachLogin() {
     <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="coach@example.com" />
     <Input label="Password" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
     <Button onClick={handle} loading={loading} className="w-full" size="lg">Sign In</Button>
-    <p className="text-center text-sm text-[var(--muted)]">No account? <Link to="/register/coach" className="text-brand-400 hover:underline">Register</Link></p>
+    <p className="text-center text-sm text-[var(--muted)]">
+      <Link to="/forgot-password" className="text-brand-400 hover:underline">Forgot password?</Link>
+      {' · '}
+      No account? <Link to="/register/coach" className="text-brand-400 hover:underline">Register</Link>
+    </p>
   </AuthForm>;
 }
 
@@ -194,7 +198,11 @@ export function AthleteLogin() {
     <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="you@example.com" />
     <Input label="Password" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
     <Button onClick={handle} loading={loading} className="w-full" size="lg">Sign In</Button>
-    <p className="text-center text-sm text-[var(--muted)]">No account? <Link to="/register/athlete" className="text-brand-400 hover:underline">Register</Link></p>
+    <p className="text-center text-sm text-[var(--muted)]">
+      <Link to="/forgot-password" className="text-brand-400 hover:underline">Forgot password?</Link>
+      {' · '}
+      No account? <Link to="/register/athlete" className="text-brand-400 hover:underline">Register</Link>
+    </p>
   </AuthForm>;
 }
 

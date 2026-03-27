@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../db/supabase';
 
 export interface AuthRequest extends Request {
-  user?: { id: string };
+  user?: { id: string; email?: string };
   coach?: any;
   athlete?: any;
 }
@@ -17,7 +17,7 @@ export async function auth(req: AuthRequest, res: Response, next: NextFunction) 
   if (error || !user) {
     return res.status(401).json({ error: 'Invalid token' });
   }
-  req.user = { id: user.id };
+  req.user = { id: user.id, email: user.email };
   next();
 }
 

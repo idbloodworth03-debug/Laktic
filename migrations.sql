@@ -120,3 +120,12 @@ ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
 
 -- The backend uses the service role key which bypasses RLS.
 -- No client-side RLS policies needed for this architecture.
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 008 — trial period support
+-- ─────────────────────────────────────────────────────────────────
+ALTER TABLE public.coach_profiles
+  ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '14 days');
+
+-- Back-fill existing coaches so they get 14 days from now if not yet set
+UPDATE public.coach_profiles SET trial_ends_at = (NOW() + INTERVAL '14 days') WHERE trial_ends_at IS NULL;

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { apiFetch } from '../lib/api';
+import { supabase } from '../lib/supabaseClient';
 import { Navbar, Card, Button, Badge, Spinner, Alert } from '../components/ui';
 
 interface StravaStatus {
@@ -14,7 +15,10 @@ interface StravaStatus {
 
 export function AthleteSettings() {
   const { role, profile, clearAuth } = useAuthStore();
+  const nav = useNavigate();
   const [searchParams] = useSearchParams();
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [stravaStatus, setStravaStatus] = useState<StravaStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -66,6 +70,33 @@ export function AthleteSettings() {
     }
   }
 
+  async function downloadData() {
+    try {
+      const data = await apiFetch('/api/athlete/data-export');
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'laktic-athlete-data.json'; a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setAlert({ type: 'error', message: err.message || 'Export failed.' });
+    }
+  }
+
+  async function deleteAccount() {
+    setDeletingAccount(true);
+    try {
+      await apiFetch('/api/athlete/account', { method: 'DELETE' });
+      await supabase.auth.signOut();
+      clearAuth();
+      nav('/');
+    } catch (err: any) {
+      setAlert({ type: 'error', message: err.message || 'Failed to delete account.' });
+      setDeletingAccount(false);
+      setDeleteConfirm(false);
+    }
+  }
+
   async function disconnectStrava() {
     setDisconnecting(true);
     try {
@@ -90,6 +121,33 @@ export function AthleteSettings() {
             <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
           </div>
         )}
+
+        <Card title="Data & Privacy" className="mb-6">
+          <div className="flex flex-col gap-4">
+            <div>
+              <p className="text-sm text-[var(--muted)] mb-3">
+                Download a copy of all your Laktic data including your profile, training plan, activities, and chat history.
+              </p>
+              <Button variant="secondary" size="sm" onClick={downloadData}>Download my data</Button>
+            </div>
+            <div className="pt-4 border-t border-[var(--border)]">
+              <p className="text-sm font-medium mb-1">Delete account</p>
+              <p className="text-sm text-[var(--muted)] mb-3">
+                Permanently deletes your account and all associated data. This cannot be undone.
+              </p>
+              {deleteConfirm ? (
+                <div className="flex items-center gap-2">
+                  <Button variant="danger" size="sm" loading={deletingAccount} onClick={deleteAccount}>
+                    Yes, delete my account
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm(false)}>Cancel</Button>
+                </div>
+              ) : (
+                <Button variant="danger" size="sm" onClick={() => setDeleteConfirm(true)}>Delete account</Button>
+              )}
+            </div>
+          </div>
+        </Card>
 
         <Card title="Strava Integration">
           {loading ? (

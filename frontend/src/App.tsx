@@ -2,7 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { useAuthStore } from './store/authStore';
 
 import { Landing, CoachRegister, AthleteRegister, CoachLogin, AthleteLogin } from './pages/AuthPages';
+import { ForgotPassword, ResetPassword } from './pages/PasswordReset';
 import { CoachDashboard } from './pages/CoachDashboard';
+import { CoachOnboarding } from './pages/CoachOnboarding';
 import { BotSetupEdit } from './pages/BotSetupEdit';
 import { KnowledgeDocuments } from './pages/KnowledgeDocuments';
 import { BrowseBots, BotDetail } from './pages/BotPages';
@@ -14,6 +16,7 @@ import { AthleteSettings } from './pages/AthleteSettings';
 import { Activities } from './pages/Activities';
 import { AthleteProgress } from './pages/AthleteProgress';
 import { CoachTeamProgress } from './pages/CoachTeamProgress';
+import { CoachSettings } from './pages/CoachSettings';
 
 function RequireCoach({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
@@ -41,13 +44,17 @@ export default function App() {
         <Route path="/register/athlete" element={<AthleteRegister />} />
         <Route path="/login/coach" element={<CoachLogin />} />
         <Route path="/login/athlete" element={<AthleteLogin />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Coach protected */}
         <Route path="/coach/dashboard" element={<RequireCoach><CoachDashboard /></RequireCoach>} />
+        <Route path="/coach/onboarding" element={<RequireCoach><CoachOnboarding /></RequireCoach>} />
         <Route path="/coach/bot/setup" element={<RequireCoach><BotSetupEdit /></RequireCoach>} />
         <Route path="/coach/bot/edit" element={<RequireCoach><BotSetupEdit /></RequireCoach>} />
         <Route path="/coach/knowledge" element={<RequireCoach><KnowledgeDocuments /></RequireCoach>} />
         <Route path="/coach/progress" element={<RequireCoach><CoachTeamProgress /></RequireCoach>} />
+        <Route path="/coach/settings" element={<RequireCoach><CoachSettings /></RequireCoach>} />
 
         {/* Athlete protected */}
         <Route path="/athlete/browse" element={<RequireAthlete><BrowseBots /></RequireAthlete>} />

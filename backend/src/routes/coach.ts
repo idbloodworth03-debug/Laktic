@@ -3,6 +3,7 @@ import { supabase } from '../db/supabase';
 import { auth, requireCoach, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
 import { validate } from '../middleware/validate';
+import { sendCoachWelcome } from '../services/emailService';
 import {
   coachProfileSchema,
   botCreateSchema,
@@ -22,13 +23,15 @@ router.post(
   asyncHandler(async (req: AuthRequest, res) => {
     const { name, school_or_org } = req.body;
 
+    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await supabase
       .from('coach_profiles')
-      .insert({ user_id: req.user!.id, name, school_or_org })
+      .insert({ user_id: req.user!.id, name, school_or_org, trial_ends_at: trialEndsAt })
       .select()
       .single();
 
     if (error) return res.status(400).json({ error: error.message });
+    sendCoachWelcome(req.user!.email!, name); // fire-and-forget
     res.json(data);
   })
 );

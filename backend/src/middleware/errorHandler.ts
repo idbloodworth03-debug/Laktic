@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node';
 import { Request, Response, NextFunction } from 'express';
 
 export class AppError extends Error {
@@ -17,6 +18,7 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
   if (err.message === 'Not allowed by CORS') {
     return res.status(403).json({ error: 'CORS: origin not allowed' });
   }
+  Sentry.captureException(err);
   // eslint-disable-next-line no-console
   console.error('[ERROR]', err.message);
   res.status(500).json({ error: 'Internal server error' });

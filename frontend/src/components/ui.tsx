@@ -301,6 +301,39 @@ export function Toggle({ checked, onChange, label }: ToggleProps) {
   );
 }
 
+// ── StepIndicator ────────────────────────────────────────────────────────────────────────
+interface StepIndicatorProps { steps: string[]; current: number; }
+export function StepIndicator({ steps, current }: StepIndicatorProps) {
+  return (
+    <div className="flex items-center gap-0 w-full mb-8">
+      {steps.map((label, i) => {
+        const done = i < current;
+        const active = i === current;
+        return (
+          <div key={i} className="flex items-center flex-1 last:flex-none">
+            <div className="flex flex-col items-center gap-1.5 shrink-0">
+              <div className={[
+                'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-200',
+                done  ? 'bg-brand-500 border-brand-500 text-white' : '',
+                active ? 'bg-[var(--surface)] border-brand-500 text-brand-400' : '',
+                !done && !active ? 'bg-[var(--surface)] border-[var(--border)] text-[var(--muted)]' : '',
+              ].join(' ')}>
+                {done ? '✓' : i + 1}
+              </div>
+              <span className={`text-[10px] font-medium whitespace-nowrap ${active ? 'text-[var(--text)]' : 'text-[var(--muted)]'}`}>
+                {label}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div className={`h-px flex-1 mx-2 mb-4 transition-colors duration-200 ${done ? 'bg-brand-500' : 'bg-[var(--border)]'}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Alert / Banner ────────────────────────────────────────────────────────────────────────
 interface AlertProps { type?: 'success' | 'error' | 'info'; message: string; onClose?: () => void; action?: React.ReactNode; }
 export function Alert({ type = 'info', message, onClose, action }: AlertProps) {

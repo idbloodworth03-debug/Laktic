@@ -35,14 +35,8 @@ export function JoinTeam() {
         botId: result.defaultBot?.id
       });
 
-      // Redirect after a short delay so the user sees the success message
-      setTimeout(() => {
-        if (result.defaultBot?.id) {
-          nav(`/athlete/bots/${result.defaultBot.id}`);
-        } else {
-          nav('/athlete/browse');
-        }
-      }, 2000);
+      // Redirect to race calendar after joining so athlete sets upcoming races
+      setTimeout(() => nav('/athlete/races'), 2000);
     } catch (e: any) {
       setError(e.message || 'Failed to join team.');
     } finally {
@@ -71,9 +65,7 @@ export function JoinTeam() {
               <div className="text-center">
                 <h3 className="font-display font-semibold text-lg">Welcome to {success.teamName}!</h3>
                 <p className="text-sm text-[var(--muted)] mt-1">
-                  {success.botId
-                    ? 'Redirecting you to your team\'s coaching bot...'
-                    : 'Redirecting you to browse available bots...'}
+                  Next up: add your upcoming races so we can build your plan.
                 </p>
               </div>
               <Spinner size="sm" />
@@ -106,6 +98,15 @@ export function JoinTeam() {
               <p className="text-xs text-[var(--muted)] text-center">
                 Don't have a code? Ask your coach for an invite link.
               </p>
+
+              <div className="pt-1 border-t border-[var(--border)] text-center">
+                <button
+                  onClick={() => nav('/athlete/races')}
+                  className="text-xs text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+                >
+                  Skip for now — set up your race calendar →
+                </button>
+              </div>
             </div>
           )}
         </Card>

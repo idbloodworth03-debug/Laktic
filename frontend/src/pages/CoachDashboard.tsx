@@ -93,9 +93,28 @@ export function CoachDashboard() {
   const team = teamData?.team;
   const members = teamData?.members || [];
 
+  // Trial banner
+  const trialDaysLeft = profile?.trial_ends_at
+    ? Math.max(0, Math.ceil((new Date(profile.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+  const showTrialBanner = trialDaysLeft !== null && trialDaysLeft <= 14;
+
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <Navbar role="coach" name={profile?.name} onLogout={logout} />
+
+      {showTrialBanner && (
+        <div className="max-w-4xl mx-auto px-6 pt-6">
+          <Alert
+            type={trialDaysLeft <= 3 ? 'error' : 'info'}
+            message={
+              trialDaysLeft === 0
+                ? 'Your free trial has ended. Upgrade to keep coaching athletes.'
+                : `${trialDaysLeft} day${trialDaysLeft !== 1 ? 's' : ''} remaining in your free trial.`
+            }
+          />
+        </div>
+      )}
 
       <div className="max-w-4xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8 fade-up">
@@ -122,6 +141,9 @@ export function CoachDashboard() {
               <Button variant="secondary">Edit Bot</Button>
             </Link>
           )}
+          <Link to="/coach/settings">
+            <Button variant="ghost" size="sm">Settings</Button>
+          </Link>
         </div>
 
         {!bot && (

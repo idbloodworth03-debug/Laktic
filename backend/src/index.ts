@@ -1,7 +1,12 @@
+import * as Sentry from '@sentry/node';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { env } from './config/env';
+
+if (env.SENTRY_DSN) {
+  Sentry.init({ dsn: env.SENTRY_DSN, environment: process.env.NODE_ENV || 'development' });
+}
 
 import identityRouter from './routes/identity';
 import coachRouter from './routes/coach';
@@ -10,6 +15,7 @@ import athleteRouter from './routes/athlete';
 import teamRouter from './routes/team';
 import stravaRouter from './routes/strava';
 import progressRouter from './routes/progress';
+import gdprRouter from './routes/gdpr';
 
 import { apiLimiter } from './middleware/rateLimit';
 import { errorHandler } from './middleware/errorHandler';
@@ -49,6 +55,8 @@ app.use('/api/strava', stravaRouter);
 app.use('/api/athlete', stravaRouter);
 app.use('/api/athlete', progressRouter);
 app.use('/api/coach/team', progressRouter);
+
+app.use('/api', gdprRouter);
 
 app.use(errorHandler);
 
