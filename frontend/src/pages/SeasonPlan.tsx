@@ -40,14 +40,93 @@ const PHASE_CAL: Record<string, string> = {
   recovery:   'bg-[var(--surface3)] text-[var(--muted)] border-[var(--border)]',
 };
 
+type CalWorkout = {
+  title: string;
+  distance_miles?: number;
+  pace_guideline?: string;
+  description?: string;
+  change_reason?: string;
+  phase: string;
+  dateLabel: string;
+};
+
+// ── Workout detail modal ──────────────────────────────────────────────────────
+function WorkoutModal({ wo, onClose }: { wo: CalWorkout; onClose: () => void }) {
+  const phaseColor: Record<string, string> = {
+    base: 'text-[var(--muted)]', build: 'text-blue-400',
+    sharpening: 'text-purple-400', taper: 'text-amber-400',
+    race: 'text-brand-400', recovery: 'text-[var(--muted)]',
+  };
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div
+        className="relative w-full max-w-md bg-[var(--surface)] border border-[var(--border2)] rounded-2xl shadow-2xl p-6 fade-up"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Close */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors text-lg"
+        >×</button>
+
+        {/* Date + phase */}
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-xs text-[var(--muted)]">{wo.dateLabel}</span>
+          <span className={`text-xs font-medium capitalize ${phaseColor[wo.phase] || phaseColor.base}`}>
+            · {wo.phase}
+          </span>
+        </div>
+
+        {/* Title */}
+        <h3 className="font-display font-bold text-lg text-[var(--text)] mb-3 leading-snug">{wo.title}</h3>
+
+        {/* Stats row */}
+        {(wo.distance_miles || wo.pace_guideline) && (
+          <div className="flex gap-4 mb-4">
+            {wo.distance_miles && (
+              <div className="text-center">
+                <div className="text-xl font-bold text-brand-400">{wo.distance_miles}</div>
+                <div className="text-[10px] text-[var(--muted)] uppercase tracking-wide">miles</div>
+              </div>
+            )}
+            {wo.pace_guideline && (
+              <div className="text-center">
+                <div className="text-sm font-semibold text-[var(--text2)] pt-1">{wo.pace_guideline}</div>
+                <div className="text-[10px] text-[var(--muted)] uppercase tracking-wide">pace</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Description */}
+        {wo.description && (
+          <p className="text-sm text-[var(--muted)] leading-relaxed mb-3">{wo.description}</p>
+        )}
+
+        {/* Change reason */}
+        {wo.change_reason && (
+          <p className="text-xs text-[var(--muted2)] italic border-t border-[var(--border)] pt-3">
+            Why adjusted: {wo.change_reason}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Monthly calendar view for the season plan ────────────────────────────────
 function PlanMonthView({ plan }: { plan: any[] }) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [selected, setSelected] = useState<CalWorkout | null>(null);
 
   // Build workouts-by-date map across the whole plan
-  const workoutsByDate: Record<string, { title: string; distance_miles?: number; phase: string }[]> = {};
+  const workoutsByDate: Record<string, CalWorkout[]> = {};
   plan.forEach((week: any) => {
     week.workouts?.forEach((wo: any) => {
       if (wo.date && wo.title) {
@@ -55,7 +134,11 @@ function PlanMonthView({ plan }: { plan: any[] }) {
         workoutsByDate[wo.date].push({
           title: wo.title,
           distance_miles: wo.distance_miles,
+          pace_guideline: wo.pace_guideline,
+          description: wo.description,
+          change_reason: wo.change_reason,
           phase: week.phase || 'base',
+          dateLabel: new Date(wo.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
         });
       }
     });
@@ -81,66 +164,76 @@ function PlanMonthView({ plan }: { plan: any[] }) {
   while (cells.length % 7 !== 0) cells.push(null);
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={prevMonth} className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors text-xl">‹</button>
-        <span className="font-display font-semibold text-base text-[var(--text)]">{monthLabel}</span>
-        <button onClick={nextMonth} className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors text-xl">›</button>
-      </div>
+    <>
+      {selected && <WorkoutModal wo={selected} onClose={() => setSelected(null)} />}
 
-      <div className="grid grid-cols-7 text-center mb-1">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-          <div key={d} className="text-[11px] text-[var(--muted)] uppercase tracking-wide py-1">{d}</div>
-        ))}
-      </div>
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <button onClick={prevMonth} className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors text-xl">‹</button>
+          <span className="font-display font-semibold text-base text-[var(--text)]">{monthLabel}</span>
+          <button onClick={nextMonth} className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors text-xl">›</button>
+        </div>
 
-      <div className="grid grid-cols-7 gap-px bg-[var(--border)] rounded-xl overflow-hidden">
-        {cells.map((day, i) => {
-          const dateKey = day
-            ? `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-            : '';
-          const dayWorkouts = dateKey ? (workoutsByDate[dateKey] || []) : [];
-          const isToday =
-            day === today.getDate() &&
-            viewMonth === today.getMonth() &&
-            viewYear === today.getFullYear();
+        <div className="grid grid-cols-7 text-center mb-1">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+            <div key={d} className="text-[11px] text-[var(--muted)] uppercase tracking-wide py-1">{d}</div>
+          ))}
+        </div>
 
-          return (
-            <div key={i} className={`bg-[var(--surface2)] min-h-[88px] p-1.5 ${!day ? 'opacity-20' : ''}`}>
-              {day && (
-                <>
-                  <div className={`text-xs w-6 h-6 flex items-center justify-center rounded-full mb-1 font-medium ${
-                    isToday ? 'bg-brand-500 text-white font-bold shadow-glow-sm' : 'text-[var(--muted)]'
-                  }`}>{day}</div>
-                  <div className="flex flex-col gap-0.5">
-                    {dayWorkouts.map((wo, wi) => (
-                      <div
-                        key={wi}
-                        title={`${wo.title}${wo.distance_miles ? ` · ${wo.distance_miles}mi` : ''}`}
-                        className={`text-[10px] leading-tight px-1.5 py-0.5 rounded-md truncate font-medium border ${
-                          PHASE_CAL[wo.phase] || PHASE_CAL.base
-                        }`}
-                      >
-                        {wo.title}{wo.distance_miles ? ` · ${wo.distance_miles}mi` : ''}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          );
-        })}
-      </div>
+        <div className="grid grid-cols-7 gap-px bg-[var(--border)] rounded-xl overflow-hidden">
+          {cells.map((day, i) => {
+            const dateKey = day
+              ? `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+              : '';
+            const dayWorkouts = dateKey ? (workoutsByDate[dateKey] || []) : [];
+            const isToday =
+              day === today.getDate() &&
+              viewMonth === today.getMonth() &&
+              viewYear === today.getFullYear();
+            const hasWorkout = dayWorkouts.length > 0;
 
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 text-[10px] text-[var(--muted)]">
-        {['base', 'build', 'sharpening', 'taper', 'race', 'recovery'].map(phase => (
-          <span key={phase} className="flex items-center gap-1.5 capitalize">
-            <span className={`inline-block w-2 h-2 rounded-sm border ${PHASE_CAL[phase]}`} />
-            {phase}
-          </span>
-        ))}
+            return (
+              <div
+                key={i}
+                onClick={() => hasWorkout && setSelected(dayWorkouts[0])}
+                className={`bg-[var(--surface2)] min-h-[88px] p-1.5 transition-colors ${
+                  !day ? 'opacity-20' : hasWorkout ? 'cursor-pointer hover:bg-[var(--surface3)]' : ''
+                }`}
+              >
+                {day && (
+                  <>
+                    <div className={`text-xs w-6 h-6 flex items-center justify-center rounded-full mb-1 font-medium ${
+                      isToday ? 'bg-brand-500 text-white font-bold shadow-glow-sm' : 'text-[var(--muted)]'
+                    }`}>{day}</div>
+                    <div className="flex flex-col gap-0.5">
+                      {dayWorkouts.map((wo, wi) => (
+                        <div
+                          key={wi}
+                          className={`text-[10px] leading-tight px-1.5 py-0.5 rounded-md truncate font-medium border ${
+                            PHASE_CAL[wo.phase] || PHASE_CAL.base
+                          }`}
+                        >
+                          {wo.title}{wo.distance_miles ? ` · ${wo.distance_miles}mi` : ''}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 text-[10px] text-[var(--muted)]">
+          {['base', 'build', 'sharpening', 'taper', 'race', 'recovery'].map(phase => (
+            <span key={phase} className="flex items-center gap-1.5 capitalize">
+              <span className={`inline-block w-2 h-2 rounded-sm border ${PHASE_CAL[phase]}`} />
+              {phase}
+            </span>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
