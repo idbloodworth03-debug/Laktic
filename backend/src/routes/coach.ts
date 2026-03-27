@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import { supabase } from '../db/supabase';
 import { auth, requireCoach, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -15,7 +15,7 @@ import {
   enhancePhilosophySchema
 } from '../schemas';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const ENHANCE_SYSTEM_PROMPT = `You are an expert coaching consultant who specialises in writing high-performance AI coaching system prompts for running and endurance sports coaches.
 
@@ -420,16 +420,15 @@ router.post(
   asyncHandler(async (req: AuthRequest, res) => {
     const { philosophy } = req.body;
 
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      systemInstruction: ENHANCE_SYSTEM_PROMPT,
+    const result = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: ENHANCE_SYSTEM_PROMPT },
+        { role: 'user', content: `Here is the coach's current philosophy:\n\n${philosophy}\n\nPlease enhance it.` },
+      ],
     });
 
-    const result = await model.generateContent(
-      `Here is the coach's current philosophy:\n\n${philosophy}\n\nPlease enhance it.`
-    );
-
-    const enhanced = result.response.text().trim();
+    const enhanced = (result.choices[0].message.content ?? '').trim();
     if (!enhanced) return res.status(500).json({ error: 'Enhancement returned empty response' });
 
     res.json({ enhanced });
