@@ -145,6 +145,33 @@ export const directMessageSchema = z.object({
   message: z.string().min(1).max(5000)
 });
 
+// ── Calendar & Attendance ────────────────────────────────────────────────────
+
+export const calendarEventSchema = z.object({
+  title: z.string().min(1).max(200),
+  event_type: z.enum(['practice', 'race', 'off_day', 'travel', 'meeting', 'other']),
+  event_date: z.string().min(1),
+  start_time: z.string().max(10).optional(),
+  end_time: z.string().max(10).optional(),
+  location_name: z.string().max(300).optional(),
+  location_lat: z.number().min(-90).max(90).optional(),
+  location_lng: z.number().min(-180).max(180).optional(),
+  notes: z.string().max(2000).optional()
+});
+
+export const calendarEventUpdateSchema = calendarEventSchema.partial();
+
+export const checkInSchema = z.object({
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180)
+});
+
+export const manualAttendanceSchema = z.object({
+  athlete_id: z.string().uuid(),
+  status: z.enum(['present', 'absent', 'excused', 'late']),
+  notes: z.string().max(500).optional()
+});
+
 // ── Billing ────────────────────────────────────────────────────────────────
 
 export const checkoutSchema = z.object({

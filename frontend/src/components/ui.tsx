@@ -116,7 +116,7 @@ export function Card({ title, children, className = '' }: CardProps) {
 }
 
 // ── Badge ───────────────────────────────────────────────────────────────────────────
-interface BadgeProps { label: string; color?: 'green' | 'blue' | 'amber' | 'purple' | 'gray'; dot?: boolean; }
+interface BadgeProps { label: string; color?: 'green' | 'blue' | 'amber' | 'purple' | 'gray' | 'red'; dot?: boolean; }
 export function Badge({ label, color = 'green', dot = false }: BadgeProps) {
   const colors = {
     green:  'bg-brand-900/50 text-brand-400 border-brand-800/50',
@@ -124,10 +124,11 @@ export function Badge({ label, color = 'green', dot = false }: BadgeProps) {
     amber:  'bg-amber-950/60 text-amber-400 border-amber-900/50',
     purple: 'bg-purple-950/60 text-purple-400 border-purple-900/50',
     gray:   'bg-[var(--surface2)] text-[var(--muted)] border-[var(--border)]',
+    red:    'bg-red-950/60 text-red-400 border-red-900/50',
   };
   const dotColors = {
     green: 'bg-brand-400', blue: 'bg-blue-400', amber: 'bg-amber-400',
-    purple: 'bg-purple-400', gray: 'bg-[var(--muted)]',
+    purple: 'bg-purple-400', gray: 'bg-[var(--muted)]', red: 'bg-red-400',
   };
   return (
     <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${colors[color]}`}>
@@ -160,10 +161,16 @@ export function Navbar({ role, name, onLogout }: NavbarProps) {
       {name && (
         <div className="flex items-center gap-4">
           {role === 'athlete' && (
-            <a href="/athlete/settings" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Settings</a>
+            <>
+              <a href="/athlete/calendar" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Calendar</a>
+              <a href="/athlete/settings" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Settings</a>
+            </>
           )}
           {role === 'coach' && (
-            <a href="/coach/dashboard" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Dashboard</a>
+            <>
+              <a href="/coach/calendar" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Calendar</a>
+              <a href="/coach/dashboard" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Dashboard</a>
+            </>
           )}
           <div className="hidden sm:flex items-center gap-2">
             <div className="w-7 h-7 rounded-full bg-[var(--surface2)] border border-[var(--border2)] flex items-center justify-center text-xs font-semibold text-brand-400 shrink-0">

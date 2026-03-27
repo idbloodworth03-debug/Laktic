@@ -16,6 +16,7 @@ import teamRouter from './routes/team';
 import stravaRouter from './routes/strava';
 import progressRouter from './routes/progress';
 import gdprRouter from './routes/gdpr';
+import calendarRouter from './routes/calendar';
 
 import { apiLimiter } from './middleware/rateLimit';
 import { errorHandler } from './middleware/errorHandler';
@@ -55,6 +56,9 @@ app.use('/api/strava', stravaRouter);
 app.use('/api/athlete', stravaRouter);
 app.use('/api/athlete', progressRouter);
 app.use('/api/coach/team', progressRouter);
+
+app.use('/api/coach/team', calendarRouter);
+app.use('/api/athlete', calendarRouter);
 
 app.use('/api', gdprRouter);
 
