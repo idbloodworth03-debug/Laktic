@@ -166,7 +166,7 @@ export function AthleteProgress() {
   return (
     <div className="min-h-screen">
       <Navbar role="athlete" name={profile?.name} onLogout={logout} />
-      <div className="max-w-3xl mx-auto px-6 py-10">
+      <div className="max-w-5xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-6 fade-up">
           <div>
             <h1 className="font-display text-2xl font-bold text-[var(--text)]">Training Progress</h1>

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { Navbar, Button, Card, Badge, Spinner, EmptyState, Input, Alert } from '../components/ui';
+import { Navbar, Button, Card, Badge, Spinner, EmptyState, Input, Alert } from '../components/ui'; // Alert kept for publishError
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -93,33 +93,36 @@ export function CoachDashboard() {
   const team = teamData?.team;
   const members = teamData?.members || [];
 
-  // Trial banner
+  // Trial banner — uses trial_ends_at set explicitly on profile creation
   const trialDaysLeft = profile?.trial_ends_at
     ? Math.max(0, Math.ceil((new Date(profile.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : null;
-  const showTrialBanner = trialDaysLeft !== null && trialDaysLeft <= 14;
+  const showTrial = trialDaysLeft !== null && trialDaysLeft <= 14;
 
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <Navbar role="coach" name={profile?.name} onLogout={logout} />
 
-      {showTrialBanner && (
-        <div className="max-w-4xl mx-auto px-6 pt-6">
-          <Alert
-            type={trialDaysLeft <= 3 ? 'error' : 'info'}
-            message={
-              trialDaysLeft === 0
-                ? 'Your free trial has ended. Upgrade to keep coaching athletes.'
-                : `${trialDaysLeft} day${trialDaysLeft !== 1 ? 's' : ''} remaining in your free trial.`
-            }
-          />
+      {showTrial && (
+        <div className="bg-amber-900/20 border-b border-amber-700/30 px-6 py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+            <span className="text-amber-300 font-medium">
+              {trialDaysLeft === 0
+                ? 'Your free trial has ended.'
+                : trialDaysLeft === 1 ? 'Last day'
+                : `${trialDaysLeft} days`} remaining in your free trial.
+            </span>
+            <span className="text-amber-500 hidden sm:inline">Make sure your bot is published before it ends.</span>
+          </div>
+          <a href="#" className="text-xs text-amber-400 hover:underline shrink-0">Upgrade →</a>
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto px-6 py-10">
+      <div className="max-w-5xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8 fade-up">
           <div>
-            <h1 className="font-display text-2xl font-bold">Coach Dashboard</h1>
+            <h1 className="font-display text-3xl font-bold">Coach Dashboard</h1>
             <p className="text-sm text-[var(--muted)] mt-1">
               {bot?.is_published
                 ? 'Your bot is live. Athletes subscribe and train with your methods autonomously.'

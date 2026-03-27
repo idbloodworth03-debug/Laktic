@@ -3,7 +3,7 @@ import { supabase } from '../db/supabase';
 import { auth, requireAthlete, requireCoach, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
 import { validate } from '../middleware/validate';
-import { raceResultSchema, raceResultUpdateSchema, weeklyQuerySchema } from '../schemas';
+import { raceResultSchema, raceResultUpdateSchema, weeklyQuerySchema, directMessageSchema } from '../schemas';
 import { computeAllWeeks } from '../services/progressService';
 
 const router = Router();
@@ -233,6 +233,89 @@ router.get(
       summaries: (summaries || []).reverse(),
       races: races || []
     });
+  })
+);
+
+// ── Coach: view athlete's bot chat ───────────────────────────────────────────
+
+// GET /api/coach/team/athletes/:id/chat
+router.get(
+  '/athletes/:id/chat',
+  auth,
+  requireCoach,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const athleteId = req.params.id;
+
+    const { data: team } = await supabase.from('teams').select('id').eq('coach_id', req.coach.id).single();
+    if (!team) return res.status(404).json({ error: 'No team found' });
+
+    const { data: member } = await supabase.from('team_members').select('id').eq('team_id', team.id).eq('athlete_id', athleteId).single();
+    if (!member) return res.status(403).json({ error: 'Athlete not on your team' });
+
+    const { data: season } = await supabase.from('athlete_seasons').select('id').eq('athlete_id', athleteId).eq('status', 'active').single();
+    if (!season) return res.json([]);
+
+    const { data: messages } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('season_id', season.id)
+      .order('created_at', { ascending: true });
+
+    res.json(messages || []);
+  })
+);
+
+// ── Coach: direct messages with athlete ──────────────────────────────────────
+
+// GET /api/coach/team/athletes/:id/messages
+router.get(
+  '/athletes/:id/messages',
+  auth,
+  requireCoach,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const athleteId = req.params.id;
+
+    const { data: team } = await supabase.from('teams').select('id').eq('coach_id', req.coach.id).single();
+    if (!team) return res.status(404).json({ error: 'No team found' });
+
+    const { data: member } = await supabase.from('team_members').select('id').eq('team_id', team.id).eq('athlete_id', athleteId).single();
+    if (!member) return res.status(403).json({ error: 'Athlete not on your team' });
+
+    const { data: messages } = await supabase
+      .from('direct_messages')
+      .select('*')
+      .eq('athlete_id', athleteId)
+      .eq('coach_id', req.coach.id)
+      .order('created_at', { ascending: true });
+
+    res.json(messages || []);
+  })
+);
+
+// POST /api/coach/team/athletes/:id/messages
+router.post(
+  '/athletes/:id/messages',
+  auth,
+  requireCoach,
+  validate(directMessageSchema),
+  asyncHandler(async (req: AuthRequest, res) => {
+    const athleteId = req.params.id;
+    const { message } = req.body;
+
+    const { data: team } = await supabase.from('teams').select('id').eq('coach_id', req.coach.id).single();
+    if (!team) return res.status(404).json({ error: 'No team found' });
+
+    const { data: member } = await supabase.from('team_members').select('id').eq('team_id', team.id).eq('athlete_id', athleteId).single();
+    if (!member) return res.status(403).json({ error: 'Athlete not on your team' });
+
+    const { data, error } = await supabase
+      .from('direct_messages')
+      .insert({ athlete_id: athleteId, coach_id: req.coach.id, sender_role: 'coach', content: message })
+      .select()
+      .single();
+
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data);
   })
 );
 

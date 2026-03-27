@@ -6,6 +6,7 @@ export default {
       fontFamily: {
         sans:    ['DM Sans', 'system-ui', 'sans-serif'],
         display: ['Syne', 'sans-serif'],
+        hero:    ['Barlow Condensed', 'Syne', 'sans-serif'],
         mono:    ['JetBrains Mono', 'monospace'],
       },
       colors: {

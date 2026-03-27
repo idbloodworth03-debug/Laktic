@@ -6,44 +6,117 @@ import { useAuthStore } from '../store/authStore';
 import { Button, Input, Card, Spinner } from '../components/ui';
 
 // ── Landing ──────────────────────────────────────────────────────────────────
+const FEATURES = [
+  {
+    icon: '⚡',
+    title: 'AI-Powered Plans',
+    desc: 'GPT-4o generates a full season plan from your coach\'s philosophy — tailored to your race calendar and fitness.',
+  },
+  {
+    icon: '🎯',
+    title: '14-Day Coaching',
+    desc: 'Chat with your bot anytime. It adapts your next two weeks of training without touching the rest of your season.',
+  },
+  {
+    icon: '📊',
+    title: 'Strava Connected',
+    desc: 'Every run you log syncs automatically. The AI tracks compliance and adjusts intensity when you\'re ahead or behind.',
+  },
+];
+
 export function Landing() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden">
-      {/* Background grid */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{
+    <div className="min-h-screen flex flex-col relative overflow-hidden">
+      {/* Background grid — panning */}
+      <div className="landing-grid absolute inset-0 opacity-[0.09]" style={{
         backgroundImage: 'linear-gradient(var(--green) 1px, transparent 1px), linear-gradient(90deg, var(--green) 1px, transparent 1px)',
-        backgroundSize: '48px 48px'
+        backgroundSize: '48px 48px',
       }} />
-      {/* Glow */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-brand-500/5 blur-3xl pointer-events-none" />
+      {/* Orb 1 — top-center */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 pointer-events-none">
+        <div className="landing-orb-1 w-[900px] h-[500px] rounded-full bg-brand-500/25 blur-[120px]" />
+      </div>
+      {/* Orb 2 — bottom-right */}
+      <div className="absolute bottom-0 right-1/4 pointer-events-none">
+        <div className="landing-orb-2 w-[500px] h-[400px] rounded-full bg-brand-600/20 blur-[100px]" />
+      </div>
+      {/* Orb 3 — mid-left */}
+      <div className="absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none">
+        <div className="landing-orb-3 w-[400px] h-[400px] rounded-full bg-brand-400/15 blur-[100px]" />
+      </div>
 
-      <div className="relative z-10 flex flex-col items-center gap-8 max-w-md w-full fade-up">
-        <div className="text-center">
-          <div className="font-display font-black text-5xl text-brand-400 tracking-tighter mb-2">LAKTIC</div>
-          <div className="text-[var(--muted)] text-lg font-light">Train Smarter. Go Laktic.</div>
-        </div>
-
-        <div className="text-center text-sm text-[var(--muted)] max-w-sm">
-          AI-powered training plans built on your coach's philosophy. Personalized. Autonomous. Always on.
-        </div>
-
-        <div className="flex flex-col gap-3 w-full">
-          <Link to="/register/coach" className="w-full">
-            <Button variant="secondary" className="w-full" size="lg">
-              <span className="text-blue-400">◈</span> I am a Coach
-            </Button>
-          </Link>
-          <Link to="/register/athlete" className="w-full">
-            <Button variant="primary" className="w-full" size="lg">
-              <span>▷</span> I am an Athlete
-            </Button>
+      {/* Nav bar */}
+      <div className="relative z-10 flex items-center justify-between px-8 pt-6">
+        <span className="font-display font-black text-xl text-brand-400 tracking-tighter">LAKTIC</span>
+        <div className="flex items-center gap-4 text-sm">
+          <Link to="/login/coach" className="text-[var(--muted)] hover:text-[var(--text)] transition-colors">Coach login</Link>
+          <Link to="/login/athlete">
+            <Button variant="secondary" size="sm">Athlete login</Button>
           </Link>
         </div>
+      </div>
 
-        <div className="text-xs text-[var(--muted)] flex gap-4">
-          <Link to="/login/coach" className="hover:text-[var(--text)] transition-colors">Coach login</Link>
-          <span>·</span>
-          <Link to="/login/athlete" className="hover:text-[var(--text)] transition-colors">Athlete login</Link>
+      {/* Hero */}
+      <div className="relative z-10 flex flex-col items-center text-center px-6 pt-16 pb-12 fade-up">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-700/40 bg-brand-900/30 text-brand-400 text-xs font-medium mb-7">
+          <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
+          Now in early access
+        </div>
+
+        <h1 className="font-hero font-extrabold text-5xl sm:text-6xl tracking-tight leading-[1.05] mb-5 max-w-2xl">
+          <span className="text-gradient">From your coach's</span>
+          <br />
+          <span className="text-[var(--text)]">philosophy to</span>
+          <br />
+          <span className="text-[var(--text)]">your finish line.</span>
+        </h1>
+
+        <p className="text-[var(--muted)] text-base max-w-lg leading-relaxed mb-9">
+          Coaches upload their philosophy once. Every athlete gets a personalized season plan, adaptive workouts, and a coaching bot — available 24/7.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs sm:max-w-sm">
+          <Link to="/register/athlete" className="flex-1">
+            <Button variant="primary" className="w-full" size="xl">
+              Get My Plan →
+            </Button>
+          </Link>
+          <Link to="/register/coach" className="flex-1">
+            <Button variant="secondary" className="w-full" size="xl">
+              I'm a Coach
+            </Button>
+          </Link>
+        </div>
+
+        <p className="text-xs text-[var(--muted)] mt-4">Free to start · No credit card required</p>
+      </div>
+
+      {/* Stats strip */}
+      <div className="relative z-10 max-w-3xl mx-auto px-6 mb-16 fade-up-1">
+        <div className="grid grid-cols-3 divide-x divide-[var(--border)] border border-[var(--border)] rounded-2xl bg-[var(--surface)]/60 backdrop-blur-sm shadow-card">
+          {[
+            { value: '14-day', label: 'AI coaching window' },
+            { value: 'GPT-4o', label: 'Powered by' },
+            { value: '100%', label: 'Coach-voice plans' },
+          ].map(s => (
+            <div key={s.label} className="flex flex-col items-center py-5 px-4">
+              <span className="font-display font-bold text-xl text-brand-400">{s.value}</span>
+              <span className="text-xs text-[var(--muted)] mt-1">{s.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Feature cards */}
+      <div className="relative z-10 max-w-4xl mx-auto px-6 pb-20 fade-up-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {FEATURES.map(f => (
+            <div key={f.title} className="bg-[var(--surface)]/80 border border-[var(--border)] rounded-2xl p-6 hover:border-[var(--border2)] transition-colors shadow-card">
+              <div className="text-2xl mb-3">{f.icon}</div>
+              <h3 className="font-display font-semibold text-sm mb-2">{f.title}</h3>
+              <p className="text-xs text-[var(--muted)] leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -160,12 +233,11 @@ export function CoachLogin() {
   return <AuthForm title="Coach Sign In" subtitle="Welcome back. Your bot is coaching athletes right now." error={error}>
     <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="coach@example.com" />
     <Input label="Password" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
+    <div className="flex justify-end -mt-2">
+      <Link to="/forgot-password" className="text-xs text-[var(--muted)] hover:text-brand-400 transition-colors">Forgot password?</Link>
+    </div>
     <Button onClick={handle} loading={loading} className="w-full" size="lg">Sign In</Button>
-    <p className="text-center text-sm text-[var(--muted)]">
-      <Link to="/forgot-password" className="text-brand-400 hover:underline">Forgot password?</Link>
-      {' · '}
-      No account? <Link to="/register/coach" className="text-brand-400 hover:underline">Register</Link>
-    </p>
+    <p className="text-center text-sm text-[var(--muted)]">No account? <Link to="/register/coach" className="text-brand-400 hover:underline">Register</Link></p>
   </AuthForm>;
 }
 
@@ -197,12 +269,106 @@ export function AthleteLogin() {
   return <AuthForm title="Athlete Sign In" subtitle="Your personalized training plan is waiting." error={error}>
     <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="you@example.com" />
     <Input label="Password" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
+    <div className="flex justify-end -mt-2">
+      <Link to="/forgot-password" className="text-xs text-[var(--muted)] hover:text-brand-400 transition-colors">Forgot password?</Link>
+    </div>
     <Button onClick={handle} loading={loading} className="w-full" size="lg">Sign In</Button>
+    <p className="text-center text-sm text-[var(--muted)]">No account? <Link to="/register/athlete" className="text-brand-400 hover:underline">Register</Link></p>
+  </AuthForm>;
+}
+
+// ── Password Reset Request ────────────────────────────────────────────────────
+export function PasswordResetRequest() {
+  const [email, setEmail] = useState('');
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handle = async () => {
+    if (!email) return;
+    setError(''); setLoading(true);
+    try {
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password/new`,
+      });
+      if (err) throw err;
+      setSent(true);
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  };
+
+  if (sent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="w-full max-w-md fade-up text-center">
+          <Link to="/" className="font-display font-black text-3xl text-brand-400 tracking-tighter">LAKTIC</Link>
+          <div className="mt-8 bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 shadow-card-lg">
+            <div className="w-12 h-12 rounded-full bg-brand-900/40 border border-brand-700/30 flex items-center justify-center mx-auto mb-4">
+              <span className="text-brand-400 text-xl">✓</span>
+            </div>
+            <h2 className="font-display font-semibold text-lg mb-2">Check your email</h2>
+            <p className="text-sm text-[var(--muted)]">We sent a password reset link to <strong className="text-[var(--text)]">{email}</strong>. Click the link to set a new password.</p>
+            <Link to="/" className="inline-block mt-6 text-sm text-brand-400 hover:underline">← Back to home</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <AuthForm title="Reset Password" subtitle="Enter your email and we'll send you a reset link." error={error}>
+    <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" autoFocus />
+    <Button onClick={handle} loading={loading} disabled={!email} className="w-full" size="lg">Send Reset Link</Button>
     <p className="text-center text-sm text-[var(--muted)]">
-      <Link to="/forgot-password" className="text-brand-400 hover:underline">Forgot password?</Link>
+      <Link to="/login/coach" className="text-brand-400 hover:underline">Coach login</Link>
       {' · '}
-      No account? <Link to="/register/athlete" className="text-brand-400 hover:underline">Register</Link>
+      <Link to="/login/athlete" className="text-brand-400 hover:underline">Athlete login</Link>
     </p>
+  </AuthForm>;
+}
+
+// ── Password Reset Confirm ────────────────────────────────────────────────────
+export function PasswordResetConfirm() {
+  const nav = useNavigate();
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handle = async () => {
+    if (password !== confirm) { setError('Passwords do not match'); return; }
+    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
+    setError(''); setLoading(true);
+    try {
+      const { error: err } = await supabase.auth.updateUser({ password });
+      if (err) throw err;
+      setDone(true);
+      setTimeout(() => nav('/'), 2000);
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  };
+
+  if (done) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="w-full max-w-md fade-up text-center">
+          <Link to="/" className="font-display font-black text-3xl text-brand-400 tracking-tighter">LAKTIC</Link>
+          <div className="mt-8 bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 shadow-card-lg">
+            <div className="w-12 h-12 rounded-full bg-brand-900/40 border border-brand-700/30 flex items-center justify-center mx-auto mb-4">
+              <span className="text-brand-400 text-xl">✓</span>
+            </div>
+            <h2 className="font-display font-semibold text-lg mb-2">Password updated</h2>
+            <p className="text-sm text-[var(--muted)]">Redirecting you to login…</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <AuthForm title="Set New Password" subtitle="Choose a strong password for your account." error={error}>
+    <Input label="New password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" autoFocus />
+    <Input label="Confirm password" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="••••••••" />
+    <Button onClick={handle} loading={loading} disabled={!password || !confirm} className="w-full" size="lg">Update Password</Button>
   </AuthForm>;
 }
 

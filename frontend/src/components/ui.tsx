@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   loading?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 export function Button({
   variant = 'primary', loading, size = 'md', children, disabled, className = '', ...rest
@@ -22,6 +22,7 @@ export function Button({
     sm: 'px-3 py-1.5 text-xs',
     md: 'px-4 py-2 text-sm',
     lg: 'px-6 py-2.5 text-sm',
+    xl: 'px-8 py-3.5 text-base',
   };
   const variants = {
     primary:   'bg-gradient-to-b from-brand-500 to-brand-600 hover:from-brand-400 hover:to-brand-500 text-white shadow-btn-primary hover:shadow-btn-primary-hover focus-visible:ring-brand-500/50',
@@ -101,7 +102,7 @@ export function Textarea({ label, error, className = '', ...rest }: TextareaProp
 interface CardProps { title?: string; children: React.ReactNode; className?: string; }
 export function Card({ title, children, className = '' }: CardProps) {
   return (
-    <div className={`bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 shadow-card ${className}`}>
+    <div className={`bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 shadow-card ${className}`}>
       {title && (
         <div className="pb-3 mb-4 border-b border-[var(--border)]/70">
           <h3 className="font-display text-sm font-semibold text-[var(--text)] tracking-tight">
@@ -148,13 +149,22 @@ export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
 interface NavbarProps { role?: string; name?: string; onLogout?: () => void; }
 export function Navbar({ role, name, onLogout }: NavbarProps) {
   return (
-    <nav className="surface-glass border-b border-[var(--border)] px-6 py-3.5 flex items-center justify-between sticky top-0 z-40">
+    <nav className="surface-glass border-b border-[var(--border)] px-8 py-4 flex items-center justify-between sticky top-0 z-40">
       <div className="flex items-center gap-3">
-        <span className="font-display font-black text-xl tracking-tight text-gradient">LAKTIC</span>
+        <a
+          href={role === 'coach' ? '/coach/dashboard' : role === 'athlete' ? '/athlete/plan' : '/'}
+          className="font-display font-black text-xl tracking-tight text-gradient hover:opacity-80 transition-opacity"
+        >LAKTIC</a>
         {role && <Badge label={role} color={role === 'coach' ? 'blue' : 'green'} dot />}
       </div>
       {name && (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          {role === 'athlete' && (
+            <a href="/athlete/settings" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Settings</a>
+          )}
+          {role === 'coach' && (
+            <a href="/coach/dashboard" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Dashboard</a>
+          )}
           <div className="hidden sm:flex items-center gap-2">
             <div className="w-7 h-7 rounded-full bg-[var(--surface2)] border border-[var(--border2)] flex items-center justify-center text-xs font-semibold text-brand-400 shrink-0">
               {name.charAt(0).toUpperCase()}

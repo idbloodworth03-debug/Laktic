@@ -3,7 +3,7 @@ import { supabase } from '../db/supabase';
 import { auth, requireCoach, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
 import { validate } from '../middleware/validate';
-import { sendCoachWelcome } from '../services/emailService';
+import { sendCoachWelcomeEmail } from '../services/emailService';
 import {
   coachProfileSchema,
   botCreateSchema,
@@ -31,7 +31,11 @@ router.post(
       .single();
 
     if (error) return res.status(400).json({ error: error.message });
-    sendCoachWelcome(req.user!.email!, name); // fire-and-forget
+
+    // Fire-and-forget welcome email (non-blocking)
+    const userEmail = req.user!.email;
+    if (userEmail) sendCoachWelcomeEmail(userEmail, name).catch(() => {});
+
     res.json(data);
   })
 );

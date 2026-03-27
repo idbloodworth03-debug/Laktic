@@ -14,7 +14,6 @@ const envSchema = z.object({
   STRAVA_REDIRECT_URI: z.string().optional(),
   STRAVA_WEBHOOK_VERIFY_TOKEN: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().optional(),
   SENTRY_DSN: z.string().optional()
 });
 
