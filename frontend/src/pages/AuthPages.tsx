@@ -27,22 +27,22 @@ const FEATURES = [
 export function Landing() {
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden">
-      {/* Background grid */}
-      <div className="absolute inset-0 opacity-[0.07]" style={{
+      {/* Background grid — panning */}
+      <div className="landing-grid absolute inset-0 opacity-[0.09]" style={{
         backgroundImage: 'linear-gradient(var(--green) 1px, transparent 1px), linear-gradient(90deg, var(--green) 1px, transparent 1px)',
         backgroundSize: '48px 48px',
       }} />
       {/* Orb 1 — top-center */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 pointer-events-none">
-        <div className="landing-orb-1 w-[800px] h-[400px] rounded-full bg-brand-500/10 blur-[100px]" />
+        <div className="landing-orb-1 w-[900px] h-[500px] rounded-full bg-brand-500/25 blur-[120px]" />
       </div>
       {/* Orb 2 — bottom-right */}
       <div className="absolute bottom-0 right-1/4 pointer-events-none">
-        <div className="landing-orb-2 w-[400px] h-[300px] rounded-full bg-brand-600/10 blur-[80px]" />
+        <div className="landing-orb-2 w-[500px] h-[400px] rounded-full bg-brand-600/20 blur-[100px]" />
       </div>
       {/* Orb 3 — mid-left */}
       <div className="absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none">
-        <div className="landing-orb-3 w-[350px] h-[350px] rounded-full bg-brand-400/8 blur-[90px]" />
+        <div className="landing-orb-3 w-[400px] h-[400px] rounded-full bg-brand-400/15 blur-[100px]" />
       </div>
 
       {/* Nav bar */}
