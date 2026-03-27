@@ -4,7 +4,6 @@ import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
 import { Navbar, Button, Input, Textarea, Select, Card, Toggle, Badge } from '../components/ui';
-import { PhilosophyEnhancer } from '../components/PhilosophyEnhancer';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const EVENT_OPTIONS = [
@@ -120,12 +119,7 @@ export function BotSetupEdit() {
           <h3 className="font-display font-semibold mb-4">Bot Identity</h3>
           <div className="flex flex-col gap-4">
             <Input label="Bot name" value={botForm.name} onChange={e => setBotForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Coach Smith's Distance Training" />
-            <PhilosophyEnhancer
-              value={botForm.philosophy}
-              onChange={v => setBotForm(f => ({ ...f, philosophy: v }))}
-              rows={6}
-              placeholder="Describe your coaching philosophy in detail. The AI will coach athletes in your voice using this text. Include your training principles, workout philosophy, how you approach periodization, what you believe about recovery, how you motivate athletes..."
-            />
+            <Textarea label="Coaching philosophy" value={botForm.philosophy} onChange={e => setBotForm(f => ({ ...f, philosophy: e.target.value }))} rows={6} placeholder="Describe your coaching philosophy in detail. The AI will coach athletes in your voice using this text. Include your training principles, workout philosophy, how you approach periodization, what you believe about recovery, how you motivate athletes..." />
             <div className="grid grid-cols-2 gap-4">
               <Select label="Event focus" value={botForm.event_focus} onChange={e => setBotForm(f => ({ ...f, event_focus: e.target.value }))} options={EVENT_OPTIONS} />
               <Select label="Level focus" value={botForm.level_focus} onChange={e => setBotForm(f => ({ ...f, level_focus: e.target.value }))} options={LEVEL_OPTIONS} />

@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import OpenAI from 'openai';
 import { supabase } from '../db/supabase';
 import { auth, requireCoach, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -12,68 +11,7 @@ import {
   workoutSchema,
   knowledgeCreateSchema,
   knowledgeUpdateSchema,
-  enhancePhilosophySchema
 } from '../schemas';
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-const ENHANCE_PROMPTS: Record<string, string> = {
-  philosophy: `You are an expert coaching consultant who specialises in writing high-performance AI coaching system prompts for running and endurance sports coaches.
-
-Your task is to take a coach's raw coaching philosophy and rewrite it into a richer, more structured version that will produce significantly better AI-generated training plans.
-
-The output must:
-1. Preserve every idea and value the coach expressed — never invent facts about their career or credentials
-2. Make training principles explicit and specific (e.g. "80% of weekly volume at easy aerobic effort, 20% at threshold or above")
-3. Specify workout structure preferences (types of sessions per week, long run approach, speed work philosophy)
-4. Define periodization and progression logic (base building, sharpening, taper, recovery weeks)
-5. State athlete communication style and motivational approach
-6. Include guidance on how to handle injury, fatigue, and missed sessions
-7. Use clear, instructional language — this text will be read by an AI system every time it builds a training plan
-8. Write in first person as the coach ("I believe...", "My athletes...", "I structure...")
-9. Aim for 3–5 focused paragraphs. Do not pad with generic advice.
-
-Return ONLY the enhanced philosophy text. No preamble, no explanation, no markdown formatting.`,
-
-  knowledge_doc: `You are an expert running coach and technical writer. Your task is to take raw coaching notes, a sample training week, training block, taper protocol, injury rules, or FAQ and rewrite them into a clear, structured, AI-readable coaching document.
-
-The output must:
-1. Preserve every specific workout, rule, distance, and instruction the coach wrote — never invent content
-2. Organise content clearly with consistent structure (e.g. day-by-day format for sample weeks, numbered rules for protocols)
-3. Make implicit logic explicit — if a workout serves a specific purpose, state it
-4. Use precise, instructional language — this document will be read by an AI system when building training plans
-5. Expand abbreviations and shorthand into full descriptions athletes and AI can understand
-6. For sample weeks: include workout type, effort level, approximate distance, and purpose for each day
-7. For injury rules: state the condition, the modification, and when to resume normal training
-8. Keep the same document type and scope — do not add sections that weren't in the original
-
-Return ONLY the enhanced document text. No preamble, no explanation, no markdown headers unless they were in the original.`,
-
-  coach_bio: `You are a professional copywriter specialising in sports coaching profiles. Your task is to rewrite a coach's rough bio into a compelling, specific, and credible marketplace profile.
-
-The output must:
-1. Preserve every fact the coach stated — never invent achievements, results, or credentials
-2. Lead with the most impressive or distinctive aspect of their background
-3. Be specific rather than generic — replace vague claims with concrete details where the coach provided them
-4. Highlight what makes this coach's approach distinctive or effective
-5. Use confident, professional third-person or first-person voice (match whatever the coach used)
-6. Keep a natural, human tone — not corporate or stiff
-7. Aim for 3–4 punchy sentences. No padding.
-
-Return ONLY the enhanced bio text. No preamble, no explanation.`,
-
-  coach_credentials: `You are a professional sports career writer. Your task is to take a coach's rough list of credentials and experience and rewrite it as a clear, impressive, and credible credentials section.
-
-The output must:
-1. Preserve every certification, year, athlete, result, and institution the coach mentioned — never fabricate anything
-2. Lead with the most impressive or relevant credential
-3. Group related items logically (certifications, coaching history, notable athletes, personal results)
-4. Use specific, concrete language — "8 years coaching D1 collegiate distance runners" not "extensive experience"
-5. Keep it scannable — use short sentences or a natural list-style flow
-6. Stay factual and grounded — do not hype or embellish beyond what was stated
-
-Return ONLY the enhanced credentials text. No preamble, no explanation.`,
-};
 
 const router = Router();
 
@@ -449,31 +387,6 @@ router.delete(
   asyncHandler(async (req: AuthRequest, res) => {
     await supabase.from('coach_knowledge_documents').delete().eq('id', req.params.id);
     res.json({ ok: true });
-  })
-);
-
-// POST /api/coach/enhance-philosophy — AI-enhance a coaching philosophy draft
-router.post(
-  '/enhance-philosophy',
-  auth,
-  requireCoach,
-  validate(enhancePhilosophySchema),
-  asyncHandler(async (req: AuthRequest, res) => {
-    const { philosophy, context = 'philosophy' } = req.body;
-    const systemPrompt = ENHANCE_PROMPTS[context] ?? ENHANCE_PROMPTS.philosophy;
-
-    const result = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Here is the content to enhance:\n\n${philosophy}\n\nPlease enhance it.` },
-      ],
-    });
-
-    const enhanced = (result.choices[0].message.content ?? '').trim();
-    if (!enhanced) return res.status(500).json({ error: 'Enhancement returned empty response' });
-
-    res.json({ enhanced });
   })
 );
 

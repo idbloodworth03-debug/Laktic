@@ -4,7 +4,6 @@ import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
 import { Navbar, Button, Input, Textarea, Select, Card, DocumentCard, Alert, Spinner } from '../components/ui';
-import { PhilosophyEnhancer } from '../components/PhilosophyEnhancer';
 
 const DOC_TYPE_OPTIONS = [
   { value: 'philosophy', label: 'Philosophy' },
@@ -251,14 +250,7 @@ export function KnowledgeDocuments() {
             </div>
 
             {mode === 'paste' ? (
-              <PhilosophyEnhancer
-                label="Content"
-                context="knowledge_doc"
-                value={form.content_text}
-                onChange={v => setForm(f => ({ ...f, content_text: v }))}
-                rows={8}
-                placeholder="Paste your coaching material here — sample week breakdowns, training block templates, injury modification rules, FAQs, taper notes..."
-              />
+              <Textarea label="Content" value={form.content_text} onChange={e => setForm(f => ({ ...f, content_text: e.target.value }))} rows={8} placeholder="Paste your coaching material here — sample week breakdowns, training block templates, injury modification rules, FAQs, taper notes..." />
             ) : (
               <div>
                 <label className="text-sm font-medium text-[var(--muted)] block mb-2">Upload file (.txt or .docx)</label>
@@ -301,7 +293,7 @@ export function KnowledgeDocuments() {
                       <Input label="Title" value={editForm.title || ''} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} />
                       <Select label="Type" value={editForm.document_type || ''} onChange={e => setEditForm(f => ({ ...f, document_type: e.target.value }))} options={DOC_TYPE_OPTIONS} />
                     </div>
-                    <PhilosophyEnhancer label="Content" context="knowledge_doc" value={editForm.content_text || ''} onChange={v => setEditForm(f => ({ ...f, content_text: v }))} rows={6} />
+                    <Textarea label="Content" value={editForm.content_text || ''} onChange={e => setEditForm(f => ({ ...f, content_text: e.target.value }))} rows={6} />
                     <div className="flex justify-end gap-2">
                       <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>Cancel</Button>
                       <Button variant="primary" size="sm" loading={saving} onClick={saveEdit}>Save</Button>

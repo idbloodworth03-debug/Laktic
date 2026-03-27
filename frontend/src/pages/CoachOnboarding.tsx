@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { Button, Input, Textarea, Select, Toggle } from '../components/ui';
-import { PhilosophyEnhancer } from '../components/PhilosophyEnhancer';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Workout = {
@@ -265,12 +264,7 @@ export function CoachOnboarding() {
           onChange={e => setBotForm(f => ({ ...f, name: e.target.value }))}
           placeholder="e.g. Coach Smith's Distance Training"
         />
-        <PhilosophyEnhancer
-          value={botForm.philosophy}
-          onChange={v => setBotForm(f => ({ ...f, philosophy: v }))}
-          rows={7}
-          placeholder="Describe your coaching philosophy in detail. Include: training principles, periodization approach, workout types you believe in, how you approach recovery, how you motivate athletes, what you expect in terms of effort and consistency..."
-        />
+        <Textarea label="Coaching philosophy" value={botForm.philosophy} onChange={e => setBotForm(f => ({ ...f, philosophy: e.target.value }))} rows={7} placeholder="Describe your coaching philosophy in detail. Include: training principles, periodization approach, workout types you believe in, how you approach recovery, how you motivate athletes, what you expect in terms of effort and consistency..." />
         <div className="grid grid-cols-2 gap-4">
           <Select label="Event focus" value={botForm.event_focus} onChange={e => setBotForm(f => ({ ...f, event_focus: e.target.value }))} options={EVENT_OPTIONS} />
           <Select label="Level focus" value={botForm.level_focus} onChange={e => setBotForm(f => ({ ...f, level_focus: e.target.value }))} options={LEVEL_OPTIONS} />
@@ -317,14 +311,7 @@ export function CoachOnboarding() {
           <Input label="Title" value={docForm.title} onChange={e => setDocForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Base Building Sample Week" />
           <Select label="Document type" value={docForm.document_type} onChange={e => setDocForm(f => ({ ...f, document_type: e.target.value }))} options={DOC_TYPE_OPTIONS} />
         </div>
-        <PhilosophyEnhancer
-          label="Content"
-          context="knowledge_doc"
-          value={docForm.content_text}
-          onChange={v => setDocForm(f => ({ ...f, content_text: v }))}
-          rows={6}
-          placeholder="Paste your coaching material here — sample week breakdowns, injury protocols, taper guidelines, FAQs..."
-        />
+        <Textarea label="Content" value={docForm.content_text} onChange={e => setDocForm(f => ({ ...f, content_text: e.target.value }))} rows={6} placeholder="Paste your coaching material here — sample week breakdowns, injury protocols, taper guidelines, FAQs..." />
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => fileRef.current?.click()}>📄 Upload .txt / .docx</Button>

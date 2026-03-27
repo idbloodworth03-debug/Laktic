@@ -4,7 +4,6 @@ import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
 import { Navbar, Button, Card, Badge, Spinner, EmptyState, Input, Textarea, Select, Alert } from '../components/ui';
-import { PhilosophyEnhancer } from '../components/PhilosophyEnhancer';
 
 const SPEC_LABELS: Record<string, string> = {
   distance: 'Distance', sprints: 'Sprints', triathlon: 'Triathlon',
@@ -327,22 +326,22 @@ export function MarketplaceApply() {
 
             <Card>
               <form onSubmit={handleSubmit} className="space-y-5">
-                <PhilosophyEnhancer
+                <Textarea
                   label="Coach Bio"
-                  context="coach_bio"
                   placeholder="Describe your coaching background, achievements, and what makes your approach unique. (Min 50 characters)"
                   value={form.bio}
-                  onChange={v => setForm(f => ({ ...f, bio: v }))}
+                  onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
                   rows={5}
+                  required
                 />
 
-                <PhilosophyEnhancer
+                <Textarea
                   label="Credentials & Experience"
-                  context="coach_credentials"
                   placeholder="List your certifications, years coaching, notable athletes coached, race results, etc."
                   value={form.credentials}
-                  onChange={v => setForm(f => ({ ...f, credentials: v }))}
+                  onChange={e => setForm(f => ({ ...f, credentials: e.target.value }))}
                   rows={4}
+                  required
                 />
 
                 <Select
