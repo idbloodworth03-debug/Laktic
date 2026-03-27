@@ -5,6 +5,8 @@ import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
 import { Navbar, Button, Card, Badge, Spinner, Alert } from '../components/ui';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL as string || 'http://localhost:3001';
+
 type WeeklySummary = {
   id: string;
   week_start: string;
@@ -150,6 +152,24 @@ export function AthleteProgress() {
     }
   };
 
+  const downloadReport = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch(`${API_BASE}/api/athlete/report.pdf`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to generate report.');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'laktic-season-report.pdf'; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      setError(e.message || 'Failed to download report.');
+    }
+  };
+
   const currentWeek = summaries.length > 0 ? summaries[summaries.length - 1] : null;
   const prs = races.filter(r => r.is_pr);
 
@@ -176,6 +196,7 @@ export function AthleteProgress() {
             <Link to="/athlete/plan"><Button variant="ghost" size="sm">Plan</Button></Link>
             <Link to="/athlete/races"><Button variant="ghost" size="sm">Races</Button></Link>
             <Button variant="secondary" size="sm" onClick={recompute} loading={computing}>Refresh Data</Button>
+            <Button variant="secondary" size="sm" onClick={downloadReport}>Download Report</Button>
           </div>
         </div>
 

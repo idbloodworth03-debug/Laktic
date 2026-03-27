@@ -20,6 +20,7 @@ import { CoachTeamProgress } from './pages/CoachTeamProgress';
 import { CoachSettings } from './pages/CoachSettings';
 import { TeamCalendar } from './pages/TeamCalendar';
 import { AthleteCalendar } from './pages/AthleteCalendar';
+import { NutritionPage } from './pages/NutritionPage';
 
 function RequireCoach({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
@@ -72,6 +73,7 @@ export default function App() {
         <Route path="/athlete/activities" element={<RequireAthlete><Activities /></RequireAthlete>} />
         <Route path="/athlete/progress" element={<RequireAthlete><AthleteProgress /></RequireAthlete>} />
         <Route path="/athlete/calendar" element={<RequireAthlete><AthleteCalendar /></RequireAthlete>} />
+        <Route path="/athlete/nutrition" element={<RequireAthlete><NutritionPage /></RequireAthlete>} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/authStore';
 import { apiFetch } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
 import { Navbar, Card, Button, Badge, Spinner, Alert, Input } from '../components/ui';
+import { useNotifications } from '../hooks/useNotifications';
 
 interface StravaStatus {
   connected: boolean;
@@ -17,6 +18,8 @@ export function AthleteSettings() {
   const { role, profile, clearAuth } = useAuthStore();
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
+  const { state: notifState, enable: enableNotifs, disable: disableNotifs } = useNotifications();
+  const [notifLoading, setNotifLoading] = useState(false);
 
   // Join team state
   const [inviteCode, setInviteCode] = useState('');
@@ -203,6 +206,59 @@ export function AthleteSettings() {
               )}
             </div>
           </div>
+        </Card>
+
+        <Card title="Push Notifications" className="mb-6">
+          {notifState === 'unsupported' ? (
+            <p className="text-sm text-[var(--muted)]">
+              Push notifications are not supported in this browser. Try installing Laktic as a PWA on your phone.
+            </p>
+          ) : notifState === 'blocked' ? (
+            <div className="space-y-2">
+              <Badge label="Blocked" color="red" />
+              <p className="text-sm text-[var(--muted)]">
+                Notifications are blocked by your browser. Go to your browser settings and allow notifications for this site.
+              </p>
+            </div>
+          ) : notifState === 'loading' ? (
+            <Spinner />
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-[var(--muted)]">
+                Get notified when your training plan is ready, race day is approaching, and more.
+              </p>
+              <div className="flex items-center gap-3">
+                {notifState === 'granted' && <Badge label="Enabled" color="green" dot />}
+                {notifState === 'granted' ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    loading={notifLoading}
+                    onClick={async () => {
+                      setNotifLoading(true);
+                      await disableNotifs();
+                      setNotifLoading(false);
+                    }}
+                  >
+                    Turn off notifications
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    loading={notifLoading}
+                    onClick={async () => {
+                      setNotifLoading(true);
+                      const ok = await enableNotifs();
+                      setNotifLoading(false);
+                      if (!ok) setAlert({ type: 'error', message: 'Could not enable notifications. Please allow them in your browser settings.' });
+                    }}
+                  >
+                    Enable notifications
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </Card>
 
         <Card title="Strava Integration">

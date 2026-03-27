@@ -5,6 +5,8 @@ import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
 import { Navbar, Button, Card, Badge, Spinner, Alert, ChatBubble, TypingIndicator } from '../components/ui';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL as string || 'http://localhost:3001';
+
 type AthleteProfile = {
   id: string;
   name: string;
@@ -196,6 +198,24 @@ export function CoachTeamProgress() {
     setAthleteDetail(null);
   };
 
+  const downloadTeamReport = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch(`${API_BASE}/api/coach/team/report.pdf`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to generate report.');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'laktic-team-attendance.pdf'; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      setError(e.message || 'Failed to download report.');
+    }
+  };
+
   const tabCls = (active: boolean) =>
     `px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
       active
@@ -213,6 +233,7 @@ export function CoachTeamProgress() {
             <p className="text-sm text-[var(--muted)] mt-1">Overview of your athletes' training progress</p>
           </div>
           <div className="flex gap-2">
+            <Button variant="secondary" size="sm" onClick={downloadTeamReport}>Download Report</Button>
             <Link to="/coach/dashboard"><Button variant="ghost" size="sm">Dashboard</Button></Link>
           </div>
         </div>

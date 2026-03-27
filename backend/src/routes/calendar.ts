@@ -9,6 +9,7 @@ import {
   checkInSchema,
   manualAttendanceSchema
 } from '../schemas';
+import { notifyAthleteAbsent } from '../services/notificationService';
 
 const router = Router();
 
@@ -183,6 +184,36 @@ router.post(
       .single();
 
     if (error) return res.status(400).json({ error: error.message });
+
+    // Fire-and-forget: notify coach if an athlete is marked absent
+    if (status === 'absent') {
+      (async () => {
+        try {
+          const { data: athleteProfile } = await supabase
+            .from('athlete_profiles')
+            .select('name, user_id')
+            .eq('id', athlete_id)
+            .single();
+          const { data: ev } = await supabase
+            .from('team_calendar_events')
+            .select('title')
+            .eq('id', eventId)
+            .single();
+          const { data: coachProfile } = await supabase
+            .from('coach_profiles')
+            .select('user_id')
+            .eq('id', req.coach.id)
+            .single();
+
+          if (athleteProfile && ev && coachProfile) {
+            await notifyAthleteAbsent(coachProfile.user_id, athleteProfile.name, ev.title);
+          }
+        } catch {
+          // Non-critical
+        }
+      })();
+    }
+
     res.json(data);
   })
 );

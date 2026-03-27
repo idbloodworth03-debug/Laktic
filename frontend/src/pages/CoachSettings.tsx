@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { apiFetch } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
-import { Navbar, Card, Button, Alert } from '../components/ui';
+import { Navbar, Card, Button, Alert, Badge, Spinner } from '../components/ui';
+import { useNotifications } from '../hooks/useNotifications';
 
 export function CoachSettings() {
   const { profile, clearAuth } = useAuthStore();
@@ -11,6 +12,8 @@ export function CoachSettings() {
   const [alert, setAlert] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const { state: notifState, enable: enableNotifs, disable: disableNotifs } = useNotifications();
+  const [notifLoading, setNotifLoading] = useState(false);
 
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
@@ -55,6 +58,59 @@ export function CoachSettings() {
             <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
           </div>
         )}
+
+        <Card title="Push Notifications" className="mb-6">
+          {notifState === 'unsupported' ? (
+            <p className="text-sm text-[var(--muted)]">
+              Push notifications are not supported in this browser. Try installing Laktic as a PWA on your phone.
+            </p>
+          ) : notifState === 'blocked' ? (
+            <div className="space-y-2">
+              <Badge label="Blocked" color="red" />
+              <p className="text-sm text-[var(--muted)]">
+                Notifications are blocked by your browser. Allow them in your browser settings.
+              </p>
+            </div>
+          ) : notifState === 'loading' ? (
+            <Spinner />
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-[var(--muted)]">
+                Get notified when an athlete misses practice or has a low attendance streak.
+              </p>
+              <div className="flex items-center gap-3">
+                {notifState === 'granted' && <Badge label="Enabled" color="green" dot />}
+                {notifState === 'granted' ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    loading={notifLoading}
+                    onClick={async () => {
+                      setNotifLoading(true);
+                      await disableNotifs();
+                      setNotifLoading(false);
+                    }}
+                  >
+                    Turn off notifications
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    loading={notifLoading}
+                    onClick={async () => {
+                      setNotifLoading(true);
+                      const ok = await enableNotifs();
+                      setNotifLoading(false);
+                      if (!ok) setAlert({ type: 'error', message: 'Could not enable notifications. Please allow them in your browser settings.' });
+                    }}
+                  >
+                    Enable notifications
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </Card>
 
         <Card title="Data & Privacy">
           <div className="flex flex-col gap-4">

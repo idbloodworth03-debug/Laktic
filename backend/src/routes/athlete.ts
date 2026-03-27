@@ -9,6 +9,7 @@ import { validate } from '../middleware/validate';
 import { aiLimiter } from '../middleware/rateLimit';
 import { athleteProfileSchema, athleteProfileUpdateSchema, chatMessageSchema, racesSchema, directMessageSchema } from '../schemas';
 import { sendAthleteWelcomeEmail } from '../services/emailService';
+import { notifyPlanReady } from '../services/notificationService';
 
 const router = Router();
 
@@ -162,6 +163,10 @@ router.post(
       .single();
 
     if (error) return res.status(400).json({ error: error.message });
+
+    // Fire-and-forget push notification (non-blocking)
+    notifyPlanReady(req.user!.id, bot.name).catch(() => {});
+
     res.json({ seasonId: season.id, weeksGenerated: plan.length, aiUsed });
   })
 );

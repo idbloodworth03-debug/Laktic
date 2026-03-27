@@ -163,6 +163,7 @@ export function Navbar({ role, name, onLogout }: NavbarProps) {
           {role === 'athlete' && (
             <>
               <a href="/athlete/calendar" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Calendar</a>
+              <a href="/athlete/nutrition" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Nutrition</a>
               <a href="/athlete/settings" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Settings</a>
             </>
           )}

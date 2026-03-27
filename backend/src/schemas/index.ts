@@ -177,3 +177,37 @@ export const manualAttendanceSchema = z.object({
 export const checkoutSchema = z.object({
   plan_type: z.enum(['coach_team', 'athlete_individual'])
 });
+
+// ── Nutrition ───────────────────────────────────────────────────────────────
+
+export const bodyMetricsSchema = z.object({
+  weight_kg: z.number().min(20).max(300).optional(),
+  height_cm: z.number().min(100).max(250).optional(),
+  sweat_rate_ml_per_hr: z.number().min(100).max(3000).optional()
+});
+
+export const fuelLogEntrySchema = z.object({
+  logged_at: z.string().min(1),
+  calories: z.number().int().min(0).max(10000).optional(),
+  carbs_g: z.number().min(0).max(2000).optional(),
+  protein_g: z.number().min(0).max(500).optional(),
+  hydration_ml: z.number().int().min(0).max(20000).optional(),
+  notes: z.string().max(500).optional()
+});
+
+export const fuelCalculatorSchema = z.object({
+  duration_min: z.number().min(1).max(600),
+  temp_c: z.number().min(-30).max(55).optional()
+});
+
+// ── Push Notifications ──────────────────────────────────────────────────────
+
+export const pushSubscribeSchema = z.object({
+  endpoint: z.string().url(),
+  p256dh: z.string().min(1),
+  auth: z.string().min(1)
+});
+
+export const pushUnsubscribeSchema = z.object({
+  endpoint: z.string().url()
+});

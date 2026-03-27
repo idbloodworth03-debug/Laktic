@@ -17,6 +17,10 @@ import stravaRouter from './routes/strava';
 import progressRouter from './routes/progress';
 import gdprRouter from './routes/gdpr';
 import calendarRouter from './routes/calendar';
+import nutritionRouter from './routes/nutrition';
+import notificationsRouter from './routes/notifications';
+import cron from 'node-cron';
+import { runRaceCountdownCron } from './services/notificationService';
 
 import { apiLimiter } from './middleware/rateLimit';
 import { errorHandler } from './middleware/errorHandler';
@@ -60,6 +64,9 @@ app.use('/api/coach/team', progressRouter);
 app.use('/api/coach/team', calendarRouter);
 app.use('/api/athlete', calendarRouter);
 
+app.use('/api/athlete', nutritionRouter);
+app.use('/api/notifications', notificationsRouter);
+
 app.use('/api', gdprRouter);
 
 app.use(errorHandler);
@@ -67,6 +74,12 @@ app.use(errorHandler);
 app.listen(env.PORT, () => {
   // eslint-disable-next-line no-console
   console.log(`Laktic backend running on port ${env.PORT}`);
+});
+
+// ── Scheduled jobs ────────────────────────────────────────────────────────────
+// Race countdown notifications — runs daily at 7:00 AM UTC
+cron.schedule('0 7 * * *', () => {
+  runRaceCountdownCron().catch(() => {});
 });
 
 export default app;

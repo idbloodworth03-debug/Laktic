@@ -129,3 +129,94 @@ ALTER TABLE public.coach_profiles
 
 -- Back-fill existing coaches so they get 14 days from now if not yet set
 UPDATE public.coach_profiles SET trial_ends_at = (NOW() + INTERVAL '14 days') WHERE trial_ends_at IS NULL;
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 009 — team_calendar_events + attendance_records
+-- (Phase 2 — already applied if you ran the Phase 2 branch)
+-- ─────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.teams (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  coach_id UUID REFERENCES coach_profiles(id) ON DELETE CASCADE UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  invite_code TEXT UNIQUE NOT NULL,
+  default_bot_id UUID REFERENCES coach_bots(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.team_members (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID REFERENCES teams(id) ON DELETE CASCADE NOT NULL,
+  athlete_id UUID REFERENCES athlete_profiles(id) ON DELETE CASCADE NOT NULL,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active','injured','inactive')),
+  joined_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(team_id, athlete_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.team_calendar_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID REFERENCES teams(id) ON DELETE CASCADE NOT NULL,
+  coach_id UUID REFERENCES coach_profiles(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  event_type TEXT NOT NULL CHECK (event_type IN ('practice','race','off_day','travel','meeting','other')),
+  event_date DATE NOT NULL,
+  start_time TEXT,
+  end_time TEXT,
+  location_name TEXT,
+  location_lat FLOAT,
+  location_lng FLOAT,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.attendance_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID REFERENCES team_calendar_events(id) ON DELETE CASCADE NOT NULL,
+  athlete_id UUID REFERENCES athlete_profiles(id) ON DELETE CASCADE NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('present','absent','excused','late')),
+  check_in_at TIMESTAMPTZ,
+  check_in_lat FLOAT,
+  check_in_lng FLOAT,
+  marked_by TEXT CHECK (marked_by IN ('gps','self','coach')),
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(event_id, athlete_id)
+);
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 010 — athlete_body_metrics + fuel_log (Phase 3)
+-- ─────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.athlete_body_metrics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  athlete_id UUID REFERENCES athlete_profiles(id) ON DELETE CASCADE UNIQUE NOT NULL,
+  weight_kg FLOAT,
+  height_cm FLOAT,
+  sweat_rate_ml_per_hr FLOAT DEFAULT 500,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.fuel_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  athlete_id UUID REFERENCES athlete_profiles(id) ON DELETE CASCADE NOT NULL,
+  logged_at DATE NOT NULL DEFAULT CURRENT_DATE,
+  calories INT,
+  carbs_g FLOAT,
+  protein_g FLOAT,
+  hydration_ml INT,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 011 — push_subscriptions (Phase 3)
+-- ─────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.push_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  endpoint TEXT NOT NULL,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, endpoint)
+);

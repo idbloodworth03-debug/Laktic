@@ -5,6 +5,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { validate } from '../middleware/validate';
 import { raceResultSchema, raceResultUpdateSchema, weeklyQuerySchema, directMessageSchema } from '../schemas';
 import { computeAllWeeks } from '../services/progressService';
+import { buildAthletePdf, buildTeamPdf } from '../services/pdfService';
 
 const router = Router();
 
@@ -316,6 +317,152 @@ router.post(
 
     if (error) return res.status(400).json({ error: error.message });
     res.json(data);
+  })
+);
+
+// ── Athlete: PDF season report ───────────────────────────────────────────────
+
+// GET /api/athlete/report.pdf
+router.get(
+  '/report.pdf',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const athleteId = req.athlete.id;
+
+    // Load athlete profile
+    const { data: athlete } = await supabase
+      .from('athlete_profiles')
+      .select('name, weekly_volume_miles, primary_events')
+      .eq('id', athleteId)
+      .single();
+
+    if (!athlete) return res.status(404).json({ error: 'Athlete not found.' });
+
+    // Load active season (bot name via join)
+    const { data: season } = await supabase
+      .from('athlete_seasons')
+      .select('created_at, race_calendar, season_plan, bot_id, coach_bots!bot_id(name)')
+      .eq('athlete_id', athleteId)
+      .eq('status', 'active')
+      .single();
+
+    // Last 12 weekly summaries
+    const { data: weeklySummaries } = await supabase
+      .from('weekly_summaries')
+      .select('week_start, total_distance_miles, run_count, avg_pace_per_mile, compliance_pct')
+      .eq('athlete_id', athleteId)
+      .order('week_start', { ascending: false })
+      .limit(12);
+
+    // Attendance summary (from athlete's team)
+    const { data: membership } = await supabase
+      .from('team_members')
+      .select('team_id')
+      .eq('athlete_id', athleteId)
+      .eq('status', 'active')
+      .single();
+
+    let attendance = null;
+    if (membership) {
+      const { data: allRecords } = await supabase
+        .from('attendance_records')
+        .select('status')
+        .eq('athlete_id', athleteId);
+
+      const total = allRecords?.length || 0;
+      const present = (allRecords || []).filter(r => r.status === 'present' || r.status === 'late').length;
+      attendance = {
+        present_count: present,
+        total_events: total,
+        attendance_pct: total > 0 ? Math.round((present / total) * 100) : null
+      };
+    }
+
+    const botName = (season as any)?.coach_bots?.name ?? null;
+
+    buildAthletePdf(res, {
+      athlete,
+      season: season ? {
+        created_at: season.created_at,
+        race_calendar: season.race_calendar || [],
+        season_plan: season.season_plan || []
+      } : null,
+      weeklySummaries: (weeklySummaries || []).reverse(),
+      attendance,
+      botName
+    });
+  })
+);
+
+// ── Coach: team attendance PDF ───────────────────────────────────────────────
+
+// GET /api/coach/team/report.pdf
+router.get(
+  '/report.pdf',
+  auth,
+  requireCoach,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { from, to } = req.query as { from?: string; to?: string };
+
+    const { data: team } = await supabase
+      .from('teams')
+      .select('id, name')
+      .eq('coach_id', req.coach.id)
+      .single();
+
+    if (!team) return res.status(404).json({ error: 'No team found.' });
+
+    let eventsQuery = supabase
+      .from('team_calendar_events')
+      .select('id, title, event_type, event_date')
+      .eq('team_id', team.id)
+      .order('event_date', { ascending: true });
+
+    if (from) eventsQuery = eventsQuery.gte('event_date', from);
+    if (to) eventsQuery = eventsQuery.lte('event_date', to);
+
+    const { data: events } = await eventsQuery;
+
+    const { data: members } = await supabase
+      .from('team_members')
+      .select('athlete_id, athlete_profiles!athlete_id(id, name)')
+      .eq('team_id', team.id)
+      .eq('status', 'active');
+
+    let athleteRows: any[] = [];
+    if (events && events.length > 0 && members && members.length > 0) {
+      const eventIds = events.map(e => e.id);
+      const { data: records } = await supabase
+        .from('attendance_records')
+        .select('event_id, athlete_id, status')
+        .in('event_id', eventIds);
+
+      athleteRows = (members || []).map((m: any) => {
+        const athleteRecords: Record<string, string> = {};
+        (records || [])
+          .filter(r => r.athlete_id === m.athlete_id)
+          .forEach(r => { athleteRecords[r.event_id] = r.status; });
+
+        const present = Object.values(athleteRecords).filter(s => s === 'present' || s === 'late').length;
+        const total = events.length;
+        return {
+          athlete_name: (m.athlete_profiles as any)?.name || 'Unknown',
+          present_count: present,
+          total_events: total,
+          attendance_pct: total > 0 ? Math.round((present / total) * 100) : null,
+          records: athleteRecords
+        };
+      });
+    }
+
+    buildTeamPdf(res, {
+      teamName: team.name,
+      events: events || [],
+      athletes: athleteRows,
+      from: from || null,
+      to: to || null
+    });
   })
 );
 
