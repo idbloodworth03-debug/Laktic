@@ -82,8 +82,8 @@ export function AthleteSettings() {
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <Navbar role={role || undefined} name={profile?.name} onLogout={clearAuth} />
-      <div className="max-w-2xl mx-auto px-6 py-8">
-        <h1 className="font-display text-2xl font-bold mb-6">Settings</h1>
+      <div className="max-w-3xl mx-auto px-6 py-8">
+        <h1 className="font-display text-3xl font-bold mb-6">Settings</h1>
 
         {alert && (
           <div className="mb-6">

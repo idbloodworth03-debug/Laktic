@@ -90,7 +90,7 @@ export function Activities() {
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <Navbar role={role || undefined} name={profile?.name} onLogout={clearAuth} />
-      <div className="max-w-3xl mx-auto px-6 py-8">
+      <div className="max-w-5xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-6 fade-up">
           <h1 className="font-display text-2xl font-bold text-[var(--text)]">Activities</h1>
         </div>

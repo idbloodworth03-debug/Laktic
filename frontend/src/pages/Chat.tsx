@@ -73,7 +73,7 @@ export function Chat() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 max-w-3xl w-full mx-auto">
+      <div className="flex-1 overflow-y-auto px-6 py-6 max-w-4xl w-full mx-auto">
         {planUpdated && (
           <Alert
             type="success"
@@ -119,7 +119,7 @@ export function Chat() {
 
       {/* Input */}
       <div className="border-t border-[var(--border)] bg-[var(--surface)] px-6 py-4">
-        <div className="max-w-3xl mx-auto flex gap-3 items-end">
+        <div className="max-w-4xl mx-auto flex gap-3 items-end">
           <textarea
             ref={inputRef}
             value={input}
@@ -133,7 +133,7 @@ export function Chat() {
           />
           <Button onClick={send} loading={sending} disabled={!input.trim()} size="md">Send</Button>
         </div>
-        <div className="max-w-3xl mx-auto mt-1">
+        <div className="max-w-4xl mx-auto mt-1">
           <p className="text-xs text-[var(--muted)]">
             The bot can adjust workouts within the next 14 days. For larger changes, use{' '}
             <Link to="/athlete/races" className="text-brand-400 hover:underline">Regenerate Plan</Link>.

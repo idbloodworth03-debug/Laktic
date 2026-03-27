@@ -8,6 +8,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { validate } from '../middleware/validate';
 import { aiLimiter } from '../middleware/rateLimit';
 import { athleteProfileSchema, athleteProfileUpdateSchema, chatMessageSchema, racesSchema } from '../schemas';
+import { sendAthleteWelcomeEmail } from '../services/emailService';
 
 const router = Router();
 
@@ -26,6 +27,11 @@ router.post(
       .single();
 
     if (error) return res.status(400).json({ error: error.message });
+
+    // Fire-and-forget welcome email (non-blocking)
+    const userEmail = req.user!.email;
+    if (userEmail) sendAthleteWelcomeEmail(userEmail, name).catch(() => {});
+
     res.json(data);
   })
 );
