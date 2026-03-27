@@ -63,7 +63,7 @@ export function Landing() {
           Now in early access
         </div>
 
-        <h1 className="font-display font-black text-4xl sm:text-5xl tracking-tighter leading-[1.1] mb-5 max-w-2xl">
+        <h1 className="font-hero font-extrabold text-5xl sm:text-6xl tracking-tight leading-[1.05] mb-5 max-w-2xl">
           <span className="text-gradient">AI coaching</span>
           <br />
           <span className="text-[var(--text)]">built on your</span>
