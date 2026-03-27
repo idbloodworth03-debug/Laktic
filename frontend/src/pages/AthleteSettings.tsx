@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { apiFetch } from '../lib/api';
-import { Navbar, Card, Button, Badge, Spinner, Alert } from '../components/ui';
+import { Navbar, Card, Button, Badge, Spinner, Alert, Input } from '../components/ui';
 
 interface StravaStatus {
   connected: boolean;
@@ -15,6 +15,34 @@ interface StravaStatus {
 export function AthleteSettings() {
   const { role, profile, clearAuth } = useAuthStore();
   const [searchParams] = useSearchParams();
+  const nav = useNavigate();
+
+  // Join team state
+  const [inviteCode, setInviteCode] = useState('');
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState('');
+  const [joinSuccess, setJoinSuccess] = useState('');
+
+  const handleJoin = async () => {
+    const code = inviteCode.trim().toUpperCase();
+    if (!code) return;
+    setJoinError('');
+    setJoinSuccess('');
+    setJoining(true);
+    try {
+      const result = await apiFetch(`/api/athlete/join/${code}`, { method: 'POST' });
+      setJoinSuccess(`Joined ${result.team.name}!`);
+      setInviteCode('');
+      setTimeout(() => {
+        if (result.defaultBot?.id) nav(`/athlete/bots/${result.defaultBot.id}`);
+        else nav('/athlete/browse');
+      }, 1500);
+    } catch (e: any) {
+      setJoinError(e.message || 'Invalid invite code.');
+    } finally {
+      setJoining(false);
+    }
+  };
   const [stravaStatus, setStravaStatus] = useState<StravaStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -90,6 +118,35 @@ export function AthleteSettings() {
             <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
           </div>
         )}
+
+        <Card title="Join a Team" className="mb-6">
+          {joinSuccess ? (
+            <div className="flex items-center gap-3 py-2">
+              <div className="w-8 h-8 rounded-full bg-brand-900/40 border border-brand-700/30 flex items-center justify-center text-brand-400">✓</div>
+              <span className="text-sm font-medium text-brand-400">{joinSuccess}</span>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-[var(--muted)]">Enter the invite code your coach shared with you.</p>
+              <div className="flex gap-3 items-end">
+                <div className="flex-1">
+                  <Input
+                    placeholder="e.g. AB3XK9QZ"
+                    value={inviteCode}
+                    onChange={e => setInviteCode(e.target.value.toUpperCase())}
+                    maxLength={8}
+                    onKeyDown={e => e.key === 'Enter' && handleJoin()}
+                    style={{ textTransform: 'uppercase', letterSpacing: '0.15em', textAlign: 'center' }}
+                  />
+                </div>
+                <Button onClick={handleJoin} loading={joining} disabled={!inviteCode.trim()}>
+                  Join Team
+                </Button>
+              </div>
+              {joinError && <Alert type="error" message={joinError} onClose={() => setJoinError('')} />}
+            </div>
+          )}
+        </Card>
 
         <Card title="Strava Integration">
           {loading ? (
