@@ -253,6 +253,43 @@ router.patch(
   requireCoach,
   validate(knowledgeUpdateSchema),
   asyncHandler(async (req: AuthRequest, res) => {
+    // Fetch current doc to snapshot it as a version
+    const { data: current } = await supabase
+      .from('coach_knowledge_documents')
+      .select('id, title, content_text, coach_bot_id')
+      .eq('id', req.params.id)
+      .single();
+
+    if (!current) return res.status(404).json({ error: 'Document not found' });
+
+    // Verify ownership via bot
+    const { data: bot } = await supabase
+      .from('coach_bots')
+      .select('id')
+      .eq('id', current.coach_bot_id)
+      .eq('coach_id', req.coach.id)
+      .single();
+
+    if (!bot) return res.status(403).json({ error: 'Forbidden' });
+
+    // Snapshot current version before overwriting
+    const { data: latestVersion } = await supabase
+      .from('knowledge_doc_versions')
+      .select('version_number')
+      .eq('doc_id', req.params.id)
+      .order('version_number', { ascending: false })
+      .limit(1)
+      .single();
+
+    const nextVersion = (latestVersion?.version_number ?? 0) + 1;
+
+    await supabase.from('knowledge_doc_versions').insert({
+      doc_id: current.id,
+      version_number: nextVersion,
+      title: current.title,
+      content_text: current.content_text
+    });
+
     const { data, error } = await supabase
       .from('coach_knowledge_documents')
       .update({ ...req.body, updated_at: new Date().toISOString() })
@@ -261,6 +298,84 @@ router.patch(
       .single();
 
     if (error) return res.status(400).json({ error: error.message });
+
+    // If this coach is a marketplace coach, update last_content_refresh_at
+    await supabase
+      .from('marketplace_coaches')
+      .update({ last_content_refresh_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('coach_id', req.coach.id);
+
+    res.json(data);
+  })
+);
+
+// GET /api/coach/bot/knowledge/:id/versions — list version history
+router.get(
+  '/bot/knowledge/:id/versions',
+  auth,
+  requireCoach,
+  asyncHandler(async (req: AuthRequest, res) => {
+    // Verify ownership
+    const { data: doc } = await supabase
+      .from('coach_knowledge_documents')
+      .select('id, coach_bot_id')
+      .eq('id', req.params.id)
+      .single();
+
+    if (!doc) return res.status(404).json({ error: 'Document not found' });
+
+    const { data: bot } = await supabase
+      .from('coach_bots')
+      .select('id')
+      .eq('id', doc.coach_bot_id)
+      .eq('coach_id', req.coach.id)
+      .single();
+
+    if (!bot) return res.status(403).json({ error: 'Forbidden' });
+
+    const { data, error } = await supabase
+      .from('knowledge_doc_versions')
+      .select('id, version_number, title, created_at')
+      .eq('doc_id', req.params.id)
+      .order('version_number', { ascending: false });
+
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data || []);
+  })
+);
+
+// GET /api/coach/bot/knowledge/:id/versions/:versionNum — get a specific version (full content)
+router.get(
+  '/bot/knowledge/:id/versions/:versionNum',
+  auth,
+  requireCoach,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { data: doc } = await supabase
+      .from('coach_knowledge_documents')
+      .select('id, coach_bot_id')
+      .eq('id', req.params.id)
+      .single();
+
+    if (!doc) return res.status(404).json({ error: 'Document not found' });
+
+    const { data: bot } = await supabase
+      .from('coach_bots')
+      .select('id')
+      .eq('id', doc.coach_bot_id)
+      .eq('coach_id', req.coach.id)
+      .single();
+
+    if (!bot) return res.status(403).json({ error: 'Forbidden' });
+
+    const vNum = parseInt(req.params.versionNum);
+    const { data, error } = await supabase
+      .from('knowledge_doc_versions')
+      .select('*')
+      .eq('doc_id', req.params.id)
+      .eq('version_number', vNum)
+      .single();
+
+    if (error || !data) return res.status(404).json({ error: 'Version not found' });
     res.json(data);
   })
 );

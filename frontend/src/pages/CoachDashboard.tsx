@@ -32,9 +32,12 @@ export function CoachDashboard() {
 
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
+  const [marketplaceApp, setMarketplaceApp] = useState<any>(null);
+
   useEffect(() => {
     apiFetch('/api/coach/bot').then(setBotData).catch(console.error).finally(() => setLoading(false));
     apiFetch('/api/coach/team').then(setTeamData).catch(console.error).finally(() => setTeamLoading(false));
+    apiFetch('/api/marketplace/my-application').then(setMarketplaceApp).catch(() => {});
   }, []);
 
   const handlePublish = async () => {
@@ -118,6 +121,27 @@ export function CoachDashboard() {
           <a href="#" className="text-xs text-amber-400 hover:underline shrink-0">Upgrade →</a>
         </div>
       )}
+
+      {/* Marketplace content staleness warning */}
+      {marketplaceApp?.approval_status === 'approved' && (() => {
+        const lastRefresh = marketplaceApp.last_content_refresh_at
+          ? new Date(marketplaceApp.last_content_refresh_at)
+          : new Date(0);
+        const daysSince = Math.floor((Date.now() - lastRefresh.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysSince < 90) return null;
+        return (
+          <div className="bg-purple-900/20 border-b border-purple-700/30 px-6 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse shrink-0" />
+              <span className="text-purple-300 font-medium">
+                Your marketplace content is {daysSince} days old.
+              </span>
+              <span className="text-purple-500 hidden sm:inline">Refresh your knowledge docs to stay active on the marketplace.</span>
+            </div>
+            <a href="/coach/knowledge" className="text-xs text-purple-400 hover:underline shrink-0">Update content →</a>
+          </div>
+        );
+      })()}
 
       <div className="max-w-5xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8 fade-up">

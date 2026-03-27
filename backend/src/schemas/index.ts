@@ -211,3 +211,22 @@ export const pushSubscribeSchema = z.object({
 export const pushUnsubscribeSchema = z.object({
   endpoint: z.string().url()
 });
+
+// ── Marketplace ──────────────────────────────────────────────────────────────
+
+export const marketplaceApplySchema = z.object({
+  bio: z.string().min(50).max(2000),
+  credentials: z.string().min(10).max(1000),
+  specialization: z.enum(['distance', 'sprints', 'triathlon', 'trail', 'field', 'cross_country', 'multi_event']),
+  price_per_month: z.number().min(5).max(200).default(25)
+});
+
+export const marketplaceRejectSchema = z.object({
+  rejection_reason: z.string().min(10).max(500)
+});
+
+// ── Social Feed ──────────────────────────────────────────────────────────────
+
+export const feedPostSchema = z.object({
+  body: z.string().min(1).max(500)
+});

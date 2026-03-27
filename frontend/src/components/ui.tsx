@@ -164,12 +164,16 @@ export function Navbar({ role, name, onLogout }: NavbarProps) {
             <>
               <a href="/athlete/calendar" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Calendar</a>
               <a href="/athlete/nutrition" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Nutrition</a>
+              <a href="/athlete/feed" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Feed</a>
+              <a href="/athlete/leaderboard" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Leaderboard</a>
+              <a href="/marketplace" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Marketplace</a>
               <a href="/athlete/settings" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Settings</a>
             </>
           )}
           {role === 'coach' && (
             <>
               <a href="/coach/calendar" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Calendar</a>
+              <a href="/coach/marketplace/apply" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Marketplace</a>
               <a href="/coach/dashboard" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Dashboard</a>
             </>
           )}
@@ -238,12 +242,13 @@ export function ChatBubble({ role, content, planUpdated }: ChatBubbleProps) {
 interface DocumentCardProps {
   id: string; title: string; document_type: string; created_at: string;
   onEdit: (id: string) => void; onDelete: (id: string) => void;
+  onHistory?: (id: string) => void;
 }
 const DOC_COLORS: Record<string, any> = {
   philosophy: 'purple', sample_week: 'green', training_block: 'blue',
   taper: 'amber', injury_rule: 'amber', faq: 'gray', notes: 'gray',
 };
-export function DocumentCard({ id, title, document_type, created_at, onEdit, onDelete }: DocumentCardProps) {
+export function DocumentCard({ id, title, document_type, created_at, onEdit, onDelete, onHistory }: DocumentCardProps) {
   const [confirming, setConfirming] = useState(false);
   return (
     <div className="flex items-center justify-between bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border2)] rounded-xl px-4 py-3 transition-colors group">
@@ -253,6 +258,9 @@ export function DocumentCard({ id, title, document_type, created_at, onEdit, onD
         <span className="text-xs text-[var(--muted)] shrink-0">{new Date(created_at).toLocaleDateString()}</span>
       </div>
       <div className="flex items-center gap-1.5 ml-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        {onHistory && (
+          <Button variant="ghost" size="sm" onClick={() => onHistory(id)}>History</Button>
+        )}
         <Button variant="ghost" size="sm" onClick={() => onEdit(id)}>Edit</Button>
         {confirming
           ? <Button variant="danger" size="sm" onClick={() => { onDelete(id); setConfirming(false); }}>Confirm</Button>

@@ -220,3 +220,58 @@ CREATE TABLE IF NOT EXISTS public.push_subscriptions (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(user_id, endpoint)
 );
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 012 — Phase 4: Marketplace + Content Versioning + Social Feed
+-- ─────────────────────────────────────────────────────────────────
+
+-- 4.1 Elite Coaching Marketplace
+CREATE TABLE IF NOT EXISTS public.marketplace_coaches (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  coach_id UUID REFERENCES public.coach_profiles(id) ON DELETE CASCADE UNIQUE NOT NULL,
+  bio TEXT NOT NULL,
+  credentials TEXT NOT NULL,
+  specialization TEXT NOT NULL CHECK (specialization IN ('distance','sprints','triathlon','trail','field','cross_country','multi_event')),
+  price_per_month NUMERIC(8,2) NOT NULL DEFAULT 25.00,
+  approval_status TEXT NOT NULL DEFAULT 'pending' CHECK (approval_status IN ('pending','approved','rejected')),
+  rejection_reason TEXT,
+  submitted_at TIMESTAMPTZ DEFAULT NOW(),
+  approved_at TIMESTAMPTZ,
+  last_content_refresh_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 4.2 Knowledge Document Version History
+CREATE TABLE IF NOT EXISTS public.knowledge_doc_versions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  doc_id UUID REFERENCES public.coach_knowledge_documents(id) ON DELETE CASCADE NOT NULL,
+  version_number INT NOT NULL,
+  title TEXT NOT NULL,
+  content_text TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS knowledge_doc_versions_doc_id_idx ON public.knowledge_doc_versions(doc_id, version_number DESC);
+
+-- 4.3 Social Feed
+CREATE TABLE IF NOT EXISTS public.team_feed (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE NOT NULL,
+  athlete_id UUID REFERENCES public.athlete_profiles(id) ON DELETE CASCADE NOT NULL,
+  feed_type TEXT NOT NULL CHECK (feed_type IN ('activity','race_result','milestone','manual')),
+  activity_id UUID REFERENCES public.athlete_activities(id) ON DELETE SET NULL,
+  race_result_id UUID REFERENCES public.race_results(id) ON DELETE SET NULL,
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS team_feed_team_created_idx ON public.team_feed(team_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS public.feed_kudos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  feed_post_id UUID REFERENCES public.team_feed(id) ON DELETE CASCADE NOT NULL,
+  athlete_id UUID REFERENCES public.athlete_profiles(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(feed_post_id, athlete_id)
+);

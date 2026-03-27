@@ -21,6 +21,9 @@ import { CoachSettings } from './pages/CoachSettings';
 import { TeamCalendar } from './pages/TeamCalendar';
 import { AthleteCalendar } from './pages/AthleteCalendar';
 import { NutritionPage } from './pages/NutritionPage';
+import { MarketplacePage, MarketplaceCoachProfile, MarketplaceApply } from './pages/MarketplacePages';
+import { TeamFeed } from './pages/TeamFeed';
+import { TeamLeaderboard } from './pages/TeamLeaderboard';
 
 function RequireCoach({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
@@ -74,6 +77,15 @@ export default function App() {
         <Route path="/athlete/progress" element={<RequireAthlete><AthleteProgress /></RequireAthlete>} />
         <Route path="/athlete/calendar" element={<RequireAthlete><AthleteCalendar /></RequireAthlete>} />
         <Route path="/athlete/nutrition" element={<RequireAthlete><NutritionPage /></RequireAthlete>} />
+        <Route path="/athlete/feed" element={<RequireAthlete><TeamFeed /></RequireAthlete>} />
+        <Route path="/athlete/leaderboard" element={<RequireAthlete><TeamLeaderboard /></RequireAthlete>} />
+
+        {/* Marketplace — public browse, athlete profile view */}
+        <Route path="/marketplace" element={<RequireAthlete><MarketplacePage /></RequireAthlete>} />
+        <Route path="/marketplace/:coachId" element={<RequireAthlete><MarketplaceCoachProfile /></RequireAthlete>} />
+
+        {/* Coach — marketplace application */}
+        <Route path="/coach/marketplace/apply" element={<RequireCoach><MarketplaceApply /></RequireCoach>} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

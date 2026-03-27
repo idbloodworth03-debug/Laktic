@@ -17,7 +17,8 @@ const envSchema = z.object({
   SENTRY_DSN: z.string().optional(),
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
-  VAPID_SUBJECT: z.string().optional()
+  VAPID_SUBJECT: z.string().optional(),
+  ADMIN_EMAIL: z.string().email().optional()
 });
 
 const result = envSchema.safeParse(process.env);
