@@ -73,6 +73,23 @@ h1, h2, h3, h4, h5 {
   background-clip: text;
 }
 
+/* ── Landing orb animations ──────────────────── */
+@keyframes orb-1 {
+  0%, 100% { opacity: 0.10; transform: scale(1)    translate(0px,   0px);  }
+  50%      { opacity: 0.18; transform: scale(1.15) translate(0px, -30px);  }
+}
+@keyframes orb-2 {
+  0%, 100% { opacity: 0.06; transform: scale(1)    translate(0px,  0px);   }
+  50%      { opacity: 0.13; transform: scale(1.2)  translate(30px, 20px);  }
+}
+@keyframes orb-3 {
+  0%, 100% { opacity: 0.05; transform: scale(1)    translate(0px,  0px);   }
+  50%      { opacity: 0.10; transform: scale(1.12) translate(-20px, 15px); }
+}
+.landing-orb-1 { animation: orb-1 11s ease-in-out infinite; }
+.landing-orb-2 { animation: orb-2 15s ease-in-out infinite; }
+.landing-orb-3 { animation: orb-3  9s ease-in-out infinite; }
+
 /* ── Glass navbar surface ────────────────────── */
 .surface-glass {
   background: rgba(13, 22, 16, 0.85);
