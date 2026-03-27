@@ -155,7 +155,13 @@ export function Navbar({ role, name, onLogout }: NavbarProps) {
         {role && <Badge label={role} color={role === 'coach' ? 'blue' : 'green'} dot />}
       </div>
       {name && (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          {role === 'athlete' && (
+            <a href="/athlete/settings" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Settings</a>
+          )}
+          {role === 'coach' && (
+            <a href="/coach/dashboard" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Dashboard</a>
+          )}
           <div className="hidden sm:flex items-center gap-2">
             <div className="w-7 h-7 rounded-full bg-[var(--surface2)] border border-[var(--border2)] flex items-center justify-center text-xs font-semibold text-brand-400 shrink-0">
               {name.charAt(0).toUpperCase()}
