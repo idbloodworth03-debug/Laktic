@@ -296,7 +296,7 @@ export function SeasonPlan() {
 
       <div className="max-w-5xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="flex items-start justify-between mb-6 fade-up gap-4">
+        <div className="flex items-start justify-between mb-4 fade-up gap-4">
           <div>
             <h1 className="font-display text-3xl font-bold text-[var(--text)]">Season Plan</h1>
             <p className="text-sm text-[var(--muted)] mt-0.5">
@@ -305,30 +305,6 @@ export function SeasonPlan() {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            {/* View toggle */}
-            <div className="flex items-center bg-[var(--surface2)] border border-[var(--border)] rounded-lg p-0.5 gap-0.5">
-              <button
-                onClick={() => setPlanView('weekly')}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  planView === 'weekly'
-                    ? 'bg-[var(--surface3)] text-[var(--text)] shadow-sm border border-[var(--border2)]'
-                    : 'text-[var(--muted)] hover:text-[var(--text)]'
-                }`}
-              >
-                Weekly
-              </button>
-              <button
-                onClick={() => setPlanView('monthly')}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  planView === 'monthly'
-                    ? 'bg-[var(--surface3)] text-[var(--text)] shadow-sm border border-[var(--border2)]'
-                    : 'text-[var(--muted)] hover:text-[var(--text)]'
-                }`}
-              >
-                Monthly
-              </button>
-            </div>
-
             <Link to="/athlete/races"><Button variant="ghost" size="sm">Races</Button></Link>
             <Link to="/athlete/chat"><Button variant="secondary" size="sm">Chat with Bot</Button></Link>
             {confirmRegen ? (
@@ -340,6 +316,32 @@ export function SeasonPlan() {
             ) : (
               <Button variant="secondary" size="sm" onClick={() => setConfirmRegen(true)}>↺ Regenerate</Button>
             )}
+          </div>
+        </div>
+
+        {/* View toggle — centered */}
+        <div className="flex justify-center mb-6 fade-up-1">
+          <div className="flex items-center bg-[var(--surface2)] border border-[var(--border)] rounded-lg p-0.5 gap-0.5">
+            <button
+              onClick={() => setPlanView('weekly')}
+              className={`px-5 py-1.5 rounded-md text-sm font-medium transition-all ${
+                planView === 'weekly'
+                  ? 'bg-[var(--surface3)] text-[var(--text)] shadow-sm border border-[var(--border2)]'
+                  : 'text-[var(--muted)] hover:text-[var(--text)]'
+              }`}
+            >
+              Weekly
+            </button>
+            <button
+              onClick={() => setPlanView('monthly')}
+              className={`px-5 py-1.5 rounded-md text-sm font-medium transition-all ${
+                planView === 'monthly'
+                  ? 'bg-[var(--surface3)] text-[var(--text)] shadow-sm border border-[var(--border2)]'
+                  : 'text-[var(--muted)] hover:text-[var(--text)]'
+              }`}
+            >
+              Monthly
+            </button>
           </div>
         </div>
 
