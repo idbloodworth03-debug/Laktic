@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { apiFetch } from '../lib/api';
-import { Button, Spinner } from './ui';
+import { Button } from './ui';
 
 interface Props {
   value: string;
