@@ -408,7 +408,10 @@ router.get(
       .eq('coach_id', req.coach.id)
       .order('created_at', { ascending: true });
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) {
+      console.error('[coach/messages] direct_messages query failed:', error.code, error.message);
+      return res.status(500).json({ error: error.message });
+    }
 
     // Group by athlete in application code
     const byAthlete = new Map<string, { athlete: any; msgs: any[]; unreadCount: number }>();

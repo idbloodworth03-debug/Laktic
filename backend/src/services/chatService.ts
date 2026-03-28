@@ -21,7 +21,11 @@ export async function respond(params: {
 }): Promise<{ botReply: string; planUpdates: any[] | null }> {
   const { bot, athleteProfile, raceCalendar, seasonPlan, chatHistory, newMessage } = params;
 
-  const coachKnowledge = await getFormattedKnowledge(bot.id);
+  if (!bot) {
+    console.error('[chat] respond() called with null bot');
+    return { botReply: 'Sorry, there was a configuration issue with your coaching bot. Please contact support.', planUpdates: null };
+  }
+
   const today = new Date().toISOString().split('T')[0];
   const maxDate = new Date(today + 'T00:00:00Z');
   maxDate.setUTCDate(maxDate.getUTCDate() + 14);
@@ -31,7 +35,10 @@ export async function respond(params: {
     `${msg.role === 'athlete' ? 'ATHLETE' : 'COACH BOT'}: ${msg.content}`
   ).join('\n');
 
-  const fullPrompt = `${SYSTEM_PROMPT}
+  try {
+    const coachKnowledge = await getFormattedKnowledge(bot.id);
+
+    const fullPrompt = `${SYSTEM_PROMPT}
 
 COACH PHILOSOPHY:
 ${bot.philosophy}
@@ -57,7 +64,6 @@ ATHLETE: ${newMessage}
 
 Respond as the coach bot. Return ONLY valid JSON, no markdown.`;
 
-  try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     const result = await model.generateContent(fullPrompt);
     const text = result.response.text();

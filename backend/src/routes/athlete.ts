@@ -312,9 +312,13 @@ router.post(
       .eq('status', 'active')
       .single();
 
-    if (!season) return res.status(404).json({ error: 'No active season' });
+    if (!season) return res.status(404).json({ error: 'No active season. Subscribe to a coaching bot first.' });
 
     const bot = (season as any).coach_bots;
+    if (!bot) {
+      console.error('[chat] season', season.id, 'has no coach_bots join — bot_id:', season.bot_id);
+      return res.status(500).json({ error: 'Coaching bot not found. Please contact support.' });
+    }
 
     const { data: chatHistory } = await supabase
       .from('chat_messages')
