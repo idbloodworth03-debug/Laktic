@@ -33,20 +33,17 @@ router.post(
       return res.status(400).json({ error: 'You already have a team. Only one team per coach is allowed.' });
     }
 
-    // Validate default_bot_id if provided
+    // Validate default_bot_id if provided — only check ownership, not published status
     if (default_bot_id) {
       const { data: bot } = await supabase
         .from('coach_bots')
-        .select('id, is_published')
+        .select('id')
         .eq('id', default_bot_id)
         .eq('coach_id', req.coach.id)
         .single();
 
       if (!bot) {
         return res.status(400).json({ error: 'Bot not found or not owned by you.' });
-      }
-      if (!bot.is_published) {
-        return res.status(400).json({ error: 'Default bot must be published before assigning to a team.' });
       }
     }
 
