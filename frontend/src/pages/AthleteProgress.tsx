@@ -36,23 +36,26 @@ type RaceResult = {
 
 function BarChart({ data, label }: { data: { label: string; value: number }[]; label: string }) {
   const maxVal = Math.max(...data.map(d => d.value), 1);
-  const showEvery = data.length > 8 ? 2 : 1;
+  const showEvery = data.length >= 10 ? 3 : data.length >= 6 ? 2 : 1;
   return (
-    <div className="overflow-hidden">
+    <div style={{ width: '100%', overflowX: 'hidden' }}>
       {label && <div className="text-xs text-[var(--muted)] mb-3 font-medium uppercase tracking-wide">{label}</div>}
-      <div className="flex items-end gap-0.5 sm:gap-1" style={{ height: 120 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '120px', width: '100%' }}>
         {data.map((d, i) => (
-          <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-1 min-w-0">
+          <div key={i} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', gap: '2px' }}>
             <div
-              className="w-full rounded-t min-h-[2px] transition-all duration-500"
               style={{
+                width: '100%',
+                minHeight: '2px',
+                borderRadius: '2px 2px 0 0',
                 height: `${Math.max((d.value / maxVal) * 100, 2)}%`,
-                background: `linear-gradient(to top, #16a34a, #22c55e)`,
+                background: 'linear-gradient(to top, #16a34a, #22c55e)',
                 opacity: d.value > 0 ? 1 : 0.2,
+                transition: 'height 0.5s',
               }}
               title={`${d.label}: ${d.value}`}
             />
-            <div className="text-[8px] text-[var(--muted)] truncate w-full text-center leading-tight">
+            <div style={{ fontSize: '7px', color: 'var(--muted)', width: '100%', textAlign: 'center', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', lineHeight: 1.2 }}>
               {i % showEvery === 0 ? d.label : ''}
             </div>
           </div>
@@ -70,26 +73,28 @@ function PaceTrend({ data }: { data: { label: string; seconds: number }[] }) {
   const maxS = Math.max(...valid.map(d => d.seconds));
   const range = maxS - minS || 60;
 
-  const showEvery = data.length > 8 ? 2 : 1;
+  const showEvery = data.length >= 10 ? 3 : data.length >= 6 ? 2 : 1;
   return (
-    <div className="overflow-hidden">
+    <div style={{ width: '100%', overflowX: 'hidden' }}>
       <div className="text-xs text-[var(--muted)] mb-3 font-medium uppercase tracking-wide">Avg Pace / Mile — lower is faster</div>
-      <div className="flex items-end gap-0.5 sm:gap-1" style={{ height: 80 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '80px', width: '100%' }}>
         {data.map((d, i) => {
           const pct = d.seconds > 0 ? ((d.seconds - minS) / range) * 75 + 25 : 0;
           return (
-            <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-1 min-w-0">
+            <div key={i} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', gap: '2px' }}>
               {d.seconds > 0 && (
                 <div
-                  className="w-full rounded-t min-h-[2px]"
                   style={{
+                    width: '100%',
+                    minHeight: '2px',
+                    borderRadius: '2px 2px 0 0',
                     height: `${pct}%`,
                     background: 'linear-gradient(to top, #1d4ed8, #60a5fa)',
                   }}
                   title={`${d.label}: ${formatPace(d.seconds)}`}
                 />
               )}
-              <div className="text-[8px] text-[var(--muted)] truncate w-full text-center leading-tight">
+              <div style={{ fontSize: '7px', color: 'var(--muted)', width: '100%', textAlign: 'center', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', lineHeight: 1.2 }}>
                 {i % showEvery === 0 ? d.label : ''}
               </div>
             </div>
@@ -190,15 +195,13 @@ export function AthleteProgress() {
   }));
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-x-hidden">
       <Navbar role="athlete" name={profile?.name} onLogout={logout} />
-      <div className="max-w-5xl mx-auto px-6 py-10">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 fade-up gap-3">
-          <div>
-            <h1 className="font-display text-2xl font-bold text-[var(--text)] leading-normal pb-1">Training Progress</h1>
-            <p className="text-sm text-[var(--muted)] mt-1">Weekly volume, pace trends, and race results</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+        <div className="mb-6 fade-up">
+          <h1 className="font-display font-bold text-[var(--text)]" style={{ fontSize: '1.5rem', lineHeight: '2rem', paddingBottom: '4px' }}>Training Progress</h1>
+          <p className="text-sm text-[var(--muted)] mt-1">Weekly volume, pace trends, and race results</p>
+          <div className="flex flex-wrap gap-2 mt-3">
             <Link to="/athlete/plan"><Button variant="ghost" size="sm">Plan</Button></Link>
             <Link to="/athlete/races"><Button variant="ghost" size="sm">Races</Button></Link>
             <Button variant="secondary" size="sm" onClick={recompute} loading={computing}>Refresh Data</Button>
