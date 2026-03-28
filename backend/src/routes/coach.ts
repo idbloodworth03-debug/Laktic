@@ -399,12 +399,11 @@ router.get(
   auth,
   requireCoach,
   asyncHandler(async (req: AuthRequest, res) => {
+    // Two-step: fetch messages first, then batch-fetch athlete profiles.
+    // This avoids PostgREST FK-join cache issues that can occur after migrations.
     const { data: messages, error } = await supabase
       .from('direct_messages')
-      .select(`
-        id, athlete_id, sender_role, content, read_at, created_at,
-        athlete_profiles!athlete_id (id, name)
-      `)
+      .select('id, athlete_id, sender_role, content, read_at, created_at')
       .eq('coach_id', req.coach.id)
       .order('created_at', { ascending: true });
 
@@ -413,10 +412,23 @@ router.get(
       return res.status(500).json({ error: error.message });
     }
 
+    if (!messages || messages.length === 0) return res.json([]);
+
+    // Batch-fetch athlete names for all unique athlete IDs in one query
+    const athleteIds = [...new Set(messages.map(m => m.athlete_id))];
+    const { data: athletes } = await supabase
+      .from('athlete_profiles')
+      .select('id, name')
+      .in('id', athleteIds);
+
+    const athleteMap = new Map<string, { id: string; name: string }>(
+      (athletes || []).map(a => [a.id, a])
+    );
+
     // Group by athlete in application code
     const byAthlete = new Map<string, { athlete: any; msgs: any[]; unreadCount: number }>();
-    for (const msg of messages || []) {
-      const athlete = (msg as any).athlete_profiles;
+    for (const msg of messages) {
+      const athlete = athleteMap.get(msg.athlete_id) ?? { id: msg.athlete_id, name: 'Unknown Athlete' };
       if (!byAthlete.has(msg.athlete_id)) {
         byAthlete.set(msg.athlete_id, { athlete, msgs: [], unreadCount: 0 });
       }

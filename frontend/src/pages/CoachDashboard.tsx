@@ -35,13 +35,26 @@ export function CoachDashboard() {
   const [marketplaceApp, setMarketplaceApp] = useState<any>(null);
   const [dashTab, setDashTab] = useState<'overview' | 'messages'>('overview');
   const [conversations, setConversations] = useState<any[]>([]);
+  const [inboxError, setInboxError] = useState('');
+
+  const fetchMessages = () =>
+    apiFetch('/api/coach/messages')
+      .then((data: any[]) => { setConversations(data); setInboxError(''); })
+      .catch((e: any) => setInboxError(e?.message || 'Failed to load messages'));
 
   useEffect(() => {
     apiFetch('/api/coach/bot').then(setBotData).catch(console.error).finally(() => setLoading(false));
     apiFetch('/api/coach/team').then(setTeamData).catch(console.error).finally(() => setTeamLoading(false));
     apiFetch('/api/marketplace/my-application').then(setMarketplaceApp).catch(() => {});
-    apiFetch('/api/coach/messages').then(setConversations).catch(() => {});
+    fetchMessages();
   }, []);
+
+  // Poll for new messages every 30s when on the messages tab
+  useEffect(() => {
+    if (dashTab !== 'messages') return;
+    const interval = setInterval(fetchMessages, 30000);
+    return () => clearInterval(interval);
+  }, [dashTab]);
 
   const handlePublish = async () => {
     setPublishError(''); setPublishing(true);
@@ -202,10 +215,15 @@ export function CoachDashboard() {
         </div>
 
         {dashTab === 'messages' && (
-          <CoachInbox
-            conversations={conversations}
-            onUpdate={setConversations}
-          />
+          <>
+            {inboxError && (
+              <Alert type="error" message={inboxError} onClose={() => setInboxError('')} />
+            )}
+            <CoachInbox
+              conversations={conversations}
+              onUpdate={setConversations}
+            />
+          </>
         )}
 
         {dashTab === 'overview' && !bot && (

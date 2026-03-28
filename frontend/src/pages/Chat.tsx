@@ -164,10 +164,20 @@ function DirectChat() {
 
   useEffect(() => {
     apiFetch('/api/athlete/messages')
-      .then(setMessages)
-      .catch(console.error)
-      .finally(() => setLoaded(true));
+      .then(msgs => { setMessages(msgs); setLoaded(true); })
+      .catch(console.error);
   }, []);
+
+  // Poll for new coach replies every 15s
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (sending) return; // don't clobber an in-flight send
+      apiFetch('/api/athlete/messages')
+        .then(setMessages)
+        .catch(() => {});
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [sending]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
