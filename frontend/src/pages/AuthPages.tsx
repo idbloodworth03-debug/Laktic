@@ -9,7 +9,7 @@ import { Button, Input, Card, Spinner } from '../components/ui';
 const FEATURES = [
   {
     icon: '⚡',
-    title: 'AI-Powered Plans',
+    title: 'Intelligent Season Plans',
     desc: 'GPT-4o generates a full season plan from your coach\'s philosophy — tailored to your race calendar and fitness.',
   },
   {
