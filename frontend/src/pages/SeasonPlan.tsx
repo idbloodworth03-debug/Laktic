@@ -394,6 +394,8 @@ export function SeasonPlan() {
   const [pollJobId, setPollJobId] = useState<string | null>(null);
   const [regenSuccess, setRegenSuccess] = useState(false);
   const [regenError, setRegenError] = useState<string | null>(null);
+  const [milestones, setMilestones] = useState<any[]>([]);
+  const [sharingMilestone, setSharingMilestone] = useState<string | null>(null);
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
   const loadSeason = () => {
@@ -412,6 +414,13 @@ export function SeasonPlan() {
   };
 
   useEffect(() => { loadSeason(); }, []);
+
+  // Detect and load unshared milestones
+  useEffect(() => {
+    apiFetch('/api/milestones/check', { method: 'POST' })
+      .then(({ unshared }) => setMilestones(unshared || []))
+      .catch(() => {});
+  }, []);
 
   // Poll job status while a regenerate job is in-flight
   useEffect(() => {
@@ -447,6 +456,15 @@ export function SeasonPlan() {
     }, 3000);
     return () => clearInterval(interval);
   }, [pollJobId]);
+
+  const shareMilestone = async (id: string) => {
+    setSharingMilestone(id);
+    try {
+      await apiFetch(`/api/milestones/${id}/share`, { method: 'POST' });
+      setMilestones(prev => prev.filter(m => m.id !== id));
+    } catch (e: any) { console.error(e); }
+    finally { setSharingMilestone(null); }
+  };
 
   const regenerate = async () => {
     setConfirmRegen(false);
@@ -524,6 +542,37 @@ export function SeasonPlan() {
             )}
           </div>
         </div>
+
+        {/* Milestone banners */}
+        {milestones.length > 0 && (
+          <div className="mb-4 space-y-2 fade-up">
+            {milestones.map(m => (
+              <div key={m.id} className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-amber-950/50 border border-amber-800/50">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🏆</span>
+                  <div>
+                    <span className="text-xs font-medium text-amber-300">New milestone!</span>
+                    <p className="text-sm text-[var(--text)]">{m.milestone_label}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    loading={sharingMilestone === m.id}
+                    onClick={() => shareMilestone(m.id)}
+                  >
+                    Share
+                  </Button>
+                  <button
+                    onClick={() => setMilestones(prev => prev.filter(x => x.id !== m.id))}
+                    className="text-[var(--muted)] hover:text-[var(--text)] text-sm w-5 h-5 flex items-center justify-center"
+                  >×</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Team switcher */}
         <TeamSwitcher onTeamChange={loadSeason} />

@@ -351,3 +351,81 @@ ALTER TABLE public.team_members
 
 ALTER TABLE public.athlete_profiles
   ADD COLUMN IF NOT EXISTS active_team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL;
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 019 — community feed, milestones, challenges
+-- Extends team_feed with community scope/channel/image fields.
+-- Adds milestones, challenges, challenge_participants, team_challenges.
+-- ─────────────────────────────────────────────────────────────────
+
+-- Extend team_feed for community scope
+ALTER TABLE public.team_feed
+  ADD COLUMN IF NOT EXISTS scope TEXT NOT NULL DEFAULT 'team'
+    CHECK (scope IN ('team', 'public')),
+  ADD COLUMN IF NOT EXISTS sport_channel TEXT
+    CHECK (sport_channel IN ('track', 'xc', 'triathlon', 'road', 'swimming', 'general')),
+  ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+-- Milestones: personal achievements detected from activity data
+CREATE TABLE IF NOT EXISTS public.milestones (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  athlete_id UUID NOT NULL REFERENCES public.athlete_profiles(id) ON DELETE CASCADE,
+  label TEXT NOT NULL,               -- e.g. "First 50-mile week", "10-day streak"
+  milestone_type TEXT NOT NULL,      -- 'distance', 'streak', 'pr', 'race_count'
+  value NUMERIC,
+  shared_at TIMESTAMPTZ,             -- NULL = not yet shared to community
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS milestones_athlete_idx ON public.milestones(athlete_id, created_at DESC);
+ALTER TABLE public.milestones ENABLE ROW LEVEL SECURITY;
+
+-- Challenges: coach-created group challenges
+CREATE TABLE IF NOT EXISTS public.challenges (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  coach_id UUID NOT NULL REFERENCES public.coach_profiles(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT,
+  target_value NUMERIC NOT NULL,     -- e.g. 100
+  target_unit TEXT NOT NULL,         -- e.g. 'miles', 'workouts', 'hours'
+  metric TEXT NOT NULL DEFAULT 'miles', -- which activity field to sum
+  sport_emoji TEXT DEFAULT '🏃',
+  starts_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ends_at TIMESTAMPTZ NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS challenges_active_idx ON public.challenges(is_active, ends_at DESC);
+ALTER TABLE public.challenges ENABLE ROW LEVEL SECURITY;
+
+-- Challenge participants
+CREATE TABLE IF NOT EXISTS public.challenge_participants (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  challenge_id UUID NOT NULL REFERENCES public.challenges(id) ON DELETE CASCADE,
+  athlete_id UUID NOT NULL REFERENCES public.athlete_profiles(id) ON DELETE CASCADE,
+  joined_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(challenge_id, athlete_id)
+);
+
+CREATE INDEX IF NOT EXISTS challenge_participants_challenge_idx ON public.challenge_participants(challenge_id);
+ALTER TABLE public.challenge_participants ENABLE ROW LEVEL SECURITY;
+
+-- Team-vs-team challenges
+CREATE TABLE IF NOT EXISTS public.team_challenges (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  challenger_team_id UUID NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
+  challenged_team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL,
+  invite_code TEXT UNIQUE NOT NULL,
+  title TEXT NOT NULL,
+  target_value NUMERIC NOT NULL,
+  target_unit TEXT NOT NULL DEFAULT 'miles',
+  metric TEXT NOT NULL DEFAULT 'miles',
+  starts_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ends_at TIMESTAMPTZ NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'active', 'completed')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.team_challenges ENABLE ROW LEVEL SECURITY;

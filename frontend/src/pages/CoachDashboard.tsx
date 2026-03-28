@@ -34,6 +34,11 @@ export function CoachDashboard() {
 
   const [marketplaceApp, setMarketplaceApp] = useState<any>(null);
   const [dashTab, setDashTab] = useState<'overview' | 'messages'>('overview');
+  const [teamChallenges, setTeamChallenges] = useState<any[]>([]);
+  const [showChallengeInvite, setShowChallengeInvite] = useState(false);
+  const [challengeInviteCode, setChallengeInviteCode] = useState('');
+  const [sendingChallenge, setSendingChallenge] = useState(false);
+  const [challengeError, setChallengeError] = useState('');
   const [conversations, setConversations] = useState<any[]>([]);
   const [inboxError, setInboxError] = useState('');
 
@@ -46,6 +51,7 @@ export function CoachDashboard() {
     apiFetch('/api/coach/bot').then(setBotData).catch(console.error).finally(() => setLoading(false));
     apiFetch('/api/coach/team').then(setTeamData).catch(console.error).finally(() => setTeamLoading(false));
     apiFetch('/api/marketplace/my-application').then(setMarketplaceApp).catch(() => {});
+    apiFetch('/api/team-challenges/active').then(setTeamChallenges).catch(() => {});
     fetchMessages();
   }, []);
 
@@ -330,6 +336,13 @@ export function CoachDashboard() {
 
                   {teamError && <Alert type="error" message={teamError} onClose={() => setTeamError('')} />}
 
+                  {/* Challenge a Team */}
+                  {!showChallengeInvite && teamChallenges.length === 0 && (
+                    <Button size="sm" variant="secondary" onClick={() => setShowChallengeInvite(true)}>
+                      + Challenge a Team
+                    </Button>
+                  )}
+
                   {/* Member list */}
                   {members.length === 0 ? (
                     <div className="text-sm text-[var(--muted)] text-center py-6">
@@ -418,6 +431,80 @@ export function CoachDashboard() {
                 </Button>
               </Link>
             </Card>
+
+            {/* Team Challenges */}
+            {(teamChallenges.length > 0 || showChallengeInvite) && (
+              <div className="mt-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-display font-semibold text-sm text-[var(--text)]">Team Challenges</h3>
+                  <Button size="sm" variant="secondary" onClick={() => setShowChallengeInvite(v => !v)}>
+                    {showChallengeInvite ? 'Cancel' : '+ Challenge a Team'}
+                  </Button>
+                </div>
+
+                {showChallengeInvite && (
+                  <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-xl p-4 mb-4">
+                    <p className="text-xs text-[var(--muted)] mb-3">Enter the opposing team's invite code to send a challenge.</p>
+                    <div className="flex gap-2">
+                      <input
+                        value={challengeInviteCode}
+                        onChange={e => setChallengeInviteCode(e.target.value.toUpperCase())}
+                        placeholder="INVITE CODE"
+                        maxLength={8}
+                        className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-brand-500 tracking-widest uppercase"
+                      />
+                      <Button
+                        size="sm"
+                        loading={sendingChallenge}
+                        disabled={!challengeInviteCode.trim()}
+                        onClick={async () => {
+                          setSendingChallenge(true);
+                          setChallengeError('');
+                          try {
+                            const c = await apiFetch('/api/team-challenges/invite', {
+                              method: 'POST',
+                              body: JSON.stringify({ invite_code: challengeInviteCode }),
+                            });
+                            setTeamChallenges(prev => [c, ...prev]);
+                            setChallengeInviteCode('');
+                            setShowChallengeInvite(false);
+                          } catch (e: any) {
+                            setChallengeError(e.message || 'Failed to send challenge');
+                          } finally {
+                            setSendingChallenge(false);
+                          }
+                        }}
+                      >
+                        Send Challenge
+                      </Button>
+                    </div>
+                    {challengeError && <p className="text-xs text-red-400 mt-2">{challengeError}</p>}
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  {teamChallenges.map(tc => (
+                    <div key={tc.id} className="flex items-center justify-between gap-3 bg-[var(--surface2)] border border-[var(--border)] rounded-xl px-4 py-3">
+                      <div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="font-medium text-[var(--text)]">{tc.challenger_team?.name}</span>
+                          <span className="text-[var(--muted)]">vs</span>
+                          <span className="font-medium text-[var(--text)]">{tc.challenged_team?.name}</span>
+                        </div>
+                        <p className="text-xs text-[var(--muted)] mt-0.5 capitalize">{tc.challenge_type} challenge · {tc.target_value} {tc.target_unit}</p>
+                      </div>
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full border ${
+                        tc.status === 'active' ? 'border-green-700/50 text-green-400 bg-green-950/40'
+                        : tc.status === 'pending' ? 'border-amber-700/50 text-amber-400 bg-amber-950/40'
+                        : 'border-[var(--border)] text-[var(--muted)]'
+                      } capitalize`}>
+                        {tc.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

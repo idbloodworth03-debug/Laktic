@@ -25,6 +25,7 @@ import { NutritionPage } from './pages/NutritionPage';
 import { MarketplacePage, MarketplaceCoachProfile, MarketplaceApply } from './pages/MarketplacePages';
 import { TeamFeed } from './pages/TeamFeed';
 import { TeamLeaderboard } from './pages/TeamLeaderboard';
+import { Community } from './pages/Community';
 
 function RequireCoach({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
@@ -89,6 +90,9 @@ export default function App() {
 
         {/* Coach — marketplace application */}
         <Route path="/coach/marketplace/apply" element={<RequireCoach><MarketplaceApply /></RequireCoach>} />
+
+        {/* Community — athletes and coaches */}
+        <Route path="/community" element={<Community />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

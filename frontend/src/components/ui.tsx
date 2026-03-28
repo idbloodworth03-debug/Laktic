@@ -163,6 +163,7 @@ export function Navbar({ role, name, onLogout }: NavbarProps) {
     { label: 'Leaderboard',    href: '/athlete/leaderboard' },
     { label: 'Marketplace',    href: '/marketplace' },
     { label: 'Browse Bots',    href: '/athlete/browse' },
+    { label: 'Community',      href: '/community' },
     { label: 'Settings',       href: '/athlete/settings' },
   ];
 
@@ -172,6 +173,7 @@ export function Navbar({ role, name, onLogout }: NavbarProps) {
     { label: 'Team Calendar',  href: '/coach/calendar' },
     { label: 'Bot Setup',      href: '/coach/bot/edit' },
     { label: 'Knowledge Docs', href: '/coach/knowledge' },
+    { label: 'Community',      href: '/community' },
     { label: 'Marketplace',    href: '/coach/marketplace/apply' },
   ];
 

@@ -22,6 +22,11 @@ import notificationsRouter from './routes/notifications';
 import marketplaceRouter from './routes/marketplace';
 import feedRouter from './routes/feed';
 import plansRouter from './routes/plans';
+import communityRouter from './routes/community';
+import aiCaptionRouter from './routes/aiCaption';
+import milestonesRouter from './routes/milestones';
+import challengesRouter from './routes/challenges';
+import teamChallengesRouter from './routes/teamChallenges';
 import cron from 'node-cron';
 import { runRaceCountdownCron } from './services/notificationService';
 
@@ -72,6 +77,11 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/marketplace', marketplaceRouter);
 app.use('/api/athlete', feedRouter);
 app.use('/api/plans', plansRouter);
+app.use('/api/community', communityRouter);
+app.use('/api/ai', aiCaptionRouter);
+app.use('/api/milestones', milestonesRouter);
+app.use('/api/challenges', challengesRouter);
+app.use('/api/team-challenges', teamChallengesRouter);
 
 app.use('/api', gdprRouter);
 

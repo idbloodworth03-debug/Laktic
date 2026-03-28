@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
@@ -138,6 +138,140 @@ function MonthView({ races, results }: { races: Race[]; results: RaceResult[] })
   );
 }
 
+// ── Race Card Canvas Generator ────────────────────────────────────────────────
+function RaceCardModal({ result, onClose, athleteName }: { result: RaceResult; onClose: () => void; athleteName: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [sharing, setSharing] = useState(false);
+  const [shared, setShared] = useState(false);
+  const [shareError, setShareError] = useState('');
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = 800;
+    canvas.height = 450;
+
+    // Background gradient
+    const grad = ctx.createLinearGradient(0, 0, 800, 450);
+    grad.addColorStop(0, '#0a0f1a');
+    grad.addColorStop(1, '#111827');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 800, 450);
+
+    // Green accent stripe
+    ctx.fillStyle = '#22c55e';
+    ctx.fillRect(0, 0, 6, 450);
+
+    // Laktic brand
+    ctx.fillStyle = '#4ade80';
+    ctx.font = 'bold 18px monospace';
+    ctx.fillText('LAKTIC', 32, 42);
+
+    // Race name
+    ctx.fillStyle = '#f9fafb';
+    ctx.font = 'bold 36px system-ui, sans-serif';
+    const raceName = result.race_name.length > 30 ? result.race_name.slice(0, 30) + '…' : result.race_name;
+    ctx.fillText(raceName, 32, 110);
+
+    // Distance
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '20px system-ui, sans-serif';
+    ctx.fillText(result.distance, 32, 148);
+
+    // Finish time — large
+    ctx.fillStyle = '#22c55e';
+    ctx.font = 'bold 80px monospace';
+    ctx.fillText(result.finish_time, 32, 270);
+
+    // Pace
+    if (result.pace_per_mile) {
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '18px system-ui, sans-serif';
+      ctx.fillText(`${result.pace_per_mile} /mi`, 32, 310);
+    }
+
+    // PR badge
+    if (result.is_pr) {
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.roundRect(32, 340, 80, 32, 8);
+      ctx.fill();
+      ctx.fillStyle = '#000';
+      ctx.font = 'bold 14px system-ui, sans-serif';
+      ctx.fillText('🏆 PR', 50, 361);
+    }
+
+    // Athlete name
+    ctx.fillStyle = '#f9fafb';
+    ctx.font = 'bold 22px system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(athleteName, 768, 420);
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '14px system-ui, sans-serif';
+    ctx.fillText(result.race_date, 768, 440);
+    ctx.textAlign = 'left';
+  }, [result, athleteName]);
+
+  const download = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const link = document.createElement('a');
+    link.download = `${result.race_name.replace(/\s+/g, '-')}-result.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  };
+
+  const shareToFeed = async () => {
+    setSharing(true);
+    setShareError('');
+    try {
+      const caption = `${result.is_pr ? '🏆 New PR! ' : ''}Finished ${result.race_name} in ${result.finish_time}${result.pace_per_mile ? ` (${result.pace_per_mile}/mi)` : ''}`;
+      await apiFetch('/api/community/posts', {
+        method: 'POST',
+        body: JSON.stringify({
+          body: caption,
+          scope: 'public',
+          sport_channel: 'road',
+        }),
+      });
+      setShared(true);
+    } catch (e: any) {
+      setShareError(e.message || 'Failed to share');
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div
+        className="relative bg-[var(--surface)] border border-[var(--border2)] rounded-2xl shadow-2xl p-6 w-full max-w-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <button onClick={onClose} className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] text-lg">×</button>
+        <h3 className="font-display font-semibold text-base mb-4">Race Card</h3>
+        <canvas
+          ref={canvasRef}
+          className="w-full rounded-xl border border-[var(--border)] mb-4"
+          style={{ aspectRatio: '16/9' }}
+        />
+        {shareError && <p className="text-xs text-red-400 mb-3">{shareError}</p>}
+        {shared && <p className="text-xs text-green-400 mb-3">✓ Shared to the community feed!</p>}
+        <div className="flex gap-3">
+          <Button variant="secondary" size="sm" onClick={download}>Download PNG</Button>
+          <Button size="sm" loading={sharing} disabled={shared} onClick={shareToFeed}>
+            {shared ? '✓ Shared' : 'Share to Community'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function RaceCalendar() {
   const { profile, clearAuth } = useAuthStore();
   const nav = useNavigate();
@@ -154,6 +288,7 @@ export function RaceCalendar() {
   const [resultForm, setResultForm] = useState<ResultForm>(emptyResult());
   const [savingResult, setSavingResult] = useState(false);
   const [calView, setCalView] = useState<'list' | 'month'>('list');
+  const [selectedResult, setSelectedResult] = useState<RaceResult | null>(null);
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
   useEffect(() => {
@@ -245,6 +380,13 @@ export function RaceCalendar() {
   return (
     <div className="min-h-screen">
       <Navbar role="athlete" name={profile?.name} onLogout={logout} />
+      {selectedResult && (
+        <RaceCardModal
+          result={selectedResult}
+          athleteName={profile?.name ?? 'Athlete'}
+          onClose={() => setSelectedResult(null)}
+        />
+      )}
       <div className="max-w-4xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-6 fade-up">
           <div>
@@ -411,6 +553,7 @@ export function RaceCalendar() {
                       {result.notes && <div className="text-xs text-[var(--muted)] mt-0.5 italic">{result.notes}</div>}
                     </div>
                   </div>
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedResult(result)}>Race Card</Button>
                   <Button variant="ghost" size="sm" onClick={() => deleteResult(result.id)} className="!text-red-400 shrink-0">Delete</Button>
                 </div>
               ))}
