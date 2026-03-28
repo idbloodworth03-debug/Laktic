@@ -572,3 +572,98 @@ CREATE TABLE IF NOT EXISTS public.share_events (
 );
 CREATE INDEX IF NOT EXISTS share_events_athlete_idx ON public.share_events(athlete_id, shared_at DESC);
 ALTER TABLE public.share_events ENABLE ROW LEVEL SECURITY;
+
+-- Migration 022 — Sprint 4 revenue expansion
+-- marketplace_plans, plan_purchases, coach_certifications, recruiting, admin
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Athlete pro tier
+ALTER TABLE public.athlete_profiles
+  ADD COLUMN IF NOT EXISTS subscription_tier TEXT NOT NULL DEFAULT 'free'
+    CHECK (subscription_tier IN ('free','pro')),
+  ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT,
+  ADD COLUMN IF NOT EXISTS pro_expires_at TIMESTAMPTZ;
+
+-- Coach certified badge
+ALTER TABLE public.coach_profiles
+  ADD COLUMN IF NOT EXISTS certified_coach BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS certification_completed_at TIMESTAMPTZ;
+
+-- Training plan marketplace
+CREATE TABLE IF NOT EXISTS public.marketplace_plans (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  coach_id    UUID        NOT NULL REFERENCES public.coach_profiles(id) ON DELETE CASCADE,
+  title       TEXT        NOT NULL,
+  description TEXT        NOT NULL,
+  sport       TEXT        NOT NULL DEFAULT 'running',
+  level       TEXT        NOT NULL DEFAULT 'intermediate'
+                          CHECK (level IN ('beginner','intermediate','advanced')),
+  duration_weeks INTEGER  NOT NULL DEFAULT 12,
+  price_cents INTEGER     NOT NULL DEFAULT 0,
+  published   BOOLEAN     NOT NULL DEFAULT FALSE,
+  preview_pdf_url TEXT,
+  full_pdf_url    TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS marketplace_plans_coach_idx ON public.marketplace_plans(coach_id);
+CREATE INDEX IF NOT EXISTS marketplace_plans_published_idx ON public.marketplace_plans(published, sport, level);
+ALTER TABLE public.marketplace_plans ENABLE ROW LEVEL SECURITY;
+
+-- Plan purchases
+CREATE TABLE IF NOT EXISTS public.plan_purchases (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  plan_id         UUID        NOT NULL REFERENCES public.marketplace_plans(id) ON DELETE CASCADE,
+  athlete_id      UUID        NOT NULL REFERENCES public.athlete_profiles(id) ON DELETE CASCADE,
+  stripe_session_id TEXT,
+  amount_paid_cents INTEGER   NOT NULL DEFAULT 0,
+  purchased_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(plan_id, athlete_id)
+);
+CREATE INDEX IF NOT EXISTS plan_purchases_athlete_idx ON public.plan_purchases(athlete_id, purchased_at DESC);
+ALTER TABLE public.plan_purchases ENABLE ROW LEVEL SECURITY;
+
+-- Coach certification
+CREATE TABLE IF NOT EXISTS public.coach_certifications (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  coach_id    UUID        NOT NULL REFERENCES public.coach_profiles(id) ON DELETE CASCADE UNIQUE,
+  quiz_scores JSONB       NOT NULL DEFAULT '{}',
+  modules_completed INTEGER NOT NULL DEFAULT 0,
+  passed      BOOLEAN     NOT NULL DEFAULT FALSE,
+  stripe_session_id TEXT,
+  payment_completed BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE public.coach_certifications ENABLE ROW LEVEL SECURITY;
+
+-- College recruiting — athlete profiles
+CREATE TABLE IF NOT EXISTS public.recruiting_profiles (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  athlete_id      UUID        NOT NULL REFERENCES public.athlete_profiles(id) ON DELETE CASCADE UNIQUE,
+  gpa             NUMERIC(3,2),
+  graduation_year INTEGER,
+  target_distance TEXT,
+  highlight_video_url TEXT,
+  recruiting_notes TEXT,
+  visible         BOOLEAN     NOT NULL DEFAULT TRUE,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE public.recruiting_profiles ENABLE ROW LEVEL SECURITY;
+
+-- Recruiter accounts
+CREATE TABLE IF NOT EXISTS public.recruiter_accounts (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+  name            TEXT        NOT NULL,
+  school          TEXT        NOT NULL,
+  division        TEXT        NOT NULL DEFAULT 'D1'
+                              CHECK (division IN ('D1','D2','D3','NAIA','JUCO')),
+  email           TEXT        NOT NULL,
+  stripe_session_id TEXT,
+  active          BOOLEAN     NOT NULL DEFAULT FALSE,
+  expires_at      TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE public.recruiter_accounts ENABLE ROW LEVEL SECURITY;

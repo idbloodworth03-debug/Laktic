@@ -165,6 +165,9 @@ export function Navbar({ role, name, onLogout }: NavbarProps) {
     { label: 'Browse Bots',    href: '/athlete/browse' },
     { label: 'Community',      href: '/community' },
     { label: 'Gameplans',      href: '/athlete/gameplans' },
+    { label: 'Analytics',      href: '/athlete/analytics' },
+    { label: 'Training Plans', href: '/marketplace/plans' },
+    { label: 'Pro',            href: '/athlete/pro' },
     { label: 'Referrals',      href: '/referrals' },
     { label: 'Settings',       href: '/athlete/settings' },
   ];
@@ -179,6 +182,8 @@ export function Navbar({ role, name, onLogout }: NavbarProps) {
     { label: 'Team Readiness', href: '/coach/readiness' },
     { label: 'Team Recovery',  href: '/coach/recovery' },
     { label: 'Marketplace',    href: '/coach/marketplace/apply' },
+    { label: 'Training Plans', href: '/coach/plans' },
+    { label: 'Certification',  href: '/coach/certification' },
     { label: 'Referrals',      href: '/referrals' },
     { label: 'Settings',       href: '/coach/settings' },
   ];

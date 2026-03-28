@@ -37,6 +37,12 @@ import publicProfilesRouter from './routes/publicProfiles';
 import referralsRouter from './routes/referrals';
 import shareEventsRouter from './routes/shareEvents';
 import contactSalesRouter from './routes/contactSales';
+import marketplacePlansRouter from './routes/marketplacePlans';
+import athleteProRouter from './routes/athletePro';
+import trainingAnalyticsRouter from './routes/trainingAnalytics';
+import certificationRouter from './routes/certification';
+import recruitingRouter from './routes/recruiting';
+import adminRouter from './routes/admin';
 import cron from 'node-cron';
 import { runRaceCountdownCron } from './services/notificationService';
 import { runGameplanCron } from './routes/gameplans';
@@ -104,6 +110,12 @@ app.use('/api/public', publicProfilesRouter);
 app.use('/api/referrals', referralsRouter);
 app.use('/api/share-events', shareEventsRouter);
 app.use('/api/contact-sales', contactSalesRouter);
+app.use('/api/marketplace-plans', marketplacePlansRouter);
+app.use('/api/athlete-pro', athleteProRouter);
+app.use('/api/training-analytics', trainingAnalyticsRouter);
+app.use('/api/certification', certificationRouter);
+app.use('/api/recruiting', recruitingRouter);
+app.use('/api/admin', adminRouter);
 
 app.use('/api', gdprRouter);
 

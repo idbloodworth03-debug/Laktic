@@ -35,6 +35,12 @@ import { AthletePublicProfile } from './pages/AthletePublicProfile';
 import { CoachPublicProfile } from './pages/CoachPublicProfile';
 import { ReferralsPage } from './pages/ReferralsPage';
 import { PricingPage } from './pages/PricingPage';
+import { TrainingPlansMarketplace, MyPlans, CoachPlanManage } from './pages/TrainingPlansMarketplace';
+import { AnalyticsDashboard } from './pages/AnalyticsDashboard';
+import { CertificationPage } from './pages/CertificationPage';
+import { RecruitingSettings, RecruiterSignup, RecruiterDashboard } from './pages/RecruitingPages';
+import { AdminDashboard } from './pages/AdminDashboard';
+import { AthletePro } from './pages/AthletePro';
 
 function RequireCoach({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
@@ -118,6 +124,18 @@ export default function App() {
         <Route path="/athlete/gameplans" element={<RequireAthlete><AthleteGameplans /></RequireAthlete>} />
         <Route path="/athlete/gameplan/:id" element={<RequireAthlete><GameplanViewer /></RequireAthlete>} />
         <Route path="/athlete/debrief/:id" element={<RequireAthlete><RaceDebrief /></RequireAthlete>} />
+
+        {/* Sprint 4 — Revenue Expansion */}
+        <Route path="/marketplace/plans" element={<TrainingPlansMarketplace />} />
+        <Route path="/athlete/plans" element={<RequireAthlete><MyPlans /></RequireAthlete>} />
+        <Route path="/coach/plans" element={<RequireCoach><CoachPlanManage /></RequireCoach>} />
+        <Route path="/athlete/analytics" element={<RequireAthlete><AnalyticsDashboard /></RequireAthlete>} />
+        <Route path="/athlete/pro" element={<RequireAthlete><AthletePro /></RequireAthlete>} />
+        <Route path="/coach/certification" element={<RequireCoach><CertificationPage /></RequireCoach>} />
+        <Route path="/athlete/recruiting" element={<RequireAthlete><RecruitingSettings /></RequireAthlete>} />
+        <Route path="/recruiting/signup" element={<RecruiterSignup />} />
+        <Route path="/recruiting" element={<RecruiterDashboard />} />
+        <Route path="/admin" element={<AdminDashboard />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

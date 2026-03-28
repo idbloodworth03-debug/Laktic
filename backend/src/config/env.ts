@@ -18,7 +18,12 @@ const envSchema = z.object({
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().optional(),
-  ADMIN_EMAIL: z.string().email().optional()
+  ADMIN_EMAIL: z.string().email().optional(),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_ATHLETE_PRO_PRICE_ID: z.string().optional(),
+  STRIPE_RECRUITER_PRICE_ID: z.string().optional(),
+  STRIPE_CERTIFICATION_PRICE_ID: z.string().optional()
 });
 
 const result = envSchema.safeParse(process.env);
