@@ -34,7 +34,10 @@
       "Bash(git -C /c/Users/Nick/Projects/Laktic status)",
       "Bash(git -C /c/Users/Nick/Projects/Laktic ls-files --error-unmatch frontend/public/icon.png)",
       "Bash(git -C /c/Users/Nick/Projects/Laktic show HEAD:frontend/public/icon.png)",
-      "Bash(gh run:*)"
+      "Bash(gh run:*)",
+      "Bash(git -C /c/Users/Nick/Projects/Laktic add migrations/007_athlete_onboarding_completed.sql backend/src/schemas/index.ts backend/src/routes/strava.ts frontend/src/pages/AthleteOnboarding.tsx)",
+      "Bash(git -C:*)",
+      "Bash(git -C /c/Users/Nick/Projects/Laktic push origin master)"
     ]
   }
 }
