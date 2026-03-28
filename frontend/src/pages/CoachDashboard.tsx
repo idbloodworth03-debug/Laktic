@@ -39,6 +39,17 @@ export function CoachDashboard() {
   const [challengeInviteCode, setChallengeInviteCode] = useState('');
   const [sendingChallenge, setSendingChallenge] = useState(false);
   const [challengeError, setChallengeError] = useState('');
+  // Challenge creation form
+  const [challengeTitle, setChallengeTitle] = useState('');
+  const [challengeTarget, setChallengeTarget] = useState('');
+  const [challengeMetric, setChallengeMetric] = useState<'miles' | 'workouts' | 'hours'>('miles');
+  const [challengeEndsAt, setChallengeEndsAt] = useState('');
+  const [createdChallengeCode, setCreatedChallengeCode] = useState<string | null>(null);
+  // Accept challenge form
+  const [showAcceptChallenge, setShowAcceptChallenge] = useState(false);
+  const [acceptCode, setAcceptCode] = useState('');
+  const [acceptingChallenge, setAcceptingChallenge] = useState(false);
+  const [acceptError, setAcceptError] = useState('');
   const [conversations, setConversations] = useState<any[]>([]);
   const [inboxError, setInboxError] = useState('');
 
@@ -336,12 +347,7 @@ export function CoachDashboard() {
 
                   {teamError && <Alert type="error" message={teamError} onClose={() => setTeamError('')} />}
 
-                  {/* Challenge a Team */}
-                  {!showChallengeInvite && teamChallenges.length === 0 && (
-                    <Button size="sm" variant="secondary" onClick={() => setShowChallengeInvite(true)}>
-                      + Challenge a Team
-                    </Button>
-                  )}
+                  {/* Challenge a Team — button removed; handled in Team Challenges section below */}
 
                   {/* Member list */}
                   {members.length === 0 ? (
@@ -433,78 +439,207 @@ export function CoachDashboard() {
             </Card>
 
             {/* Team Challenges */}
-            {(teamChallenges.length > 0 || showChallengeInvite) && (
-              <div className="mt-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-display font-semibold text-sm text-[var(--text)]">Team Challenges</h3>
-                  <Button size="sm" variant="secondary" onClick={() => setShowChallengeInvite(v => !v)}>
+            <div className="mt-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-display font-semibold text-sm text-[var(--text)]">Team Challenges</h3>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => { setShowAcceptChallenge(v => !v); setShowChallengeInvite(false); }}>
+                    Accept
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => { setShowChallengeInvite(v => !v); setShowAcceptChallenge(false); setCreatedChallengeCode(null); }}>
                     {showChallengeInvite ? 'Cancel' : '+ Challenge a Team'}
                   </Button>
                 </div>
+              </div>
 
-                {showChallengeInvite && (
-                  <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-xl p-4 mb-4">
-                    <p className="text-xs text-[var(--muted)] mb-3">Enter the opposing team's invite code to send a challenge.</p>
-                    <div className="flex gap-2">
-                      <input
-                        value={challengeInviteCode}
-                        onChange={e => setChallengeInviteCode(e.target.value.toUpperCase())}
-                        placeholder="INVITE CODE"
-                        maxLength={8}
-                        className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-brand-500 tracking-widest uppercase"
-                      />
-                      <Button
-                        size="sm"
-                        loading={sendingChallenge}
-                        disabled={!challengeInviteCode.trim()}
-                        onClick={async () => {
-                          setSendingChallenge(true);
-                          setChallengeError('');
-                          try {
-                            const c = await apiFetch('/api/team-challenges/invite', {
-                              method: 'POST',
-                              body: JSON.stringify({ invite_code: challengeInviteCode }),
-                            });
-                            setTeamChallenges(prev => [c, ...prev]);
-                            setChallengeInviteCode('');
-                            setShowChallengeInvite(false);
-                          } catch (e: any) {
-                            setChallengeError(e.message || 'Failed to send challenge');
-                          } finally {
-                            setSendingChallenge(false);
-                          }
-                        }}
-                      >
-                        Send Challenge
-                      </Button>
-                    </div>
-                    {challengeError && <p className="text-xs text-red-400 mt-2">{challengeError}</p>}
+              {/* Accept challenge form */}
+              {showAcceptChallenge && (
+                <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-xl p-4 mb-4">
+                  <p className="text-xs text-[var(--muted)] mb-3">Enter the challenge code you received from the opposing team's coach.</p>
+                  <div className="flex gap-2">
+                    <input
+                      value={acceptCode}
+                      onChange={e => setAcceptCode(e.target.value.toUpperCase())}
+                      placeholder="CHALLENGE CODE"
+                      maxLength={8}
+                      className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-brand-500 tracking-widest uppercase"
+                    />
+                    <Button
+                      size="sm"
+                      loading={acceptingChallenge}
+                      disabled={!acceptCode.trim()}
+                      onClick={async () => {
+                        setAcceptingChallenge(true);
+                        setAcceptError('');
+                        try {
+                          const c = await apiFetch('/api/team-challenges/accept', {
+                            method: 'POST',
+                            body: JSON.stringify({ invite_code: acceptCode }),
+                          });
+                          setTeamChallenges(prev => [c, ...prev]);
+                          setAcceptCode('');
+                          setShowAcceptChallenge(false);
+                        } catch (e: any) {
+                          setAcceptError(e.message || 'Invalid challenge code');
+                        } finally {
+                          setAcceptingChallenge(false);
+                        }
+                      }}
+                    >
+                      Accept
+                    </Button>
                   </div>
-                )}
+                  {acceptError && <p className="text-xs text-red-400 mt-2">{acceptError}</p>}
+                </div>
+              )}
 
+              {/* Create challenge form */}
+              {showChallengeInvite && !createdChallengeCode && (
+                <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-xl p-4 mb-4 space-y-3">
+                  <p className="text-xs text-[var(--muted)]">Define the challenge. You'll get a code to share with the opposing team's coach.</p>
+                  <Input
+                    label="Challenge title"
+                    value={challengeTitle}
+                    onChange={e => setChallengeTitle(e.target.value)}
+                    placeholder="e.g. November Miles Race"
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-[var(--text2)] uppercase tracking-wide block mb-1.5">Metric</label>
+                      <select
+                        value={challengeMetric}
+                        onChange={e => setChallengeMetric(e.target.value as any)}
+                        className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text)] focus:outline-none focus:border-brand-500"
+                      >
+                        <option value="miles">Miles</option>
+                        <option value="workouts">Workouts</option>
+                        <option value="hours">Hours</option>
+                      </select>
+                    </div>
+                    <Input
+                      label={`Target (${challengeMetric})`}
+                      type="number"
+                      min="1"
+                      value={challengeTarget}
+                      onChange={e => setChallengeTarget(e.target.value)}
+                      placeholder="e.g. 200"
+                    />
+                  </div>
+                  <Input
+                    label="Ends on"
+                    type="date"
+                    value={challengeEndsAt}
+                    onChange={e => setChallengeEndsAt(e.target.value)}
+                    min={new Date().toISOString().slice(0, 10)}
+                  />
+                  {challengeError && <p className="text-xs text-red-400">{challengeError}</p>}
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="ghost" size="sm" onClick={() => setShowChallengeInvite(false)}>Cancel</Button>
+                    <Button
+                      size="sm"
+                      loading={sendingChallenge}
+                      disabled={!challengeTitle.trim() || !challengeTarget || !challengeEndsAt}
+                      onClick={async () => {
+                        setSendingChallenge(true);
+                        setChallengeError('');
+                        try {
+                          const c = await apiFetch('/api/team-challenges/invite', {
+                            method: 'POST',
+                            body: JSON.stringify({
+                              title: challengeTitle.trim(),
+                              target_value: parseFloat(challengeTarget),
+                              target_unit: challengeMetric,
+                              metric: challengeMetric,
+                              ends_at: new Date(challengeEndsAt + 'T23:59:59').toISOString(),
+                            }),
+                          });
+                          setTeamChallenges(prev => [c, ...prev]);
+                          setCreatedChallengeCode(c.invite_code);
+                        } catch (e: any) {
+                          setChallengeError(e.message || 'Failed to create challenge');
+                        } finally {
+                          setSendingChallenge(false);
+                        }
+                      }}
+                    >
+                      Create Challenge
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Created — show code to share */}
+              {createdChallengeCode && showChallengeInvite && (
+                <div className="bg-green-950/30 border border-green-800/50 rounded-xl p-4 mb-4">
+                  <p className="text-xs text-green-300 font-medium mb-2">✓ Challenge created! Share this code with the opposing team's coach:</p>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xl font-bold tracking-widest text-green-400 bg-green-950/50 px-4 py-2 rounded-lg border border-green-800/50">
+                      {createdChallengeCode}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => { navigator.clipboard.writeText(createdChallengeCode); }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                  <button
+                    onClick={() => { setShowChallengeInvite(false); setCreatedChallengeCode(null); setChallengeTitle(''); setChallengeTarget(''); setChallengeEndsAt(''); }}
+                    className="mt-3 text-xs text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+                  >
+                    Done
+                  </button>
+                </div>
+              )}
+
+              {/* Active challenges list */}
+              {teamChallenges.length > 0 && (
                 <div className="space-y-2">
                   {teamChallenges.map(tc => (
-                    <div key={tc.id} className="flex items-center justify-between gap-3 bg-[var(--surface2)] border border-[var(--border)] rounded-xl px-4 py-3">
-                      <div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="font-medium text-[var(--text)]">{tc.challenger_team?.name}</span>
-                          <span className="text-[var(--muted)]">vs</span>
-                          <span className="font-medium text-[var(--text)]">{tc.challenged_team?.name}</span>
+                    <div key={tc.id} className={`rounded-xl border px-4 py-3 ${
+                      tc.status === 'active'
+                        ? 'bg-brand-950/20 border-brand-800/40'
+                        : 'bg-[var(--surface2)] border-[var(--border)]'
+                    }`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-[var(--text)] mb-0.5">{tc.title}</p>
+                          <div className="flex items-center gap-2 text-xs text-[var(--muted)] flex-wrap">
+                            <span className="font-medium text-[var(--text2)]">{tc.challenger_team_name}</span>
+                            <span>vs</span>
+                            <span className="font-medium text-[var(--text2)]">{tc.challenged_team_name}</span>
+                            <span>·</span>
+                            <span>{tc.target_value} {tc.target_unit}</span>
+                            {tc.status === 'pending' && (
+                              <><span>·</span><span className="text-[10px] font-mono tracking-widest text-[var(--muted2)]">code: {tc.invite_code}</span></>
+                            )}
+                          </div>
+                          {tc.days_remaining !== undefined && (
+                            <p className="text-xs text-[var(--muted2)] mt-0.5">{tc.days_remaining}d remaining</p>
+                          )}
                         </div>
-                        <p className="text-xs text-[var(--muted)] mt-0.5 capitalize">{tc.challenge_type} challenge · {tc.target_value} {tc.target_unit}</p>
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full border shrink-0 capitalize ${
+                          tc.status === 'active'
+                            ? 'border-green-700/50 text-green-400 bg-green-950/40'
+                            : tc.status === 'pending'
+                            ? 'border-amber-700/50 text-amber-400 bg-amber-950/40'
+                            : 'border-[var(--border)] text-[var(--muted)]'
+                        }`}>
+                          {tc.status}
+                        </span>
                       </div>
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full border ${
-                        tc.status === 'active' ? 'border-green-700/50 text-green-400 bg-green-950/40'
-                        : tc.status === 'pending' ? 'border-amber-700/50 text-amber-400 bg-amber-950/40'
-                        : 'border-[var(--border)] text-[var(--muted)]'
-                      } capitalize`}>
-                        {tc.status}
-                      </span>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+
+              {teamChallenges.length === 0 && !showChallengeInvite && !showAcceptChallenge && (
+                <p className="text-xs text-[var(--muted)] text-center py-3">
+                  No active team challenges. Challenge a rival team to a competition!
+                </p>
+              )}
+            </div>
           </div>
         )}
       </div>

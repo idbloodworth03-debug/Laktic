@@ -552,7 +552,7 @@ export function SeasonPlan() {
                   <span className="text-base">🏆</span>
                   <div>
                     <span className="text-xs font-medium text-amber-300">New milestone!</span>
-                    <p className="text-sm text-[var(--text)]">{m.milestone_label}</p>
+                    <p className="text-sm text-[var(--text)]">{m.label}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
