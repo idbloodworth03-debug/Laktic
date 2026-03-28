@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { Navbar, Button, Badge, Spinner, Card } from '../components/ui';
+import { AppLayout, Button, Badge, Spinner, Card } from '../components/ui';
 
 type RecoveryEntry = {
   athlete_id: string;
@@ -15,17 +15,17 @@ type RecoveryEntry = {
 };
 
 function scoreColor(score: number): string {
-  if (score <= 40) return 'text-red-400';
-  if (score <= 60) return 'text-amber-400';
-  if (score <= 80) return 'text-amber-300';
-  return 'text-green-400';
+  if (score <= 40) return 'var(--color-danger)';
+  if (score <= 60) return 'var(--color-warning)';
+  if (score <= 80) return '#FCD34D';
+  return 'var(--color-accent)';
 }
 
-function cardBg(score: number): string {
-  if (score <= 40) return 'bg-red-950/40 border-red-800/40';
-  if (score <= 60) return 'bg-amber-950/40 border-amber-800/40';
-  if (score <= 80) return 'bg-amber-950/20 border-amber-800/30';
-  return 'bg-brand-950/40 border-brand-800/40';
+function cardStyle(score: number): React.CSSProperties {
+  if (score <= 40) return { background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' };
+  if (score <= 60) return { background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' };
+  if (score <= 80) return { background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.15)' };
+  return { background: 'var(--color-accent-dim)', border: '1px solid rgba(0,229,160,0.2)' };
 }
 
 function intensityBadgeColor(intensity: string): 'green' | 'amber' | 'red' | 'blue' {
@@ -37,9 +37,9 @@ function intensityBadgeColor(intensity: string): 'green' | 'amber' | 'red' | 'bl
 }
 
 function summarize(athletes: RecoveryEntry[]) {
-  const hard    = athletes.filter(a => a.readiness_score > 80).length;
-  const easy    = athletes.filter(a => a.readiness_score > 40 && a.readiness_score <= 80).length;
-  const rest    = athletes.filter(a => a.readiness_score <= 40).length;
+  const hard = athletes.filter(a => a.readiness_score > 80).length;
+  const easy = athletes.filter(a => a.readiness_score > 40 && a.readiness_score <= 80).length;
+  const rest = athletes.filter(a => a.readiness_score <= 40).length;
   return { hard, easy, rest };
 }
 
@@ -47,9 +47,9 @@ export function TeamRecovery() {
   const { profile, clearAuth } = useAuthStore();
   const nav = useNavigate();
   const [athletes, setAthletes] = useState<RecoveryEntry[]>([]);
-  const [loading, setLoading]   = useState(true);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError]       = useState('');
+  const [error, setError] = useState('');
 
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
@@ -66,69 +66,70 @@ export function TeamRecovery() {
   const { hard, easy, rest } = summarize(athletes);
 
   return (
-    <div className="min-h-screen bg-[var(--bg)]">
-      <Navbar role="coach" name={profile?.name} onLogout={logout} />
-
-      <div className="max-w-5xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-6 fade-up">
-          <div>
-            <h1 className="font-display text-3xl font-bold">Team Recovery</h1>
-            {athletes.length > 0 && (
-              <p className="text-sm text-[var(--muted)] mt-1">
-                {hard > 0 && <span className="text-green-400 font-medium">{hard} ready for hard session</span>}
-                {hard > 0 && (easy > 0 || rest > 0) && <span className="mx-2 text-[var(--muted)]">·</span>}
-                {easy > 0 && <span className="text-amber-400 font-medium">{easy} should go easy</span>}
-                {easy > 0 && rest > 0 && <span className="mx-2 text-[var(--muted)]">·</span>}
-                {rest > 0 && <span className="text-red-400 font-medium">{rest} need rest</span>}
-              </p>
-            )}
-          </div>
-          <Button variant="secondary" onClick={() => load(true)} loading={refreshing}>
-            Refresh
-          </Button>
-        </div>
-
-        {error && (
-          <div className="mb-4 px-4 py-3 rounded-xl bg-red-950/40 border border-red-800/40 text-red-300 text-sm">
-            {error}
-          </div>
-        )}
-
-        {loading ? (
-          <div className="flex justify-center py-20"><Spinner size="lg" /></div>
-        ) : athletes.length === 0 ? (
-          <Card>
-            <div className="text-center py-10">
-              <p className="text-[var(--muted)]">No recovery data yet. Click Recompute All to generate scores.</p>
+    <AppLayout role="coach" name={profile?.name} onLogout={logout}>
+      <div className="min-h-screen bg-[var(--color-bg-primary)]">
+        <div className="max-w-5xl mx-auto px-6 py-10">
+          <div className="flex items-center justify-between mb-6 fade-up">
+            <div>
+              <h1 className="text-3xl font-bold">Team Recovery</h1>
+              {athletes.length > 0 && (
+                <p className="text-sm text-[var(--color-text-tertiary)] mt-1">
+                  {hard > 0 && <span className="text-[var(--color-accent)] font-medium">{hard} ready for hard session</span>}
+                  {hard > 0 && (easy > 0 || rest > 0) && <span className="mx-2 text-[var(--color-text-tertiary)]">·</span>}
+                  {easy > 0 && <span className="text-[var(--color-warning)] font-medium">{easy} should go easy</span>}
+                  {easy > 0 && rest > 0 && <span className="mx-2 text-[var(--color-text-tertiary)]">·</span>}
+                  {rest > 0 && <span className="text-[var(--color-danger)] font-medium">{rest} need rest</span>}
+                </p>
+              )}
             </div>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up-1">
-            {athletes.map(a => (
-              <div
-                key={a.athlete_id}
-                className={`rounded-xl border p-5 ${cardBg(a.readiness_score)}`}
-              >
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <div className="font-medium text-[var(--text)] leading-snug">{a.athlete_name}</div>
-                  {a.recommended_intensity && (
-                    <Badge
-                      label={a.recommended_intensity}
-                      color={intensityBadgeColor(a.recommended_intensity)}
-                    />
+            <Button variant="secondary" onClick={() => load(true)} loading={refreshing}>
+              Refresh
+            </Button>
+          </div>
+
+          {error && (
+            <div className="mb-4 px-4 py-3 rounded-xl text-sm" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--color-danger)' }}>
+              {error}
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex justify-center py-20"><Spinner size="lg" /></div>
+          ) : athletes.length === 0 ? (
+            <Card>
+              <div className="text-center py-10">
+                <p className="text-[var(--color-text-tertiary)]">No recovery data yet. Click Refresh to load scores.</p>
+              </div>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up-1">
+              {athletes.map(a => (
+                <div
+                  key={a.athlete_id}
+                  className="rounded-xl p-5"
+                  style={cardStyle(a.readiness_score)}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="font-medium text-[var(--color-text-primary)] leading-snug">{a.athlete_name}</div>
+                    {a.recommended_intensity && (
+                      <Badge
+                        label={a.recommended_intensity}
+                        color={intensityBadgeColor(a.recommended_intensity)}
+                      />
+                    )}
+                  </div>
+                  <div className="font-mono text-4xl font-medium mb-2" style={{ color: scoreColor(a.readiness_score) }}>
+                    {a.readiness_score}
+                  </div>
+                  {a.explanation && (
+                    <p className="text-xs text-[var(--color-text-tertiary)] leading-relaxed line-clamp-2">{a.explanation}</p>
                   )}
                 </div>
-                <div className={`font-display text-4xl font-bold mb-2 ${scoreColor(a.readiness_score)}`}>
-                  {a.readiness_score}
-                </div>
-                {a.explanation && (
-                  <p className="text-xs text-[var(--muted)] leading-relaxed line-clamp-2">{a.explanation}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }

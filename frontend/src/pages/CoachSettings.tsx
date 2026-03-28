@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { apiFetch } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
-import { Navbar, Card, Button, Alert, Badge, Spinner, Input } from '../components/ui';
+import { AppLayout, Card, Button, Alert, Badge, Spinner, Input } from '../components/ui';
 import { useNotifications } from '../hooks/useNotifications';
 
 export function CoachSettings() {
@@ -49,8 +49,7 @@ export function CoachSettings() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg)]">
-      <Navbar role="coach" name={profile?.name} onLogout={logout} />
+    <AppLayout role="coach" name={profile?.name} onLogout={logout}>
       <div className="max-w-2xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="font-display text-2xl font-bold">Settings</h1>
@@ -64,13 +63,13 @@ export function CoachSettings() {
         )}
 
         <Card title="Public Profile" className="mb-6">
-          <p className="text-sm text-[var(--muted)] mb-4">
-            Set a username to get a public profile at <strong className="text-[var(--text)]">laktic.com/coach/[username]</strong>
+          <p className="text-sm text-[var(--color-text-tertiary)] mb-4">
+            Set a username to get a public profile at <strong className="text-[var(--color-text-primary)]">laktic.com/coach/[username]</strong>
           </p>
           {(profile as any)?.license_type === 'team' && (
             <div className="mb-3 flex items-center gap-2">
               <span className="text-xs font-bold text-blue-300 bg-blue-950/40 border border-blue-800/40 px-2 py-0.5 rounded uppercase tracking-wide">School/Club Coach</span>
-              <span className="text-xs text-[var(--muted)]">Team License active</span>
+              <span className="text-xs text-[var(--color-text-tertiary)]">Team License active</span>
             </div>
           )}
           <div className="flex gap-3">
@@ -106,7 +105,7 @@ export function CoachSettings() {
             </Button>
           </div>
           {username && (
-            <a href={`/coach/${username}`} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-400 hover:underline mt-2 block">
+            <a href={`/coach/${username}`} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--color-accent)] hover:underline mt-2 block">
               View public profile
             </a>
           )}
@@ -114,13 +113,13 @@ export function CoachSettings() {
 
         <Card title="Push Notifications" className="mb-6">
           {notifState === 'unsupported' ? (
-            <p className="text-sm text-[var(--muted)]">
+            <p className="text-sm text-[var(--color-text-tertiary)]">
               Push notifications are not supported in this browser. Try installing Laktic as a PWA on your phone.
             </p>
           ) : notifState === 'blocked' ? (
             <div className="space-y-2">
               <Badge label="Blocked" color="red" />
-              <p className="text-sm text-[var(--muted)]">
+              <p className="text-sm text-[var(--color-text-tertiary)]">
                 Notifications are blocked by your browser. Allow them in your browser settings.
               </p>
             </div>
@@ -128,7 +127,7 @@ export function CoachSettings() {
             <Spinner />
           ) : (
             <div className="space-y-3">
-              <p className="text-sm text-[var(--muted)]">
+              <p className="text-sm text-[var(--color-text-tertiary)]">
                 Get notified when an athlete misses practice or has a low attendance streak.
               </p>
               <div className="flex items-center gap-3">
@@ -168,14 +167,14 @@ export function CoachSettings() {
         <Card title="Data & Privacy">
           <div className="flex flex-col gap-4">
             <div>
-              <p className="text-sm text-[var(--muted)] mb-3">
+              <p className="text-sm text-[var(--color-text-tertiary)] mb-3">
                 Download a copy of your Laktic data including your profile, bot configuration, workout template, and knowledge documents.
               </p>
               <Button variant="secondary" size="sm" onClick={downloadData}>Download my data</Button>
             </div>
-            <div className="pt-4 border-t border-[var(--border)]">
+            <div className="pt-4 border-t border-[var(--color-border)]">
               <p className="text-sm font-medium mb-1">Delete account</p>
-              <p className="text-sm text-[var(--muted)] mb-3">
+              <p className="text-sm text-[var(--color-text-tertiary)] mb-3">
                 Permanently deletes your account, bot, and all associated data. Coaches with active subscribers must unpublish their bot first.
               </p>
               {deleteConfirm ? (
@@ -192,6 +191,6 @@ export function CoachSettings() {
           </div>
         </Card>
       </div>
-    </div>
+    </AppLayout>
   );
 }

@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { Navbar, Button, Card, Badge, Spinner, Alert } from '../components/ui';
+import { AppLayout, Button, Card, Badge, Spinner, Alert } from '../components/ui';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL as string || 'http://localhost:3001';
 
@@ -38,7 +38,7 @@ function BarChart({ data, label }: { data: { label: string; value: number }[]; l
   const maxVal = Math.max(...data.map(d => d.value), 1);
   return (
     <div>
-      {label && <div className="text-xs text-[var(--muted)] mb-3 font-medium uppercase tracking-wide">{label}</div>}
+      {label && <div className="text-xs text-[var(--color-text-tertiary)] mb-3 font-medium uppercase tracking-wide">{label}</div>}
       <div className="flex items-end gap-1" style={{ height: 120 }}>
         {data.map((d, i) => (
           <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
@@ -46,12 +46,12 @@ function BarChart({ data, label }: { data: { label: string; value: number }[]; l
               className="w-full rounded-t min-h-[2px] transition-all duration-500"
               style={{
                 height: `${Math.max((d.value / maxVal) * 100, 2)}%`,
-                background: `linear-gradient(to top, #16a34a, #22c55e)`,
+                background: `linear-gradient(to top, #00b87a, #00E5A0)`,
                 opacity: d.value > 0 ? 1 : 0.2,
               }}
               title={`${d.label}: ${d.value}`}
             />
-            <div className="text-[9px] text-[var(--muted)] truncate w-full text-center leading-tight">{d.label}</div>
+            <div className="text-[9px] text-[var(--color-text-tertiary)] truncate w-full text-center leading-tight">{d.label}</div>
           </div>
         ))}
       </div>
@@ -61,7 +61,7 @@ function BarChart({ data, label }: { data: { label: string; value: number }[]; l
 
 function PaceTrend({ data }: { data: { label: string; seconds: number }[] }) {
   const valid = data.filter(d => d.seconds > 0);
-  if (valid.length === 0) return <div className="text-xs text-[var(--muted)]">No pace data</div>;
+  if (valid.length === 0) return <div className="text-xs text-[var(--color-text-tertiary)]">No pace data</div>;
 
   const minS = Math.min(...valid.map(d => d.seconds));
   const maxS = Math.max(...valid.map(d => d.seconds));
@@ -69,7 +69,7 @@ function PaceTrend({ data }: { data: { label: string; seconds: number }[] }) {
 
   return (
     <div>
-      <div className="text-xs text-[var(--muted)] mb-3 font-medium uppercase tracking-wide">Avg Pace / Mile — lower is faster</div>
+      <div className="text-xs text-[var(--color-text-tertiary)] mb-3 font-medium uppercase tracking-wide">Avg Pace / Mile — lower is faster</div>
       <div className="flex items-end gap-1" style={{ height: 80 }}>
         {data.map((d, i) => {
           const pct = d.seconds > 0 ? ((d.seconds - minS) / range) * 75 + 25 : 0;
@@ -80,12 +80,12 @@ function PaceTrend({ data }: { data: { label: string; seconds: number }[] }) {
                   className="w-full rounded-t min-h-[2px]"
                   style={{
                     height: `${pct}%`,
-                    background: 'linear-gradient(to top, #1d4ed8, #60a5fa)',
+                    background: 'linear-gradient(to top, #b45309, #f59e0b)',
                   }}
                   title={`${d.label}: ${formatPace(d.seconds)}`}
                 />
               )}
-              <div className="text-[9px] text-[var(--muted)] truncate w-full text-center leading-tight">{d.label}</div>
+              <div className="text-[9px] text-[var(--color-text-tertiary)] truncate w-full text-center leading-tight">{d.label}</div>
             </div>
           );
         })}
@@ -184,13 +184,12 @@ export function AthleteProgress() {
   }));
 
   return (
-    <div className="min-h-screen">
-      <Navbar role="athlete" name={profile?.name} onLogout={logout} />
+    <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
       <div className="max-w-5xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-6 fade-up">
           <div>
-            <h1 className="font-display text-2xl font-bold text-[var(--text)]">Training Progress</h1>
-            <p className="text-sm text-[var(--muted)] mt-1">Weekly volume, pace trends, and race results</p>
+            <h1 className="font-display text-2xl font-bold text-[var(--color-text-primary)]">Training Progress</h1>
+            <p className="text-sm text-[var(--color-text-tertiary)] mt-1">Weekly volume, pace trends, and race results</p>
           </div>
           <div className="flex gap-2">
             <Link to="/athlete/plan"><Button variant="ghost" size="sm">Plan</Button></Link>
@@ -216,17 +215,17 @@ export function AthleteProgress() {
                 </div>
                 {currentWeek.compliance_pct !== null && (
                   <div className="mt-4 flex items-center gap-3">
-                    <div className="text-xs text-[var(--muted)] uppercase tracking-wide shrink-0">Plan Compliance</div>
-                    <div className="flex-1 h-1.5 bg-[var(--surface2)] rounded-full overflow-hidden">
+                    <div className="text-xs text-[var(--color-text-tertiary)] uppercase tracking-wide shrink-0">Plan Compliance</div>
+                    <div className="flex-1 h-1.5 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${
-                          currentWeek.compliance_pct >= 80 ? 'bg-gradient-to-r from-brand-600 to-brand-500'
+                          currentWeek.compliance_pct >= 80 ? 'bg-gradient-to-r from-[#00b87a] to-[#00E5A0]'
                           : currentWeek.compliance_pct >= 50 ? 'bg-gradient-to-r from-amber-700 to-amber-500'
                           : 'bg-gradient-to-r from-red-800 to-red-500'}`}
                         style={{ width: `${currentWeek.compliance_pct}%` }}
                       />
                     </div>
-                    <span className="text-xs font-semibold text-[var(--text)] shrink-0">{currentWeek.compliance_pct}%</span>
+                    <span className="text-xs font-semibold text-[var(--color-text-primary)] shrink-0">{currentWeek.compliance_pct}%</span>
                   </div>
                 )}
               </Card>
@@ -248,15 +247,15 @@ export function AthleteProgress() {
               <Card title="Personal Records">
                 <div className="flex flex-col gap-2">
                   {prs.map(pr => (
-                    <div key={pr.id} className="flex items-center justify-between p-3 bg-[var(--surface2)] rounded-lg border border-[var(--border)] border-l-2 border-l-amber-500">
+                    <div key={pr.id} className="flex items-center justify-between p-3 bg-[var(--color-bg-tertiary)] rounded-lg border border-[var(--color-border)] border-l-2 border-l-amber-500">
                       <div className="flex items-center gap-3">
                         <Badge label="PR" color="amber" />
                         <div>
-                          <div className="text-sm font-medium text-[var(--text)]">{pr.race_name}</div>
-                          <div className="text-xs text-[var(--muted)]">{pr.distance} · {new Date(pr.race_date + 'T00:00:00').toLocaleDateString()}</div>
+                          <div className="text-sm font-medium text-[var(--color-text-primary)]">{pr.race_name}</div>
+                          <div className="text-xs text-[var(--color-text-tertiary)]">{pr.distance} · {new Date(pr.race_date + 'T00:00:00').toLocaleDateString()}</div>
                         </div>
                       </div>
-                      <div className="text-sm font-bold text-brand-400 font-mono">{pr.finish_time}</div>
+                      <div className="text-sm font-bold text-[var(--color-accent)] font-mono">{pr.finish_time}</div>
                     </div>
                   ))}
                 </div>
@@ -266,7 +265,7 @@ export function AthleteProgress() {
             {summaries.length === 0 && races.length === 0 && (
               <Card>
                 <div className="text-center py-8">
-                  <p className="text-sm text-[var(--muted)] mb-5 leading-relaxed">
+                  <p className="text-sm text-[var(--color-text-tertiary)] mb-5 leading-relaxed">
                     No progress data yet. Connect Strava and sync activities, then click Refresh Data.
                   </p>
                   <Button onClick={recompute} loading={computing}>Compute Weekly Summaries</Button>
@@ -276,15 +275,15 @@ export function AthleteProgress() {
           </div>
         )}
       </div>
-    </div>
+    </AppLayout>
   );
 }
 
 function StatBox({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className={`rounded-lg p-3 border ${accent ? 'bg-brand-950/30 border-brand-900/40' : 'bg-[var(--surface2)] border-[var(--border)]'}`}>
-      <div className="text-[10px] text-[var(--muted)] uppercase tracking-wide mb-1">{label}</div>
-      <div className={`text-lg font-bold font-display ${accent ? 'text-brand-400' : 'text-[var(--text)]'}`}>{value}</div>
+    <div className={`rounded-lg p-3 border ${accent ? 'bg-[var(--color-accent-dim)] border-[var(--color-border)]' : 'bg-[var(--color-bg-tertiary)] border-[var(--color-border)]'}`}>
+      <div className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide mb-1">{label}</div>
+      <div className={`text-lg font-bold font-mono ${accent ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-primary)]'}`}>{value}</div>
     </div>
   );
 }

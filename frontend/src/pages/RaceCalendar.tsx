@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { Navbar, Button, Input, Card, Toggle, Alert, Badge } from '../components/ui';
+import { AppLayout, Button, Input, Card, Toggle, Alert, Badge } from '../components/ui';
 import { ShareMomentModal } from '../components/ShareMomentModal';
 import type { ShareCardData } from '../components/ShareCardCanvas';
 
@@ -394,8 +394,8 @@ export function RaceCalendar() {
   };
 
   return (
-    <div className="min-h-screen">
-      <Navbar role="athlete" name={profile?.name} onLogout={logout} />
+    <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
+    <div className="min-h-screen bg-[var(--color-bg-primary)]">
       {selectedResult && (
         <RaceCardModal
           result={selectedResult}
@@ -585,5 +585,6 @@ export function RaceCalendar() {
         )}
       </div>
     </div>
+    </AppLayout>
   );
 }

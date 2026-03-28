@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { Navbar, Button, Card, Badge, Alert } from '../components/ui';
+import { AppLayout, Button, Card, Badge, Alert } from '../components/ui';
 
 type EventType = 'practice' | 'race' | 'off_day' | 'travel' | 'meeting' | 'other';
 
@@ -214,8 +214,8 @@ export function AthleteCalendar() {
   const pastEvents = events.filter(e => !isFutureOrToday(e.event_date));
 
   return (
-    <div className="min-h-screen">
-      <Navbar role="athlete" name={profile?.name} onLogout={logout} />
+    <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
+    <div className="min-h-screen bg-[var(--color-bg-primary)]">
       <div className="max-w-3xl mx-auto px-6 py-10">
 
         <div className="flex items-center justify-between mb-6 fade-up">
@@ -349,5 +349,6 @@ export function AthleteCalendar() {
         )}
       </div>
     </div>
+    </AppLayout>
   );
 }

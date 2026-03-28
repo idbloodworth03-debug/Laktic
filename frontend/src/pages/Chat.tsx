@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { Navbar, Button, ChatBubble, TypingIndicator, Alert } from '../components/ui';
+import { AppLayout, Button, ChatBubble, TypingIndicator, Alert } from '../components/ui';
 
 // ── Shared message input bar ──────────────────────────────────────────────────
 function MessageInput({
@@ -17,7 +17,13 @@ function MessageInput({
   hint?: React.ReactNode;
 }) {
   return (
-    <div className="border-t border-[var(--border)] bg-[var(--surface)] px-6 py-4">
+    <div
+      className="sticky bottom-0 px-6 py-4"
+      style={{
+        background: 'var(--color-bg-tertiary)',
+        borderTop: '1px solid var(--color-border)',
+      }}
+    >
       <div className="max-w-4xl mx-auto flex gap-3 items-end">
         <textarea
           value={value}
@@ -25,13 +31,22 @@ function MessageInput({
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(); } }}
           rows={1}
           placeholder={placeholder}
-          className="flex-1 bg-dark-700 border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-brand-500 transition-colors resize-none min-h-[44px] max-h-32"
-          style={{ height: 'auto' }}
+          className="flex-1 text-sm placeholder-[var(--color-text-tertiary)] resize-none min-h-[44px] max-h-32 outline-none transition-all duration-150"
+          style={{
+            background: 'var(--color-bg-secondary)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 12,
+            padding: '10px 14px',
+            color: 'var(--color-text-primary)',
+            height: 'auto',
+          }}
+          onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'var(--color-accent)'; (e.target as HTMLTextAreaElement).style.boxShadow = '0 0 0 3px var(--color-accent-dim)'; }}
+          onBlur={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'var(--color-border)'; (e.target as HTMLTextAreaElement).style.boxShadow = 'none'; }}
           onInput={e => { const t = e.target as HTMLTextAreaElement; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }}
         />
         <Button onClick={onSend} loading={sending} disabled={!value.trim()} size="md">Send</Button>
       </div>
-      {hint && <div className="max-w-4xl mx-auto mt-1">{hint}</div>}
+      {hint && <div className="max-w-4xl mx-auto mt-2">{hint}</div>}
     </div>
   );
 }
@@ -79,7 +94,7 @@ function BotChat() {
       if (result.planUpdated) setPlanUpdated(true);
     } catch (e: any) {
       setError(e.message || 'Something went wrong. Please try again.');
-      setMessages(prev => prev.slice(0, -1)); // rollback optimistic athlete message
+      setMessages(prev => prev.slice(0, -1));
     } finally { setSending(false); }
   };
 
@@ -94,25 +109,36 @@ function BotChat() {
     } finally { setClearing(false); }
   };
 
+  const PROMPTS = [
+    'I feel tired this week',
+    'I tweaked my calf, what should I do?',
+    'Can I swap Wednesday and Thursday?',
+    'I have a race coming up sooner than expected',
+  ];
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Toolbar */}
-      <div className="border-b border-[var(--border)] bg-[var(--surface)] px-6 py-2 flex items-center justify-between">
-        <div className="text-sm text-[var(--muted)]">
-          {activeTeam ? <span>Chatting with <span className="text-[var(--text)] font-medium">{activeTeam}</span>'s bot</span> : 'Chat with your coach bot'}
-        </div>
+      <div
+        className="px-6 py-3 flex items-center justify-between shrink-0"
+        style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)' }}
+      >
+        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+          {activeTeam
+            ? <>Chatting with <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{activeTeam}</span>'s bot</>
+            : 'Chat with your coach bot'}
+        </p>
         <div className="flex items-center gap-2">
           {clearConfirm ? (
             <>
-              <span className="text-xs text-[var(--muted)]">Clear all messages?</span>
+              <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Clear all messages?</span>
               <Button variant="danger" size="sm" loading={clearing} onClick={clearChat}>Confirm</Button>
               <Button variant="ghost" size="sm" onClick={() => setClearConfirm(false)}>Cancel</Button>
             </>
           ) : (
             <Button variant="ghost" size="sm" onClick={() => setClearConfirm(true)}>Clear Chat</Button>
           )}
-          <Link to="/athlete/plan"><Button variant="ghost" size="sm">← View Plan</Button></Link>
-          <Link to="/athlete/races"><Button variant="ghost" size="sm">↺ Regenerate Plan</Button></Link>
+          <Link to="/athlete/plan"><Button variant="ghost" size="sm">View Plan</Button></Link>
           <Link to="/athlete/races"><Button variant="ghost" size="sm">Race Calendar</Button></Link>
         </div>
       </div>
@@ -121,19 +147,39 @@ function BotChat() {
       <div className="flex-1 overflow-y-auto px-6 py-6 max-w-4xl w-full mx-auto">
         {planUpdated && (
           <Alert type="success" message="Your plan has been updated." onClose={() => setPlanUpdated(false)}
-            action={<Link to="/athlete/plan"><Button size="sm" variant="secondary">View Plan →</Button></Link>}
+            action={<Link to="/athlete/plan"><Button size="sm" variant="secondary">View Plan</Button></Link>}
           />
         )}
         {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
         {messages.length === 0 && !sending && (
-          <div className="text-center py-20 text-[var(--muted)]">
-            <div className="text-4xl mb-3"></div>
-            <p className="text-sm">Send a message to your coach bot. Ask about training, request modifications, or discuss your upcoming races.</p>
-            <div className="mt-4 flex flex-wrap gap-2 justify-center">
-              {['I feel tired this week', 'I tweaked my calf, what should I do?', 'Can I swap Wednesday and Thursday?', 'I have a race coming up sooner than expected'].map(s => (
-                <button key={s} onClick={() => setInput(s)}
-                  className="text-xs px-3 py-1.5 rounded-full border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] hover:border-brand-500 transition-colors">
+          <div className="text-center py-20">
+            <p
+              className="text-sm mb-5"
+              style={{ color: 'var(--color-text-secondary)' }}
+            >
+              Send a message to your coach bot. Ask about training, request modifications, or discuss your upcoming races.
+            </p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {PROMPTS.map(s => (
+                <button
+                  key={s}
+                  onClick={() => setInput(s)}
+                  className="text-xs px-3 py-1.5 rounded-full transition-all duration-150"
+                  style={{
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-text-secondary)',
+                    background: 'transparent',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-accent)';
+                    (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-primary)';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-border)';
+                    (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-secondary)';
+                  }}
+                >
                   {s}
                 </button>
               ))}
@@ -155,9 +201,9 @@ function BotChat() {
         sending={sending}
         placeholder="Message your coach bot… (Enter to send, Shift+Enter for new line)"
         hint={
-          <p className="text-xs text-[var(--muted)]">
+          <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
             The bot can adjust workouts within the next 14 days. For larger changes, use{' '}
-            <Link to="/athlete/races" className="text-brand-400 hover:underline">Regenerate Plan</Link>.
+            <Link to="/athlete/races" style={{ color: 'var(--color-accent)' }} className="hover:underline">Regenerate Plan</Link>.
           </p>
         }
       />
@@ -193,7 +239,7 @@ function DirectChat() {
   // Poll for new coach replies every 15s
   useEffect(() => {
     const interval = setInterval(() => {
-      if (sending) return; // don't clobber an in-flight send
+      if (sending) return;
       apiFetch('/api/athlete/messages')
         .then(setMessages)
         .catch(() => {});
@@ -224,19 +270,25 @@ function DirectChat() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="border-b border-[var(--border)] bg-[var(--surface)] px-6 py-2">
-        <div className="text-sm text-[var(--muted)]">
-          {activeTeam ? <span>Messaging <span className="text-[var(--text)] font-medium">{activeTeam}</span>'s coach</span> : 'Direct messages with your coach'}
-        </div>
+      <div
+        className="px-6 py-3 shrink-0"
+        style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)' }}
+      >
+        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+          {activeTeam
+            ? <>Messaging <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{activeTeam}</span>'s coach</>
+            : 'Direct messages with your coach'}
+        </p>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6 max-w-4xl w-full mx-auto">
         {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
         {loaded && messages.length === 0 && (
-          <div className="text-center py-20 text-[var(--muted)]">
-            <div className="text-4xl mb-3"></div>
-            <p className="text-sm">Send a message directly to your coach. They'll reply here.</p>
+          <div className="text-center py-20">
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              Send a message directly to your coach. They'll reply here.
+            </p>
           </div>
         )}
 
@@ -258,7 +310,7 @@ function DirectChat() {
         sending={sending}
         placeholder="Message your coach… (Enter to send, Shift+Enter for new line)"
         hint={
-          <p className="text-xs text-[var(--muted)]">
+          <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
             Messages are reviewed by your coach, not the AI bot.
           </p>
         }
@@ -274,26 +326,44 @@ export function Chat() {
   const [tab, setTab] = useState<'bot' | 'coach'>('bot');
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
-  const tabCls = (active: boolean) =>
-    `px-5 py-1.5 rounded-md text-sm font-medium transition-all ${
-      active
-        ? 'bg-[var(--surface3)] text-[var(--text)] shadow-sm border border-[var(--border2)]'
-        : 'text-[var(--muted)] hover:text-[var(--text)]'
-    }`;
-
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar role="athlete" name={profile?.name} onLogout={logout} />
-
-      {/* Tab bar */}
-      <div className="border-b border-[var(--border)] bg-[var(--surface)] px-6 py-3 flex items-center justify-center">
-        <div className="flex items-center bg-[var(--surface2)] border border-[var(--border)] rounded-lg p-0.5 gap-0.5">
-          <button className={tabCls(tab === 'bot')}   onClick={() => setTab('bot')}>Coach Bot</button>
-          <button className={tabCls(tab === 'coach')} onClick={() => setTab('coach')}>My Coach</button>
+    <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
+      <div
+        className="flex flex-col"
+        style={{ minHeight: '100vh', background: 'var(--color-bg-primary)' }}
+      >
+        {/* Tab bar */}
+        <div
+          className="px-6 py-3 flex items-center justify-center shrink-0"
+          style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)' }}
+        >
+          <div
+            className="flex items-center gap-0.5 p-0.5 rounded-lg"
+            style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}
+          >
+            {(['bot', 'coach'] as const).map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className="px-5 py-1.5 rounded-md text-sm font-medium transition-all duration-150"
+                style={tab === t ? {
+                  background: 'var(--color-bg-hover)',
+                  color: 'var(--color-text-primary)',
+                  border: '1px solid var(--color-border-light)',
+                } : {
+                  background: 'transparent',
+                  color: 'var(--color-text-secondary)',
+                  border: '1px solid transparent',
+                }}
+              >
+                {t === 'bot' ? 'Coach Bot' : 'My Coach'}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {tab === 'bot'   ? <BotChat />    : <DirectChat />}
-    </div>
+        {tab === 'bot' ? <BotChat /> : <DirectChat />}
+      </div>
+    </AppLayout>
   );
 }

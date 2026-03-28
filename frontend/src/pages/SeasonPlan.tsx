@@ -3,41 +3,89 @@ import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { Navbar, Button, Card, Badge, Spinner } from '../components/ui';
+import { AppLayout, Button, Card, Badge, Spinner, Input } from '../components/ui';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-const PHASE_COLORS: Record<string, string> = {
+// Phase color mappings for badge component
+const PHASE_BADGE_COLOR: Record<string, 'gray' | 'blue' | 'purple' | 'amber' | 'green'> = {
   base: 'gray', build: 'blue', sharpening: 'purple',
-  taper: 'amber', race: 'green', recovery: 'gray'
+  taper: 'amber', race: 'green', recovery: 'gray',
 };
 
-const PHASE_PILL: Record<string, string> = {
-  base:       'border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]',
-  build:      'border-blue-800/50 text-blue-400 hover:text-blue-300',
-  sharpening: 'border-purple-800/50 text-purple-400 hover:text-purple-300',
-  taper:      'border-amber-800/50 text-amber-400 hover:text-amber-300',
-  race:       'border-brand-700/50 text-brand-400 hover:text-brand-300',
-  recovery:   'border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]',
+// Phase left-border colors for workout cards
+const PHASE_BORDER_COLOR: Record<string, string> = {
+  base:       '#4B5563',
+  build:      '#60A5FA',
+  sharpening: '#C084FC',
+  taper:      '#FBBF24',
+  race:       '#00E5A0',
+  recovery:   '#4B5563',
 };
 
-const PHASE_PILL_ACTIVE: Record<string, string> = {
-  base:       'bg-[var(--surface3)] border-[var(--border2)] text-[var(--text)]',
-  build:      'bg-blue-950/50 border-blue-800/60 text-blue-300',
-  sharpening: 'bg-purple-950/50 border-purple-800/60 text-purple-300',
-  taper:      'bg-amber-950/50 border-amber-800/60 text-amber-300',
-  race:       'bg-brand-950/60 border-brand-800/60 text-brand-300',
-  recovery:   'bg-[var(--surface3)] border-[var(--border2)] text-[var(--text)]',
+// Phase pill styles (week selector)
+const PHASE_PILL_STYLE = (phase: string, active: boolean, isToday: boolean): React.CSSProperties => {
+  if (active) {
+    const bg: Record<string, string> = {
+      base:       'var(--color-bg-hover)',
+      build:      'rgba(59,130,246,0.15)',
+      sharpening: 'rgba(168,85,247,0.15)',
+      taper:      'rgba(245,158,11,0.15)',
+      race:       'var(--color-accent-dim)',
+      recovery:   'var(--color-bg-hover)',
+    };
+    const border: Record<string, string> = {
+      base:       'var(--color-border-light)',
+      build:      'rgba(96,165,250,0.5)',
+      sharpening: 'rgba(192,132,252,0.5)',
+      taper:      'rgba(251,191,36,0.5)',
+      race:       'rgba(0,229,160,0.5)',
+      recovery:   'var(--color-border-light)',
+    };
+    const color: Record<string, string> = {
+      base:       'var(--color-text-primary)',
+      build:      '#93C5FD',
+      sharpening: '#D8B4FE',
+      taper:      '#FCD34D',
+      race:       'var(--color-accent)',
+      recovery:   'var(--color-text-primary)',
+    };
+    return {
+      background: bg[phase] ?? bg.base,
+      border: `1px solid ${border[phase] ?? border.base}`,
+      color: color[phase] ?? color.base,
+    };
+  }
+  if (isToday) {
+    return {
+      background: 'var(--color-accent-dim)',
+      border: '1px solid rgba(0,229,160,0.3)',
+      color: 'var(--color-accent)',
+    };
+  }
+  const color: Record<string, string> = {
+    base:       'var(--color-text-tertiary)',
+    build:      '#60A5FA',
+    sharpening: '#C084FC',
+    taper:      '#FBBF24',
+    race:       'var(--color-accent)',
+    recovery:   'var(--color-text-tertiary)',
+  };
+  return {
+    background: 'transparent',
+    border: '1px solid var(--color-border)',
+    color: color[phase] ?? color.base,
+  };
 };
 
-// Phase colours for calendar pills
-const PHASE_CAL: Record<string, string> = {
-  base:       'bg-[var(--surface3)] text-[var(--text2)] border-[var(--border2)]',
-  build:      'bg-blue-950/70 text-blue-300 border-blue-900/40',
-  sharpening: 'bg-purple-950/70 text-purple-300 border-purple-900/40',
-  taper:      'bg-amber-950/70 text-amber-300 border-amber-900/40',
-  race:       'bg-brand-950/70 text-brand-300 border-brand-800/40',
-  recovery:   'bg-[var(--surface3)] text-[var(--muted)] border-[var(--border)]',
+// Phase calendar cell styles
+const PHASE_CAL: Record<string, { background: string; color: string; border: string }> = {
+  base:       { background: 'var(--color-bg-hover)',         color: 'var(--color-text-secondary)', border: 'var(--color-border-light)' },
+  build:      { background: 'rgba(59,130,246,0.12)',         color: '#93C5FD',                     border: 'rgba(59,130,246,0.2)' },
+  sharpening: { background: 'rgba(168,85,247,0.12)',         color: '#D8B4FE',                     border: 'rgba(168,85,247,0.2)' },
+  taper:      { background: 'rgba(245,158,11,0.12)',         color: '#FCD34D',                     border: 'rgba(245,158,11,0.2)' },
+  race:       { background: 'var(--color-accent-dim)',       color: 'var(--color-accent)',          border: 'rgba(0,229,160,0.2)' },
+  recovery:   { background: 'var(--color-bg-tertiary)',      color: 'var(--color-text-tertiary)',   border: 'var(--color-border)' },
 };
 
 type CalWorkout = {
@@ -52,64 +100,77 @@ type CalWorkout = {
 
 // ── Workout detail modal ──────────────────────────────────────────────────────
 function WorkoutModal({ wo, onClose }: { wo: CalWorkout; onClose: () => void }) {
-  const phaseColor: Record<string, string> = {
-    base: 'text-[var(--muted)]', build: 'text-blue-400',
-    sharpening: 'text-purple-400', taper: 'text-amber-400',
-    race: 'text-brand-400', recovery: 'text-[var(--muted)]',
+  const phaseTextColor: Record<string, string> = {
+    base:       'var(--color-text-secondary)',
+    build:      '#60A5FA',
+    sharpening: '#C084FC',
+    taper:      '#FBBF24',
+    race:       'var(--color-accent)',
+    recovery:   'var(--color-text-secondary)',
   };
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-md bg-[var(--surface)] border border-[var(--border2)] rounded-2xl shadow-2xl p-6 fade-up"
+        className="relative w-full max-w-md p-6 fade-up"
+        style={{
+          background: 'var(--color-bg-secondary)',
+          border: '1px solid var(--color-border-light)',
+          borderRadius: 20,
+          boxShadow: '0 25px 60px rgba(0,0,0,0.7)',
+        }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Close */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors text-lg"
-        >×</button>
+          className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center text-lg transition-all"
+          style={{ borderRadius: '50%', color: 'var(--color-text-secondary)' }}
+        >
+          ×
+        </button>
 
-        {/* Date + phase */}
         <div className="flex items-center gap-2 mb-4">
-          <span className="text-xs text-[var(--muted)]">{wo.dateLabel}</span>
-          <span className={`text-xs font-medium capitalize ${phaseColor[wo.phase] || phaseColor.base}`}>
+          <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{wo.dateLabel}</span>
+          <span
+            className="text-xs font-medium capitalize"
+            style={{ color: phaseTextColor[wo.phase] ?? phaseTextColor.base }}
+          >
             · {wo.phase}
           </span>
         </div>
 
-        {/* Title */}
-        <h3 className="font-display font-bold text-lg text-[var(--text)] mb-3 leading-snug">{wo.title}</h3>
+        <h3 className="font-bold text-lg mb-3 leading-snug" style={{ color: 'var(--color-text-primary)' }}>{wo.title}</h3>
 
-        {/* Stats row */}
         {(wo.distance_miles || wo.pace_guideline) && (
           <div className="flex gap-4 mb-4">
             {wo.distance_miles && (
               <div className="text-center">
-                <div className="text-xl font-bold text-brand-400">{wo.distance_miles}</div>
-                <div className="text-[10px] text-[var(--muted)] uppercase tracking-wide">miles</div>
+                <div className="font-mono text-xl font-bold" style={{ color: 'var(--color-accent)' }}>{wo.distance_miles}</div>
+                <div className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--color-text-tertiary)' }}>miles</div>
               </div>
             )}
             {wo.pace_guideline && (
               <div className="text-center">
-                <div className="text-sm font-semibold text-[var(--text2)] pt-1">{wo.pace_guideline}</div>
-                <div className="text-[10px] text-[var(--muted)] uppercase tracking-wide">pace</div>
+                <div className="font-mono text-sm font-semibold pt-1" style={{ color: 'var(--color-text-secondary)' }}>{wo.pace_guideline}</div>
+                <div className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--color-text-tertiary)' }}>pace</div>
               </div>
             )}
           </div>
         )}
 
-        {/* Description */}
         {wo.description && (
-          <p className="text-sm text-[var(--muted)] leading-relaxed mb-3">{wo.description}</p>
+          <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--color-text-secondary)' }}>{wo.description}</p>
         )}
 
-        {/* Change reason */}
         {wo.change_reason && (
-          <p className="text-xs text-[var(--muted2)] italic border-t border-[var(--border)] pt-3">
+          <p
+            className="text-xs italic pt-3"
+            style={{
+              color: 'var(--color-text-tertiary)',
+              borderTop: '1px solid var(--color-border)',
+            }}
+          >
             Why adjusted: {wo.change_reason}
           </p>
         )}
@@ -118,14 +179,13 @@ function WorkoutModal({ wo, onClose }: { wo: CalWorkout; onClose: () => void }) 
   );
 }
 
-// ── Monthly calendar view for the season plan ────────────────────────────────
+// ── Monthly calendar view ─────────────────────────────────────────────────────
 function PlanMonthView({ plan }: { plan: any[] }) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selected, setSelected] = useState<CalWorkout | null>(null);
 
-  // Build workouts-by-date map across the whole plan
   const workoutsByDate: Record<string, CalWorkout[]> = {};
   plan.forEach((week: any) => {
     week.workouts?.forEach((wo: any) => {
@@ -169,18 +229,41 @@ function PlanMonthView({ plan }: { plan: any[] }) {
 
       <div>
         <div className="flex items-center justify-between mb-4">
-          <button onClick={prevMonth} className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors text-xl">‹</button>
-          <span className="font-display font-semibold text-base text-[var(--text)]">{monthLabel}</span>
-          <button onClick={nextMonth} className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors text-xl">›</button>
+          <button
+            onClick={prevMonth}
+            className="w-9 h-9 flex items-center justify-center text-xl transition-all"
+            style={{
+              borderRadius: 8,
+              color: 'var(--color-text-secondary)',
+              background: 'transparent',
+            }}
+          >
+            ‹
+          </button>
+          <span className="font-semibold text-base" style={{ color: 'var(--color-text-primary)' }}>{monthLabel}</span>
+          <button
+            onClick={nextMonth}
+            className="w-9 h-9 flex items-center justify-center text-xl transition-all"
+            style={{
+              borderRadius: 8,
+              color: 'var(--color-text-secondary)',
+              background: 'transparent',
+            }}
+          >
+            ›
+          </button>
         </div>
 
         <div className="grid grid-cols-7 text-center mb-1">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-            <div key={d} className="text-[11px] text-[var(--muted)] uppercase tracking-wide py-1">{d}</div>
+            <div key={d} className="text-[11px] uppercase tracking-wide py-1" style={{ color: 'var(--color-text-tertiary)' }}>{d}</div>
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-px bg-[var(--border)] rounded-xl overflow-hidden">
+        <div
+          className="grid grid-cols-7 gap-px rounded-xl overflow-hidden"
+          style={{ background: 'var(--color-border)' }}
+        >
           {cells.map((day, i) => {
             const dateKey = day
               ? `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
@@ -196,26 +279,52 @@ function PlanMonthView({ plan }: { plan: any[] }) {
               <div
                 key={i}
                 onClick={() => hasWorkout && setSelected(dayWorkouts[0])}
-                className={`bg-[var(--surface2)] min-h-[88px] p-1.5 transition-colors ${
-                  !day ? 'opacity-20' : hasWorkout ? 'cursor-pointer hover:bg-[var(--surface3)]' : ''
-                }`}
+                className="transition-colors"
+                style={{
+                  background: 'var(--color-bg-secondary)',
+                  minHeight: 88,
+                  padding: 6,
+                  opacity: !day ? 0.2 : 1,
+                  cursor: hasWorkout ? 'pointer' : 'default',
+                }}
+                onMouseEnter={e => {
+                  if (hasWorkout) (e.currentTarget as HTMLElement).style.background = 'var(--color-bg-tertiary)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.background = 'var(--color-bg-secondary)';
+                }}
               >
                 {day && (
                   <>
-                    <div className={`text-xs w-6 h-6 flex items-center justify-center rounded-full mb-1 font-medium ${
-                      isToday ? 'bg-brand-500 text-white font-bold shadow-glow-sm' : 'text-[var(--muted)]'
-                    }`}>{day}</div>
+                    <div
+                      className="text-xs w-6 h-6 flex items-center justify-center rounded-full mb-1 font-medium"
+                      style={isToday ? {
+                        background: 'var(--color-accent)',
+                        color: '#000',
+                        fontWeight: 700,
+                      } : {
+                        color: 'var(--color-text-tertiary)',
+                      }}
+                    >
+                      {day}
+                    </div>
                     <div className="flex flex-col gap-0.5">
-                      {dayWorkouts.map((wo, wi) => (
-                        <div
-                          key={wi}
-                          className={`text-[10px] leading-tight px-1.5 py-0.5 rounded-md truncate font-medium border ${
-                            PHASE_CAL[wo.phase] || PHASE_CAL.base
-                          }`}
-                        >
-                          {wo.title}{wo.distance_miles ? ` · ${wo.distance_miles}mi` : ''}
-                        </div>
-                      ))}
+                      {dayWorkouts.map((wo, wi) => {
+                        const cal = PHASE_CAL[wo.phase] ?? PHASE_CAL.base;
+                        return (
+                          <div
+                            key={wi}
+                            className="text-[10px] leading-tight px-1.5 py-0.5 rounded-md truncate font-medium"
+                            style={{
+                              background: cal.background,
+                              color: cal.color,
+                              border: `1px solid ${cal.border}`,
+                            }}
+                          >
+                            {wo.title}{wo.distance_miles ? ` · ${wo.distance_miles}mi` : ''}
+                          </div>
+                        );
+                      })}
                     </div>
                   </>
                 )}
@@ -224,13 +333,19 @@ function PlanMonthView({ plan }: { plan: any[] }) {
           })}
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 text-[10px] text-[var(--muted)]">
-          {['base', 'build', 'sharpening', 'taper', 'race', 'recovery'].map(phase => (
-            <span key={phase} className="flex items-center gap-1.5 capitalize">
-              <span className={`inline-block w-2 h-2 rounded-sm border ${PHASE_CAL[phase]}`} />
-              {phase}
-            </span>
-          ))}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>
+          {['base', 'build', 'sharpening', 'taper', 'race', 'recovery'].map(phase => {
+            const cal = PHASE_CAL[phase] ?? PHASE_CAL.base;
+            return (
+              <span key={phase} className="flex items-center gap-1.5 capitalize">
+                <span
+                  className="inline-block w-2 h-2 rounded-sm"
+                  style={{ background: cal.background, border: `1px solid ${cal.border}` }}
+                />
+                {phase}
+              </span>
+            );
+          })}
         </div>
       </div>
     </>
@@ -299,28 +414,26 @@ function TeamSwitcher({ onTeamChange }: { onTeamChange: () => void }) {
 
   return (
     <>
-      {/* Confirm leave modal */}
       {confirmLeave && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setConfirmLeave(null)}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div
-            className="relative bg-[var(--surface)] border border-[var(--border2)] rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+            className="relative p-6 w-full max-w-sm"
+            style={{
+              background: 'var(--color-bg-secondary)',
+              border: '1px solid var(--color-border-light)',
+              borderRadius: 20,
+              boxShadow: '0 25px 60px rgba(0,0,0,0.7)',
+            }}
             onClick={e => e.stopPropagation()}
           >
-            <h3 className="font-display font-semibold text-base mb-2">Leave {confirmLeave.name}?</h3>
-            <p className="text-sm text-[var(--muted)] mb-5">
+            <h3 className="font-semibold text-base mb-2" style={{ color: 'var(--color-text-primary)' }}>Leave {confirmLeave.name}?</h3>
+            <p className="text-sm mb-5" style={{ color: 'var(--color-text-secondary)' }}>
               You will lose access to their coaching bot and plan. You can rejoin later with an invite code.
             </p>
             <div className="flex gap-2 justify-end">
               <Button variant="ghost" size="sm" onClick={() => setConfirmLeave(null)}>Cancel</Button>
-              <Button
-                variant="danger"
-                size="sm"
-                loading={leaving === confirmLeave.id}
-                onClick={() => leaveTeam(confirmLeave)}
-              >
-                Leave Team
-              </Button>
+              <Button variant="danger" size="sm" loading={leaving === confirmLeave.id} onClick={() => leaveTeam(confirmLeave)}>Leave Team</Button>
             </div>
           </div>
         </div>
@@ -333,21 +446,33 @@ function TeamSwitcher({ onTeamChange }: { onTeamChange: () => void }) {
               <button
                 onClick={() => !t.is_active && switchTeam(t.id)}
                 disabled={!!switching}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center gap-1.5 ${
-                  t.is_active
-                    ? 'bg-brand-600 border-brand-500 text-white'
-                    : 'border-[var(--border)] text-[var(--muted)] hover:border-brand-500 hover:text-[var(--text)]'
-                }`}
+                className="px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-all duration-150"
+                style={t.is_active ? {
+                  background: 'var(--color-accent)',
+                  border: '1px solid var(--color-accent)',
+                  borderRadius: 8,
+                  color: '#000',
+                } : {
+                  background: 'transparent',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 8,
+                  color: 'var(--color-text-secondary)',
+                }}
               >
-                {switching === t.id ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> : null}
+                {switching === t.id && <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />}
                 {t.name}
                 {t.is_active && <span className="text-[10px] opacity-75">· active</span>}
               </button>
               <button
                 onClick={() => setConfirmLeave(t)}
-                className="w-5 h-5 flex items-center justify-center rounded text-[var(--muted2)] hover:text-red-400 hover:bg-red-950/40 transition-colors text-xs"
+                className="w-5 h-5 flex items-center justify-center text-xs transition-all"
+                style={{ borderRadius: 4, color: 'var(--color-text-tertiary)' }}
                 title={`Leave ${t.name}`}
-              >×</button>
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#F87171'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-tertiary)'; }}
+              >
+                ×
+              </button>
             </div>
           ))}
 
@@ -360,7 +485,16 @@ function TeamSwitcher({ onTeamChange }: { onTeamChange: () => void }) {
                 placeholder="INVITE CODE"
                 maxLength={8}
                 autoFocus
-                className="w-28 bg-[var(--surface2)] border border-[var(--border2)] rounded-lg px-2.5 py-1.5 text-xs text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-brand-500 tracking-widest uppercase"
+                className="w-28 text-xs uppercase tracking-widest outline-none transition-all"
+                style={{
+                  background: 'var(--color-bg-tertiary)',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: 8,
+                  padding: '6px 10px',
+                  color: 'var(--color-text-primary)',
+                }}
+                onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--color-accent)'; }}
+                onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--color-border-light)'; }}
               />
               <Button size="sm" variant="primary" loading={joining} onClick={joinTeam}>Join</Button>
               <Button size="sm" variant="ghost" onClick={() => { setShowJoin(false); setJoinCode(''); setJoinError(''); }}>Cancel</Button>
@@ -369,7 +503,21 @@ function TeamSwitcher({ onTeamChange }: { onTeamChange: () => void }) {
           ) : (
             <button
               onClick={() => setShowJoin(true)}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium border border-dashed border-[var(--border)] text-[var(--muted)] hover:text-brand-400 hover:border-brand-700 transition-colors"
+              className="px-3 py-1.5 text-xs font-medium transition-all duration-150"
+              style={{
+                background: 'transparent',
+                border: '1px dashed var(--color-border)',
+                borderRadius: 8,
+                color: 'var(--color-text-tertiary)',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-accent)';
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-accent)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-border)';
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-tertiary)';
+              }}
             >
               + Join Another Team
             </button>
@@ -380,7 +528,7 @@ function TeamSwitcher({ onTeamChange }: { onTeamChange: () => void }) {
   );
 }
 
-// ── Season Plan ──────────────────────────────────────────────────────────────
+// ── Season Plan ───────────────────────────────────────────────────────────────
 export function SeasonPlan() {
   const { profile, clearAuth } = useAuthStore();
   const nav = useNavigate();
@@ -415,18 +563,16 @@ export function SeasonPlan() {
 
   useEffect(() => { loadSeason(); }, []);
 
-  // Detect and load unshared milestones
   useEffect(() => {
     apiFetch('/api/milestones/check', { method: 'POST' })
       .then(({ unshared }) => setMilestones(unshared || []))
       .catch(() => {});
   }, []);
 
-  // Poll job status while a regenerate job is in-flight
   useEffect(() => {
     if (!pollJobId) return;
     let attempts = 0;
-    const MAX_ATTEMPTS = 20; // 60s escape hatch at 3s intervals
+    const MAX_ATTEMPTS = 20;
     const interval = setInterval(async () => {
       attempts++;
       try {
@@ -473,10 +619,8 @@ export function SeasonPlan() {
     try {
       const data = await apiFetch('/api/athlete/season/regenerate', { method: 'POST' });
       if (data.status === 'generating' && data.jobId) {
-        // Async path — poll for completion
         setPollJobId(data.jobId);
       } else {
-        // Fast path — plan returned immediately
         const { season: updated } = await apiFetch('/api/athlete/season');
         setSeason(updated);
         setRegenerating(false);
@@ -489,243 +633,311 @@ export function SeasonPlan() {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Spinner size="lg" /></div>;
+  if (loading) {
+    return (
+      <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
+        <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--color-bg-primary)' }}>
+          <Spinner size="lg" />
+        </div>
+      </AppLayout>
+    );
+  }
 
-  if (!season) return (
-    <div className="min-h-screen">
-      <Navbar role="athlete" name={profile?.name} onLogout={logout} />
-      <div className="max-w-xl mx-auto px-6 py-20 text-center">
-        <h1 className="font-display text-xl font-bold mb-2">No active season</h1>
-        <p className="text-[var(--muted)] mb-5 leading-relaxed">Subscribe to a coach bot to get your personalized training plan.</p>
-        <Link to="/athlete/browse"><Button>Browse Coach Bots →</Button></Link>
-      </div>
-    </div>
-  );
+  if (!season) {
+    return (
+      <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
+        <div className="min-h-screen" style={{ background: 'var(--color-bg-primary)' }}>
+          <div className="max-w-xl mx-auto px-6 py-20 text-center">
+            <h1 className="font-bold text-xl mb-2" style={{ color: 'var(--color-text-primary)' }}>No active season</h1>
+            <p className="mb-5 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Subscribe to a coach bot to get your personalized training plan.
+            </p>
+            <Link to="/athlete/browse"><Button>Browse Coach Bots</Button></Link>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   const plan = season.season_plan || [];
   const week = plan[currentWeek];
 
   return (
-    <div className="min-h-screen">
-      <Navbar role="athlete" name={profile?.name} onLogout={logout} />
+    <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
+      <div className="min-h-screen" style={{ background: 'var(--color-bg-primary)' }}>
+        <div className="max-w-5xl mx-auto px-6 py-8">
 
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4 fade-up gap-4">
-          <div>
-            <h1 className="font-display text-3xl font-bold text-[var(--text)]">Season Plan</h1>
-            <p className="text-sm text-[var(--muted)] mt-0.5">
-              {season.coach_bots?.name} · {plan.length} weeks
-              {!season.ai_used && <span className="ml-2 text-amber-400 text-xs font-medium">Template fallback</span>}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            <Link to="/athlete/races"><Button variant="ghost" size="sm">Races</Button></Link>
-            <Link to="/athlete/chat"><Button variant="secondary" size="sm">Chat with Bot</Button></Link>
-            {regenerating ? (
-              <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
-                <Spinner size="sm" />
-                Your AI coach is building your new plan…
-              </div>
-            ) : confirmRegen ? (
-              <div className="flex flex-col items-end gap-1.5">
-                <span className="text-xs text-[var(--muted)] max-w-xs text-right">
-                  This will replace your current training plan with a freshly generated one based on your latest data and race calendar. Continue?
-                </span>
-                <div className="flex items-center gap-2">
-                  <Button variant="danger" size="sm" onClick={regenerate}>Confirm</Button>
-                  <Button variant="ghost" size="sm" onClick={() => setConfirmRegen(false)}>Cancel</Button>
-                </div>
-              </div>
-            ) : (
-              <Button variant="secondary" size="sm" onClick={() => setConfirmRegen(true)}>↺ Regenerate</Button>
-            )}
-          </div>
-        </div>
-
-        {/* Milestone banners */}
-        {milestones.length > 0 && (
-          <div className="mb-4 space-y-2 fade-up">
-            {milestones.map(m => (
-              <div key={m.id} className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-amber-950/50 border border-amber-800/50">
-                <div className="flex items-center gap-2">
-                  <span className="text-base"></span>
-                  <div>
-                    <span className="text-xs font-medium text-amber-300">New milestone!</span>
-                    <p className="text-sm text-[var(--text)]">{m.label}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    loading={sharingMilestone === m.id}
-                    onClick={() => shareMilestone(m.id)}
-                  >
-                    Share
-                  </Button>
-                  <button
-                    onClick={() => setMilestones(prev => prev.filter(x => x.id !== m.id))}
-                    className="text-[var(--muted)] hover:text-[var(--text)] text-sm w-5 h-5 flex items-center justify-center"
-                  >×</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Team switcher */}
-        <TeamSwitcher onTeamChange={loadSeason} />
-
-        {/* Regen success / error banners */}
-        {regenSuccess && (
-          <div className="mb-4 fade-up flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-950/60 border border-green-800/50 text-green-300 text-sm">
-            <span>✓</span> Your new plan is ready!
-          </div>
-        )}
-        {regenError && (
-          <div className="mb-4 fade-up flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-red-950/60 border border-red-800/50 text-red-300 text-sm">
-            <span>{regenError}</span>
-            <button onClick={() => setRegenError(null)} className="text-red-400 hover:text-red-200 ml-2 shrink-0">×</button>
-          </div>
-        )}
-
-        {/* View toggle — centered */}
-        <div className="flex justify-center mb-6 fade-up-1">
-          <div className="flex items-center bg-[var(--surface2)] border border-[var(--border)] rounded-lg p-0.5 gap-0.5">
-            <button
-              onClick={() => setPlanView('weekly')}
-              className={`px-5 py-1.5 rounded-md text-sm font-medium transition-all ${
-                planView === 'weekly'
-                  ? 'bg-[var(--surface3)] text-[var(--text)] shadow-sm border border-[var(--border2)]'
-                  : 'text-[var(--muted)] hover:text-[var(--text)]'
-              }`}
-            >
-              Weekly
-            </button>
-            <button
-              onClick={() => setPlanView('monthly')}
-              className={`px-5 py-1.5 rounded-md text-sm font-medium transition-all ${
-                planView === 'monthly'
-                  ? 'bg-[var(--surface3)] text-[var(--text)] shadow-sm border border-[var(--border2)]'
-                  : 'text-[var(--muted)] hover:text-[var(--text)]'
-              }`}
-            >
-              Monthly
-            </button>
-          </div>
-        </div>
-
-        {/* ── Monthly View ─────────────────────────────────────────────────── */}
-        {planView === 'monthly' && (
-          <div className="fade-up-1">
-            <Card>
-              <PlanMonthView plan={plan} />
-            </Card>
-          </div>
-        )}
-
-        {/* ── Weekly View ──────────────────────────────────────────────────── */}
-        {planView === 'weekly' && (
-          <>
-            {/* Week selector */}
-            <div className="flex gap-1.5 mb-6 overflow-x-auto pb-2 fade-up-1">
-              {plan.map((w: any, i: number) => {
-                const isToday = new Date().toISOString().split('T')[0] >= w.week_start_date &&
-                  (i === plan.length - 1 || new Date().toISOString().split('T')[0] < plan[i + 1]?.week_start_date);
-                const phase = w.phase || 'base';
-                const isActive = i === currentWeek;
-                return (
-                  <button key={i} onClick={() => setCurrentWeek(i)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all shrink-0 border ${
-                      isActive
-                        ? PHASE_PILL_ACTIVE[phase] || PHASE_PILL_ACTIVE.base
-                        : isToday
-                        ? 'border-brand-700/40 text-brand-400 bg-brand-950/30'
-                        : PHASE_PILL[phase] || PHASE_PILL.base
-                    }`}>
-                    Wk {w.week_number}
-                    {isToday && ' ●'}
-                  </button>
-                );
-              })}
+          {/* Header */}
+          <div className="flex items-start justify-between mb-4 fade-up gap-4">
+            <div>
+              <h1 className="font-bold text-3xl" style={{ color: 'var(--color-text-primary)' }}>Season Plan</h1>
+              <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+                {season.coach_bots?.name} · {plan.length} weeks
+                {!season.ai_used && (
+                  <span className="ml-2 text-xs font-medium" style={{ color: '#FBBF24' }}>Template fallback</span>
+                )}
+              </p>
             </div>
-
-            {week && (
-              <div className="fade-up-2">
-                <div className="flex items-center gap-3 mb-4">
-                  <h2 className="font-display font-semibold text-xl text-[var(--text)]">Week {week.week_number}</h2>
-                  <Badge label={week.phase || 'base'} color={PHASE_COLORS[week.phase] as any || 'gray'} />
-                  <span className="text-sm text-[var(--muted)]">
-                    {new Date(week.week_start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <Link to="/athlete/races"><Button variant="ghost" size="sm">Races</Button></Link>
+              <Link to="/athlete/chat"><Button variant="secondary" size="sm">Chat with Bot</Button></Link>
+              {regenerating ? (
+                <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                  <Spinner size="sm" />
+                  Your AI coach is building your new plan…
+                </div>
+              ) : confirmRegen ? (
+                <div className="flex flex-col items-end gap-1.5">
+                  <span className="text-xs max-w-xs text-right" style={{ color: 'var(--color-text-secondary)' }}>
+                    This will replace your current training plan with a freshly generated one based on your latest data and race calendar. Continue?
                   </span>
-                  <div className="ml-auto flex gap-1.5">
-                    <Button variant="ghost" size="sm" disabled={currentWeek === 0} onClick={() => setCurrentWeek(w => w - 1)}>← Prev</Button>
-                    <Button variant="ghost" size="sm" disabled={currentWeek === plan.length - 1} onClick={() => setCurrentWeek(w => w + 1)}>Next →</Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="danger" size="sm" onClick={regenerate}>Confirm</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setConfirmRegen(false)}>Cancel</Button>
                   </div>
                 </div>
+              ) : (
+                <Button variant="secondary" size="sm" onClick={() => setConfirmRegen(true)}>Regenerate</Button>
+              )}
+            </div>
+          </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {DAYS.map((dayLabel, i) => {
-                    const wo = week.workouts?.find((w: any) => w.day_of_week === i + 1);
-                    const key = `${week.week_number}-${i + 1}`;
-                    const expanded = expandedWorkout === key;
-                    return (
-                      <div
-                        key={i}
-                        onClick={() => wo && setExpandedWorkout(expanded ? null : key)}
-                        className={`rounded-xl border p-4 transition-all ${
-                          wo
-                            ? `border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border2)] cursor-pointer ${expanded ? 'col-span-1 sm:col-span-2' : ''}`
-                            : 'border-dashed border-[var(--border)] opacity-35'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-medium text-[var(--muted)] uppercase tracking-wide">{dayLabel}</span>
-                          {wo?.date && (
-                            <span className="text-xs text-[var(--muted2)]">
-                              {new Date(wo.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          {/* Milestone banners */}
+          {milestones.length > 0 && (
+            <div className="mb-4 space-y-2 fade-up">
+              {milestones.map(m => (
+                <div
+                  key={m.id}
+                  className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl"
+                  style={{
+                    background: 'rgba(245,158,11,0.1)',
+                    border: '1px solid rgba(245,158,11,0.3)',
+                  }}
+                >
+                  <div>
+                    <span className="text-xs font-medium" style={{ color: '#FCD34D' }}>New milestone</span>
+                    <p className="text-sm" style={{ color: 'var(--color-text-primary)' }}>{m.label}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button size="sm" variant="secondary" loading={sharingMilestone === m.id} onClick={() => shareMilestone(m.id)}>Share</Button>
+                    <button
+                      onClick={() => setMilestones(prev => prev.filter(x => x.id !== m.id))}
+                      className="w-5 h-5 flex items-center justify-center text-sm transition-all"
+                      style={{ color: 'var(--color-text-secondary)' }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Team switcher */}
+          <TeamSwitcher onTeamChange={loadSeason} />
+
+          {/* Regen success / error banners */}
+          {regenSuccess && (
+            <div
+              className="mb-4 fade-up flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm"
+              style={{
+                background: 'rgba(0,229,160,0.08)',
+                border: '1px solid rgba(0,229,160,0.25)',
+                color: 'var(--color-accent)',
+              }}
+            >
+              Your new plan is ready!
+            </div>
+          )}
+          {regenError && (
+            <div
+              className="mb-4 fade-up flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl text-sm"
+              style={{
+                background: 'rgba(239,68,68,0.1)',
+                border: '1px solid rgba(239,68,68,0.3)',
+                color: '#F87171',
+              }}
+            >
+              <span>{regenError}</span>
+              <button onClick={() => setRegenError(null)} className="ml-2 shrink-0" style={{ color: '#F87171' }}>×</button>
+            </div>
+          )}
+
+          {/* View toggle */}
+          <div className="flex justify-center mb-6 fade-up-1">
+            <div
+              className="flex items-center gap-0.5 p-0.5"
+              style={{
+                background: 'var(--color-bg-tertiary)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 10,
+              }}
+            >
+              {(['weekly', 'monthly'] as const).map(v => (
+                <button
+                  key={v}
+                  onClick={() => setPlanView(v)}
+                  className="px-5 py-1.5 text-sm font-medium capitalize transition-all duration-150"
+                  style={planView === v ? {
+                    background: 'var(--color-bg-hover)',
+                    border: '1px solid var(--color-border-light)',
+                    borderRadius: 8,
+                    color: 'var(--color-text-primary)',
+                  } : {
+                    background: 'transparent',
+                    border: '1px solid transparent',
+                    borderRadius: 8,
+                    color: 'var(--color-text-secondary)',
+                  }}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Monthly View */}
+          {planView === 'monthly' && (
+            <div className="fade-up-1">
+              <Card>
+                <PlanMonthView plan={plan} />
+              </Card>
+            </div>
+          )}
+
+          {/* Weekly View */}
+          {planView === 'weekly' && (
+            <>
+              {/* Week selector — horizontal pill tabs with phase color coding */}
+              <div className="flex gap-1.5 mb-6 overflow-x-auto pb-2 fade-up-1" style={{ scrollbarWidth: 'none' }}>
+                {plan.map((w: any, i: number) => {
+                  const isToday = new Date().toISOString().split('T')[0] >= w.week_start_date &&
+                    (i === plan.length - 1 || new Date().toISOString().split('T')[0] < plan[i + 1]?.week_start_date);
+                  const phase = w.phase || 'base';
+                  const isActive = i === currentWeek;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentWeek(i)}
+                      className="px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-150 shrink-0"
+                      style={{ borderRadius: 8, ...PHASE_PILL_STYLE(phase, isActive, isToday) }}
+                    >
+                      Wk {w.week_number}
+                      {isToday && ' •'}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {week && (
+                <div className="fade-up-2">
+                  <div className="flex items-center gap-3 mb-4">
+                    <h2 className="font-bold text-xl" style={{ color: 'var(--color-text-primary)' }}>Week {week.week_number}</h2>
+                    <Badge label={week.phase || 'base'} color={PHASE_BADGE_COLOR[week.phase] ?? 'gray'} />
+                    <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                      {new Date(week.week_start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                    <div className="ml-auto flex gap-1.5">
+                      <Button variant="ghost" size="sm" disabled={currentWeek === 0} onClick={() => setCurrentWeek(w => w - 1)}>Prev</Button>
+                      <Button variant="ghost" size="sm" disabled={currentWeek === plan.length - 1} onClick={() => setCurrentWeek(w => w + 1)}>Next</Button>
+                    </div>
+                  </div>
+
+                  {/* Calendar grid — dark cards with phase-color left border */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                    {DAYS.map((dayLabel, i) => {
+                      const wo = week.workouts?.find((w: any) => w.day_of_week === i + 1);
+                      const key = `${week.week_number}-${i + 1}`;
+                      const expanded = expandedWorkout === key;
+                      const phase = week.phase || 'base';
+
+                      return (
+                        <div
+                          key={i}
+                          onClick={() => wo && setExpandedWorkout(expanded ? null : key)}
+                          className={`transition-all duration-150 ${expanded ? 'col-span-1 sm:col-span-2' : ''}`}
+                          style={{
+                            borderRadius: 12,
+                            border: `1px solid ${wo ? 'var(--color-border)' : 'var(--color-border)'}`,
+                            borderLeft: wo ? `4px solid ${PHASE_BORDER_COLOR[phase] ?? PHASE_BORDER_COLOR.base}` : `1px dashed var(--color-border)`,
+                            background: wo ? 'var(--color-bg-secondary)' : 'transparent',
+                            padding: 16,
+                            cursor: wo ? 'pointer' : 'default',
+                            opacity: wo ? 1 : 0.35,
+                          }}
+                          onMouseEnter={e => {
+                            if (wo) (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-border-light)';
+                          }}
+                          onMouseLeave={e => {
+                            if (wo) (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-border)';
+                          }}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--color-text-tertiary)' }}>
+                              {dayLabel}
                             </span>
-                          )}
-                        </div>
-                        {wo ? (
-                          <>
-                            <div className="font-medium text-sm mb-1.5 text-[var(--text)]">{wo.title}</div>
-                            <div className="flex gap-2 flex-wrap">
-                              {wo.distance_miles && <span className="text-xs text-brand-400 font-medium">{wo.distance_miles}mi</span>}
-                              {wo.pace_guideline && <span className="text-xs text-[var(--muted)]">{wo.pace_guideline}</span>}
-                            </div>
-                            {expanded && (
-                              <div className="mt-3 pt-3 border-t border-[var(--border)]/70">
-                                <p className="text-sm text-[var(--muted)] leading-relaxed mb-2">{wo.description}</p>
-                                {wo.change_reason && (
-                                  <p className="text-xs text-[var(--muted2)] italic">Why: {wo.change_reason}</p>
+                            {wo?.date && (
+                              <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
+                                {new Date(wo.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </span>
+                            )}
+                          </div>
+                          {wo ? (
+                            <>
+                              <div className="font-medium text-sm mb-1.5 truncate" style={{ color: 'var(--color-text-primary)' }}>
+                                {wo.title}
+                              </div>
+                              <div className="flex gap-2 flex-wrap">
+                                {wo.distance_miles && (
+                                  <span className="font-mono text-xs font-medium" style={{ color: 'var(--color-accent)' }}>
+                                    {wo.distance_miles}mi
+                                  </span>
+                                )}
+                                {wo.pace_guideline && (
+                                  <span className="font-mono text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                                    {wo.pace_guideline}
+                                  </span>
                                 )}
                               </div>
-                            )}
-                          </>
-                        ) : (
-                          <div className="text-xs text-[var(--muted2)]">Rest</div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                              {expanded && (
+                                <div
+                                  className="mt-3 pt-3"
+                                  style={{ borderTop: '1px solid rgba(42,42,42,0.7)' }}
+                                >
+                                  <p className="text-sm leading-relaxed mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                                    {wo.description}
+                                  </p>
+                                  {wo.change_reason && (
+                                    <p className="text-xs italic" style={{ color: 'var(--color-text-tertiary)' }}>
+                                      Why: {wo.change_reason}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Rest</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
 
-                <div className="mt-4 flex gap-5 text-sm text-[var(--muted)]">
-                  <span>
-                    Total:{' '}
-                    <strong className="text-[var(--text)] font-semibold">
-                      {week.workouts?.reduce((sum: number, w: any) => sum + (w.distance_miles || 0), 0).toFixed(1)}mi
-                    </strong>
-                  </span>
-                  <span>{week.workouts?.filter((w: any) => w.title).length} workouts</span>
+                  <div className="mt-4 flex gap-5 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                    <span>
+                      Total:{' '}
+                      <strong className="font-mono font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                        {week.workouts?.reduce((sum: number, w: any) => sum + (w.distance_miles || 0), 0).toFixed(1)}mi
+                      </strong>
+                    </span>
+                    <span>{week.workouts?.filter((w: any) => w.title).length} workouts</span>
+                  </div>
                 </div>
-              </div>
-            )}
-          </>
-        )}
+              )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }

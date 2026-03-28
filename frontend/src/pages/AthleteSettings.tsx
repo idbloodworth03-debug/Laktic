@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { apiFetch } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
-import { Navbar, Card, Button, Badge, Spinner, Alert, Input } from '../components/ui';
+import { AppLayout, Card, Button, Badge, Spinner, Alert, Input } from '../components/ui';
 import { useNotifications } from '../hooks/useNotifications';
 
 interface StravaStatus {
@@ -148,8 +148,7 @@ export function AthleteSettings() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg)]">
-      <Navbar role={role || undefined} name={profile?.name} onLogout={clearAuth} />
+    <AppLayout role={role || undefined} name={profile?.name} onLogout={clearAuth}>
       <div className="max-w-3xl mx-auto px-6 py-8">
         <h1 className="font-display text-3xl font-bold mb-6">Settings</h1>
 
@@ -160,8 +159,8 @@ export function AthleteSettings() {
         )}
 
         <Card title="Public Profile" className="mb-6">
-          <p className="text-sm text-[var(--muted)] mb-4">
-            Set a username to get a public profile at <strong className="text-[var(--text)]">laktic.com/athlete/[username]</strong>
+          <p className="text-sm text-[var(--color-text-tertiary)] mb-4">
+            Set a username to get a public profile at <strong className="text-[var(--color-text-primary)]">laktic.com/athlete/[username]</strong>
           </p>
           <div className="flex flex-col gap-4">
             <Input
@@ -172,7 +171,7 @@ export function AthleteSettings() {
               maxLength={20}
             />
             <div>
-              <p className="text-sm font-medium text-[var(--muted)] mb-2">What's public on your profile</p>
+              <p className="text-sm font-medium text-[var(--color-text-tertiary)] mb-2">What's public on your profile</p>
               <div className="flex flex-col gap-2">
                 {(['races', 'stats', 'milestones'] as const).map(section => (
                   <label key={section} className="flex items-center gap-2 cursor-pointer">
@@ -180,9 +179,9 @@ export function AthleteSettings() {
                       type="checkbox"
                       checked={publicSections[section]}
                       onChange={e => setPublicSections(s => ({ ...s, [section]: e.target.checked }))}
-                      className="accent-brand-500"
+                      className="accent-[var(--color-accent)]"
                     />
-                    <span className="text-sm text-[var(--text2)] capitalize">{section}</span>
+                    <span className="text-sm text-[var(--color-text-secondary)] capitalize">{section}</span>
                   </label>
                 ))}
               </div>
@@ -218,7 +217,7 @@ export function AthleteSettings() {
                   href={`/athlete/${username}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-brand-400 hover:underline"
+                  className="text-sm text-[var(--color-accent)] hover:underline"
                 >
                   View public profile
                 </a>
@@ -230,12 +229,12 @@ export function AthleteSettings() {
         <Card title="Join a Team" className="mb-6">
           {joinSuccess ? (
             <div className="flex items-center gap-3 py-2">
-              <div className="w-8 h-8 rounded-full bg-brand-900/40 border border-brand-700/30 flex items-center justify-center text-brand-400">✓</div>
-              <span className="text-sm font-medium text-brand-400">{joinSuccess}</span>
+              <div className="w-8 h-8 rounded-full bg-[var(--color-accent-dim)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-accent)]">✓</div>
+              <span className="text-sm font-medium text-[var(--color-accent)]">{joinSuccess}</span>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              <p className="text-sm text-[var(--muted)]">Enter the invite code your coach shared with you.</p>
+              <p className="text-sm text-[var(--color-text-tertiary)]">Enter the invite code your coach shared with you.</p>
               <div className="flex gap-3 items-end">
                 <div className="flex-1">
                   <Input
@@ -259,14 +258,14 @@ export function AthleteSettings() {
         <Card title="Data & Privacy" className="mb-6">
           <div className="flex flex-col gap-4">
             <div>
-              <p className="text-sm text-[var(--muted)] mb-3">
+              <p className="text-sm text-[var(--color-text-tertiary)] mb-3">
                 Download a copy of all your Laktic data including your profile, training plan, activities, and chat history.
               </p>
               <Button variant="secondary" size="sm" onClick={downloadData}>Download my data</Button>
             </div>
-            <div className="pt-4 border-t border-[var(--border)]">
+            <div className="pt-4 border-t border-[var(--color-border)]">
               <p className="text-sm font-medium mb-1">Delete account</p>
-              <p className="text-sm text-[var(--muted)] mb-3">
+              <p className="text-sm text-[var(--color-text-tertiary)] mb-3">
                 Permanently deletes your account and all associated data. This cannot be undone.
               </p>
               {deleteConfirm ? (
@@ -285,13 +284,13 @@ export function AthleteSettings() {
 
         <Card title="Push Notifications" className="mb-6">
           {notifState === 'unsupported' ? (
-            <p className="text-sm text-[var(--muted)]">
+            <p className="text-sm text-[var(--color-text-tertiary)]">
               Push notifications are not supported in this browser. Try installing Laktic as a PWA on your phone.
             </p>
           ) : notifState === 'blocked' ? (
             <div className="space-y-2">
               <Badge label="Blocked" color="red" />
-              <p className="text-sm text-[var(--muted)]">
+              <p className="text-sm text-[var(--color-text-tertiary)]">
                 Notifications are blocked by your browser. Go to your browser settings and allow notifications for this site.
               </p>
             </div>
@@ -299,7 +298,7 @@ export function AthleteSettings() {
             <Spinner />
           ) : (
             <div className="space-y-3">
-              <p className="text-sm text-[var(--muted)]">
+              <p className="text-sm text-[var(--color-text-tertiary)]">
                 Get notified when your training plan is ready, race day is approaching, and more.
               </p>
               <div className="flex items-center gap-3">
@@ -345,23 +344,23 @@ export function AthleteSettings() {
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <Badge label="Connected" color="green" />
-                <span className="text-sm text-[var(--muted)]">
+                <span className="text-sm text-[var(--color-text-tertiary)]">
                   Strava Athlete #{stravaStatus.strava_athlete_id}
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-[var(--muted)]">Connected</span>
-                  <p className="text-[var(--text)]">
+                  <span className="text-[var(--color-text-tertiary)]">Connected</span>
+                  <p className="text-[var(--color-text-primary)]">
                     {stravaStatus.connected_at
                       ? new Date(stravaStatus.connected_at).toLocaleDateString()
                       : 'N/A'}
                   </p>
                 </div>
                 <div>
-                  <span className="text-[var(--muted)]">Last sync</span>
-                  <p className="text-[var(--text)]">
+                  <span className="text-[var(--color-text-tertiary)]">Last sync</span>
+                  <p className="text-[var(--color-text-primary)]">
                     {stravaStatus.last_sync_at
                       ? new Date(stravaStatus.last_sync_at).toLocaleString()
                       : 'Never'}
@@ -385,7 +384,7 @@ export function AthleteSettings() {
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-sm text-[var(--muted)]">
+              <p className="text-sm text-[var(--color-text-tertiary)]">
                 Connect your Strava account to automatically sync your running activities,
                 including pace, distance, heart rate, and elevation data.
               </p>
@@ -396,6 +395,6 @@ export function AthleteSettings() {
           )}
         </Card>
       </div>
-    </div>
+    </AppLayout>
   );
 }

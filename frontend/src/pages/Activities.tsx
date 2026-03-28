@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { apiFetch } from '../lib/api';
-import { Navbar, Card, Badge, Spinner, Button, EmptyState } from '../components/ui';
+import { AppLayout, Card, Badge, Spinner, Button, EmptyState } from '../components/ui';
 
 interface Activity {
   id: string;
@@ -58,11 +58,11 @@ function activityColor(type: string): 'green' | 'blue' | 'amber' | 'purple' | 'g
 }
 
 const ACCENT_BORDER: Record<string, string> = {
-  green: 'border-l-brand-500',
+  green: 'border-l-[var(--color-accent)]',
   blue: 'border-l-blue-500',
   amber: 'border-l-amber-500',
   purple: 'border-l-purple-500',
-  gray: 'border-l-[var(--border2)]',
+  gray: 'border-l-[var(--color-border)]',
 };
 
 export function Activities() {
@@ -88,11 +88,10 @@ export function Activities() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg)]">
-      <Navbar role={role || undefined} name={profile?.name} onLogout={clearAuth} />
+    <AppLayout role={role || undefined} name={profile?.name} onLogout={clearAuth}>
       <div className="max-w-5xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-6 fade-up">
-          <h1 className="font-display text-2xl font-bold text-[var(--text)]">Activities</h1>
+          <h1 className="font-display text-2xl font-bold text-[var(--color-text-primary)]">Activities</h1>
         </div>
 
         {loading ? (
@@ -115,18 +114,18 @@ export function Activities() {
               {data.activities.map((a) => {
                 const color = activityColor(a.activity_type);
                 return (
-                  <div key={a.id} className={`bg-[var(--surface)] border border-[var(--border)] border-l-2 ${ACCENT_BORDER[color]} rounded-xl p-4 shadow-card hover:border-[var(--border2)] transition-colors`}>
+                  <div key={a.id} className={`bg-[var(--color-bg-secondary)] border border-[var(--color-border)] border-l-2 ${ACCENT_BORDER[color]} rounded-xl p-4 shadow-card hover:border-[var(--color-border-light)] transition-colors`}>
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 mb-1.5">
                           <Badge label={a.activity_type} color={color} />
-                          <span className="text-xs text-[var(--muted)]">
+                          <span className="text-xs text-[var(--color-text-tertiary)]">
                             {new Date(a.start_date).toLocaleDateString(undefined, {
                               weekday: 'short', month: 'short', day: 'numeric'
                             })}
                           </span>
                         </div>
-                        <h3 className="font-medium text-sm text-[var(--text)] truncate">
+                        <h3 className="font-medium text-sm text-[var(--color-text-primary)] truncate">
                           {a.name || 'Untitled Activity'}
                         </h3>
                       </div>
@@ -141,7 +140,7 @@ export function Activities() {
                     </div>
 
                     {a.total_elevation_gain > 0 && (
-                      <div className="mt-2 text-xs text-[var(--muted)]">
+                      <div className="mt-2 text-xs text-[var(--color-text-tertiary)]">
                         ↑ {Math.round(a.total_elevation_gain * 3.28084)} ft elevation
                       </div>
                     )}
@@ -160,7 +159,7 @@ export function Activities() {
                 >
                   Previous
                 </Button>
-                <span className="text-sm text-[var(--muted)]">
+                <span className="text-sm text-[var(--color-text-tertiary)]">
                   Page {data.page} of {data.total_pages}
                 </span>
                 <Button
@@ -176,15 +175,15 @@ export function Activities() {
           </>
         )}
       </div>
-    </div>
+    </AppLayout>
   );
 }
 
 function StatCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="text-center">
-      <span className="block text-[10px] text-[var(--muted)] uppercase tracking-wide mb-0.5">{label}</span>
-      <span className="text-sm font-semibold text-[var(--text)]">{value}</span>
+      <span className="block text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide mb-0.5">{label}</span>
+      <span className="text-sm font-semibold font-mono text-[var(--color-text-primary)]">{value}</span>
     </div>
   );
 }

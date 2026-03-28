@@ -3,13 +3,19 @@ import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
-import { Button, Input, Card, Spinner } from '../components/ui';
+import { Button, Input } from '../components/ui';
 
 // ── Landing ──────────────────────────────────────────────────────────────────
+const STATS = [
+  { value: '14-day', label: 'AI coaching window' },
+  { value: 'GPT-4o', label: 'Powered by' },
+  { value: '100%', label: 'Coach-voice plans' },
+];
+
 const FEATURES = [
   {
     title: 'AI-Powered Plans',
-    desc: 'GPT-4o generates a full season plan from your coach\'s philosophy — tailored to your race calendar and fitness.',
+    desc: "GPT-4o generates a full season plan from your coach's philosophy — tailored to your race calendar and fitness.",
   },
   {
     title: '14-Day Coaching',
@@ -17,102 +23,295 @@ const FEATURES = [
   },
   {
     title: 'Strava Connected',
-    desc: 'Every run you log syncs automatically. The AI tracks compliance and adjusts intensity when you\'re ahead or behind.',
+    desc: "Every run you log syncs automatically. The AI tracks compliance and adjusts intensity when you're ahead or behind.",
   },
 ];
 
 export function Landing() {
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden">
-      {/* Background grid — panning */}
-      <div className="landing-grid absolute inset-0 opacity-[0.09]" style={{
-        backgroundImage: 'linear-gradient(var(--green) 1px, transparent 1px), linear-gradient(90deg, var(--green) 1px, transparent 1px)',
-        backgroundSize: '48px 48px',
-      }} />
-      {/* Orb 1 — top-center */}
+    <div
+      className="min-h-screen flex flex-col relative overflow-hidden"
+      style={{ background: 'var(--color-bg-primary)' }}
+    >
+      {/* Animated grid background */}
+      <div
+        className="landing-grid absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage:
+            'linear-gradient(var(--color-accent) 1px, transparent 1px), linear-gradient(90deg, var(--color-accent) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+          opacity: 0.06,
+        }}
+      />
+
+      {/* Subtle glow orb */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 pointer-events-none">
-        <div className="landing-orb-1 w-[900px] h-[500px] rounded-full bg-brand-500/25 blur-[120px]" />
-      </div>
-      {/* Orb 2 — bottom-right */}
-      <div className="absolute bottom-0 right-1/4 pointer-events-none">
-        <div className="landing-orb-2 w-[500px] h-[400px] rounded-full bg-brand-600/20 blur-[100px]" />
-      </div>
-      {/* Orb 3 — mid-left */}
-      <div className="absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none">
-        <div className="landing-orb-3 w-[400px] h-[400px] rounded-full bg-brand-400/15 blur-[100px]" />
+        <div
+          className="w-[800px] h-[400px] rounded-full blur-[140px]"
+          style={{ background: 'var(--color-accent)', opacity: 0.07 }}
+        />
       </div>
 
       {/* Nav bar */}
       <div className="relative z-10 flex items-center justify-between px-8 pt-6">
-        <span className="font-display font-black text-xl text-brand-400 tracking-tighter">LAKTIC</span>
+        <span
+          className="font-sans font-semibold text-[17px] tracking-tight"
+          style={{ color: 'var(--color-text-primary)' }}
+        >
+          Laktic
+        </span>
         <div className="flex items-center gap-4 text-sm">
-          <Link to="/login/coach" className="text-[var(--muted)] hover:text-[var(--text)] transition-colors">Coach login</Link>
+          <Link
+            to="/login/coach"
+            className="transition-colors"
+            style={{ color: 'var(--color-text-tertiary)' }}
+            onMouseEnter={e => ((e.target as HTMLElement).style.color = 'var(--color-accent)')}
+            onMouseLeave={e => ((e.target as HTMLElement).style.color = 'var(--color-text-tertiary)')}
+          >
+            Coach login
+          </Link>
           <Link to="/login/athlete">
-            <Button variant="secondary" size="sm">Athlete login</Button>
+            <Button variant="secondary" size="sm">
+              Athlete login
+            </Button>
           </Link>
         </div>
       </div>
 
-      {/* Hero */}
-      <div className="relative z-10 flex flex-col items-center text-center px-6 pt-16 pb-12 fade-up">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-700/40 bg-brand-900/30 text-brand-400 text-xs font-medium mb-7">
-          <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
+      {/* Hero — left-aligned inside a max-width container */}
+      <div className="relative z-10 flex-1 flex flex-col justify-center px-8 sm:px-16 lg:px-24 pt-16 pb-8 max-w-5xl">
+        {/* Early access pill */}
+        <div
+          className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium mb-8 self-start"
+          style={{
+            borderColor: 'rgba(0,229,160,0.25)',
+            background: 'rgba(0,229,160,0.06)',
+            color: 'var(--color-accent)',
+          }}
+        >
+          <span
+            className="w-1.5 h-1.5 rounded-full animate-pulse"
+            style={{ background: 'var(--color-accent)' }}
+          />
           Now in early access
         </div>
 
-        <h1 className="font-hero font-extrabold text-5xl sm:text-6xl tracking-tight leading-[1.05] mb-5 max-w-2xl">
-          <span className="text-gradient">From your coach's</span>
+        <h1
+          className="font-sans font-semibold leading-[1.08] mb-6"
+          style={{
+            fontSize: 'clamp(42px, 6vw, 64px)',
+            color: 'var(--color-text-primary)',
+          }}
+        >
+          Train with AI.
           <br />
-          <span className="text-[var(--text)]">philosophy to</span>
-          <br />
-          <span className="text-[var(--text)]">your finish line.</span>
+          <span style={{ color: 'var(--color-accent)' }}>Race faster.</span>
         </h1>
 
-        <p className="text-[var(--muted)] text-base max-w-lg leading-relaxed mb-9">
-          Coaches upload their philosophy once. Every athlete gets a personalized season plan, adaptive workouts, and a coaching bot — available 24/7.
+        <p
+          className="text-base leading-relaxed mb-10 max-w-xl"
+          style={{ color: 'var(--color-text-secondary)' }}
+        >
+          Your coach's philosophy, delivered to every athlete — personalized, adaptive, always on.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs sm:max-w-sm">
-          <Link to="/register/athlete" className="flex-1">
-            <Button variant="primary" className="w-full" size="xl">
-              Get My Plan →
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Link to="/register/athlete">
+            <Button
+              variant="primary"
+              size="xl"
+              className="font-semibold"
+            >
+              Get My Plan
             </Button>
           </Link>
-          <Link to="/register/coach" className="flex-1">
-            <Button variant="secondary" className="w-full" size="xl">
+          <Link to="/register/coach">
+            <Button variant="secondary" size="xl">
               I'm a Coach
             </Button>
           </Link>
         </div>
 
-        <p className="text-xs text-[var(--muted)] mt-4">Free to start · No credit card required</p>
+        <p className="text-xs mt-4" style={{ color: 'var(--color-text-tertiary)' }}>
+          Free to start · No credit card required
+        </p>
       </div>
 
       {/* Stats strip */}
-      <div className="relative z-10 max-w-3xl mx-auto px-6 mb-16 fade-up-1">
-        <div className="grid grid-cols-3 divide-x divide-[var(--border)] border border-[var(--border)] rounded-2xl bg-[var(--surface)]/60 backdrop-blur-sm shadow-card">
-          {[
-            { value: '14-day', label: 'AI coaching window' },
-            { value: 'GPT-4o', label: 'Powered by' },
-            { value: '100%', label: 'Coach-voice plans' },
-          ].map(s => (
+      <div className="relative z-10 max-w-3xl mx-auto w-full px-8 sm:px-16 lg:px-24 mb-12">
+        <div
+          className="grid grid-cols-3 divide-x divide-[var(--color-border)] rounded-xl"
+          style={{
+            background: 'var(--color-bg-secondary)',
+            border: '1px solid var(--color-border)',
+          }}
+        >
+          {STATS.map(s => (
             <div key={s.label} className="flex flex-col items-center py-5 px-4">
-              <span className="font-display font-bold text-xl text-brand-400">{s.value}</span>
-              <span className="text-xs text-[var(--muted)] mt-1">{s.label}</span>
+              <span
+                className="font-mono font-semibold text-lg"
+                style={{ color: 'var(--color-accent)' }}
+              >
+                {s.value}
+              </span>
+              <span
+                className="text-xs mt-1"
+                style={{ color: 'var(--color-text-tertiary)' }}
+              >
+                {s.label}
+              </span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Feature cards */}
-      <div className="relative z-10 max-w-4xl mx-auto px-6 pb-20 fade-up-2">
+      <div className="relative z-10 max-w-5xl mx-auto w-full px-8 sm:px-16 lg:px-24 pb-20">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {FEATURES.map(f => (
-            <div key={f.title} className="bg-[var(--surface)]/80 border border-[var(--border)] rounded-2xl p-6 hover:border-[var(--border2)] transition-colors shadow-card">
-              <h3 className="font-display font-semibold text-sm mb-2">{f.title}</h3>
-              <p className="text-xs text-[var(--muted)] leading-relaxed">{f.desc}</p>
+            <div
+              key={f.title}
+              className="rounded-xl p-6 transition-colors"
+              style={{
+                background: 'var(--color-bg-secondary)',
+                border: '1px solid var(--color-border)',
+              }}
+            >
+              <h3
+                className="font-sans font-semibold text-sm mb-2"
+                style={{ color: 'var(--color-text-primary)' }}
+              >
+                {f.title}
+              </h3>
+              <p
+                className="text-xs leading-relaxed"
+                style={{ color: 'var(--color-text-secondary)' }}
+              >
+                {f.desc}
+              </p>
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Auth Split Layout ─────────────────────────────────────────────────────────
+const PANEL_BULLETS = [
+  'AI-generated season plan from your coach',
+  'Adaptive 14-day coaching window',
+  'Strava-connected compliance tracking',
+];
+
+interface SplitAuthProps {
+  title: string;
+  subtitle: string;
+  error: string;
+  children: React.ReactNode;
+}
+
+function SplitAuth({ title, subtitle, error, children }: SplitAuthProps) {
+  return (
+    <div
+      className="min-h-screen flex"
+      style={{ background: 'var(--color-bg-primary)' }}
+    >
+      {/* Left branding panel — hidden on mobile */}
+      <div
+        className="hidden md:flex flex-col justify-between w-[40%] min-h-screen px-12 py-12"
+        style={{
+          background: 'var(--color-bg-primary)',
+          borderRight: '1px solid var(--color-border)',
+        }}
+      >
+        {/* Top: wordmark */}
+        <Link
+          to="/"
+          className="font-sans font-semibold text-[17px] tracking-tight"
+          style={{ color: 'var(--color-text-primary)' }}
+        >
+          Laktic
+        </Link>
+
+        {/* Middle: tagline + bullets */}
+        <div>
+          <p
+            className="font-sans font-semibold text-2xl leading-snug mb-8"
+            style={{ color: 'var(--color-text-primary)' }}
+          >
+            Your coach's philosophy.
+            <br />
+            <span style={{ color: 'var(--color-accent)' }}>Every athlete.</span>
+          </p>
+          <ul className="flex flex-col gap-4">
+            {PANEL_BULLETS.map(b => (
+              <li key={b} className="flex items-start gap-3">
+                <span
+                  className="mt-0.5 text-xs font-bold shrink-0"
+                  style={{ color: 'var(--color-accent)' }}
+                >
+                  +
+                </span>
+                <span
+                  className="text-sm leading-relaxed"
+                  style={{ color: 'var(--color-text-secondary)' }}
+                >
+                  {b}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Bottom: footer note */}
+        <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
+          Free to start · No credit card required
+        </p>
+      </div>
+
+      {/* Right form panel */}
+      <div
+        className="flex-1 flex flex-col items-center justify-center px-6 py-12"
+        style={{ background: 'var(--color-bg-secondary)' }}
+      >
+        {/* Mobile wordmark */}
+        <Link
+          to="/"
+          className="md:hidden font-sans font-semibold text-[17px] tracking-tight mb-8"
+          style={{ color: 'var(--color-text-primary)' }}
+        >
+          Laktic
+        </Link>
+
+        <div className="w-full max-w-sm">
+          <div className="mb-8">
+            <h1
+              className="font-sans font-semibold text-xl mb-1"
+              style={{ color: 'var(--color-text-primary)' }}
+            >
+              {title}
+            </h1>
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              {subtitle}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            {error && (
+              <div
+                className="text-sm rounded-lg px-3 py-2"
+                style={{
+                  color: 'var(--color-danger, #f87171)',
+                  background: 'rgba(248,113,113,0.08)',
+                  border: '1px solid rgba(248,113,113,0.2)',
+                }}
+              >
+                {error}
+              </div>
+            )}
+            {children}
+          </div>
         </div>
       </div>
     </div>
@@ -135,7 +334,7 @@ export function CoachRegister() {
       if (signErr || !data.session) throw new Error(signErr?.message || 'Sign up failed');
       const profile = await apiFetch('/api/coach/profile', {
         method: 'POST',
-        body: JSON.stringify({ name: form.name, school_or_org: form.school_or_org })
+        body: JSON.stringify({ name: form.name, school_or_org: form.school_or_org }),
       });
       setAuth(data.session, 'coach', profile);
       nav('/coach/onboarding');
@@ -143,15 +342,28 @@ export function CoachRegister() {
     finally { setLoading(false); }
   };
 
-  return <AuthForm title="Create Coach Account" subtitle="Set up your coaching bot once. Athletes train autonomously." error={error}>
-    <Input label="Full name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Coach Jane Smith" />
-    <Input label="School / Organization (optional)" value={form.school_or_org} onChange={e => setForm(f => ({ ...f, school_or_org: e.target.value }))} placeholder="State University XC" />
-    <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="coach@example.com" />
-    <Input label="Password" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
-    <Input label="Confirm password" type="password" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))} placeholder="••••••••" />
-    <Button onClick={handle} loading={loading} className="w-full" size="lg">Create Coach Account</Button>
-    <p className="text-center text-sm text-[var(--muted)]">Already have an account? <Link to="/login/coach" className="text-brand-400 hover:underline">Sign in</Link></p>
-  </AuthForm>;
+  return (
+    <SplitAuth title="Create Coach Account" subtitle="Set up your coaching bot once. Athletes train autonomously." error={error}>
+      <Input label="Full name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Coach Jane Smith" />
+      <Input label="School / Organization (optional)" value={form.school_or_org} onChange={e => setForm(f => ({ ...f, school_or_org: e.target.value }))} placeholder="State University XC" />
+      <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="coach@example.com" />
+      <Input label="Password" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
+      <Input label="Confirm password" type="password" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))} placeholder="••••••••" />
+      <Button onClick={handle} loading={loading} className="w-full font-semibold" size="lg">
+        Create Coach Account
+      </Button>
+      <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
+        Already have an account?{' '}
+        <Link
+          to="/login/coach"
+          className="transition-colors"
+          style={{ color: 'var(--color-accent)' }}
+        >
+          Sign in
+        </Link>
+      </p>
+    </SplitAuth>
+  );
 }
 
 // ── Athlete Register ─────────────────────────────────────────────────────────
@@ -175,7 +387,13 @@ export function AthleteRegister() {
       if (signErr || !data.session) throw new Error(signErr?.message || 'Sign up failed');
       const profile = await apiFetch('/api/athlete/profile', {
         method: 'POST',
-        body: JSON.stringify({ name: form.name, weekly_volume_miles: parseFloat(form.weekly_volume_miles) || undefined, primary_events: events.length ? events : undefined, pr_mile: form.pr_mile || undefined, pr_5k: form.pr_5k || undefined })
+        body: JSON.stringify({
+          name: form.name,
+          weekly_volume_miles: parseFloat(form.weekly_volume_miles) || undefined,
+          primary_events: events.length ? events : undefined,
+          pr_mile: form.pr_mile || undefined,
+          pr_5k: form.pr_5k || undefined,
+        }),
       });
       setAuth(data.session, 'athlete', profile);
       nav('/athlete/onboarding');
@@ -183,30 +401,64 @@ export function AthleteRegister() {
     finally { setLoading(false); }
   };
 
-  return <AuthForm title="Create Athlete Account" subtitle="Find your coach bot. Get a personalized season plan." error={error}>
-    <Input label="Full name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Your name" />
-    <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="you@example.com" />
-    <Input label="Password" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
-    <Input label="Confirm password" type="password" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))} placeholder="••••••••" />
-    <div>
-      <label className="text-sm font-medium text-[var(--muted)] block mb-2">Primary events</label>
-      <div className="flex flex-wrap gap-2">
-        {EVENT_OPTIONS.map(e => (
-          <button key={e} onClick={() => toggleEvent(e)}
-            className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${events.includes(e) ? 'bg-brand-600 border-brand-500 text-white' : 'border-[var(--border)] text-[var(--muted)] hover:border-brand-500'}`}>
-            {e}
-          </button>
-        ))}
+  return (
+    <SplitAuth title="Create Athlete Account" subtitle="Find your coach bot. Get a personalized season plan." error={error}>
+      <Input label="Full name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Your name" />
+      <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="you@example.com" />
+      <Input label="Password" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
+      <Input label="Confirm password" type="password" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))} placeholder="••••••••" />
+      <div>
+        <label
+          className="text-[11px] font-semibold uppercase tracking-wider block mb-2"
+          style={{ color: 'var(--color-text-tertiary)' }}
+        >
+          Primary events
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {EVENT_OPTIONS.map(e => (
+            <button
+              key={e}
+              onClick={() => toggleEvent(e)}
+              className="px-3 py-1 rounded-full text-xs font-medium border transition-colors"
+              style={
+                events.includes(e)
+                  ? {
+                      background: 'var(--color-accent)',
+                      borderColor: 'var(--color-accent)',
+                      color: '#000',
+                    }
+                  : {
+                      background: 'transparent',
+                      borderColor: 'var(--color-border)',
+                      color: 'var(--color-text-secondary)',
+                    }
+              }
+            >
+              {e}
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
-    <div className="grid grid-cols-3 gap-3">
-      <Input label="Weekly miles" type="number" value={form.weekly_volume_miles} onChange={e => setForm(f => ({ ...f, weekly_volume_miles: e.target.value }))} />
-      <Input label="PR Mile" value={form.pr_mile} onChange={e => setForm(f => ({ ...f, pr_mile: e.target.value }))} placeholder="4:32" />
-      <Input label="PR 5K" value={form.pr_5k} onChange={e => setForm(f => ({ ...f, pr_5k: e.target.value }))} placeholder="15:30" />
-    </div>
-    <Button onClick={handle} loading={loading} className="w-full" size="lg">Create Athlete Account</Button>
-    <p className="text-center text-sm text-[var(--muted)]">Already have an account? <Link to="/login/athlete" className="text-brand-400 hover:underline">Sign in</Link></p>
-  </AuthForm>;
+      <div className="grid grid-cols-3 gap-3">
+        <Input label="Weekly miles" type="number" value={form.weekly_volume_miles} onChange={e => setForm(f => ({ ...f, weekly_volume_miles: e.target.value }))} />
+        <Input label="PR Mile" value={form.pr_mile} onChange={e => setForm(f => ({ ...f, pr_mile: e.target.value }))} placeholder="4:32" />
+        <Input label="PR 5K" value={form.pr_5k} onChange={e => setForm(f => ({ ...f, pr_5k: e.target.value }))} placeholder="15:30" />
+      </div>
+      <Button onClick={handle} loading={loading} className="w-full font-semibold" size="lg">
+        Create Athlete Account
+      </Button>
+      <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
+        Already have an account?{' '}
+        <Link
+          to="/login/athlete"
+          className="transition-colors"
+          style={{ color: 'var(--color-accent)' }}
+        >
+          Sign in
+        </Link>
+      </p>
+    </SplitAuth>
+  );
 }
 
 // ── Coach Login ───────────────────────────────────────────────────────────────
@@ -230,15 +482,36 @@ export function CoachLogin() {
     finally { setLoading(false); }
   };
 
-  return <AuthForm title="Coach Sign In" subtitle="Welcome back. Your bot is coaching athletes right now." error={error}>
-    <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="coach@example.com" />
-    <Input label="Password" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
-    <div className="flex justify-end -mt-2">
-      <Link to="/forgot-password" className="text-xs text-[var(--muted)] hover:text-brand-400 transition-colors">Forgot password?</Link>
-    </div>
-    <Button onClick={handle} loading={loading} className="w-full" size="lg">Sign In</Button>
-    <p className="text-center text-sm text-[var(--muted)]">No account? <Link to="/register/coach" className="text-brand-400 hover:underline">Register</Link></p>
-  </AuthForm>;
+  return (
+    <SplitAuth title="Coach Sign In" subtitle="Welcome back. Your bot is coaching athletes right now." error={error}>
+      <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="coach@example.com" />
+      <Input label="Password" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
+      <div className="flex justify-end -mt-2">
+        <Link
+          to="/forgot-password"
+          className="text-xs transition-colors"
+          style={{ color: 'var(--color-text-tertiary)' }}
+          onMouseEnter={e => ((e.target as HTMLElement).style.color = 'var(--color-accent)')}
+          onMouseLeave={e => ((e.target as HTMLElement).style.color = 'var(--color-text-tertiary)')}
+        >
+          Forgot password?
+        </Link>
+      </div>
+      <Button onClick={handle} loading={loading} className="w-full font-semibold" size="lg">
+        Sign In
+      </Button>
+      <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
+        No account?{' '}
+        <Link
+          to="/register/coach"
+          className="transition-colors"
+          style={{ color: 'var(--color-accent)' }}
+        >
+          Register
+        </Link>
+      </p>
+    </SplitAuth>
+  );
 }
 
 // ── Athlete Login ─────────────────────────────────────────────────────────────
@@ -266,15 +539,36 @@ export function AthleteLogin() {
     finally { setLoading(false); }
   };
 
-  return <AuthForm title="Athlete Sign In" subtitle="Your personalized training plan is waiting." error={error}>
-    <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="you@example.com" />
-    <Input label="Password" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
-    <div className="flex justify-end -mt-2">
-      <Link to="/forgot-password" className="text-xs text-[var(--muted)] hover:text-brand-400 transition-colors">Forgot password?</Link>
-    </div>
-    <Button onClick={handle} loading={loading} className="w-full" size="lg">Sign In</Button>
-    <p className="text-center text-sm text-[var(--muted)]">No account? <Link to="/register/athlete" className="text-brand-400 hover:underline">Register</Link></p>
-  </AuthForm>;
+  return (
+    <SplitAuth title="Athlete Sign In" subtitle="Your personalized training plan is waiting." error={error}>
+      <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="you@example.com" />
+      <Input label="Password" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
+      <div className="flex justify-end -mt-2">
+        <Link
+          to="/forgot-password"
+          className="text-xs transition-colors"
+          style={{ color: 'var(--color-text-tertiary)' }}
+          onMouseEnter={e => ((e.target as HTMLElement).style.color = 'var(--color-accent)')}
+          onMouseLeave={e => ((e.target as HTMLElement).style.color = 'var(--color-text-tertiary)')}
+        >
+          Forgot password?
+        </Link>
+      </div>
+      <Button onClick={handle} loading={loading} className="w-full font-semibold" size="lg">
+        Sign In
+      </Button>
+      <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
+        No account?{' '}
+        <Link
+          to="/register/athlete"
+          className="transition-colors"
+          style={{ color: 'var(--color-accent)' }}
+        >
+          Register
+        </Link>
+      </p>
+    </SplitAuth>
+  );
 }
 
 // ── Password Reset Request ────────────────────────────────────────────────────
@@ -299,31 +593,87 @@ export function PasswordResetRequest() {
 
   if (sent) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="w-full max-w-md fade-up text-center">
-          <Link to="/" className="font-display font-black text-3xl text-brand-400 tracking-tighter">LAKTIC</Link>
-          <div className="mt-8 bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 shadow-card-lg">
-            <div className="w-12 h-12 rounded-full bg-brand-900/40 border border-brand-700/30 flex items-center justify-center mx-auto mb-4">
-              <span className="text-brand-400 text-xl">✓</span>
+      <div
+        className="min-h-screen flex items-center justify-center px-4"
+        style={{ background: 'var(--color-bg-primary)' }}
+      >
+        <div className="w-full max-w-sm text-center">
+          <Link
+            to="/"
+            className="font-sans font-semibold text-[17px] tracking-tight"
+            style={{ color: 'var(--color-text-primary)' }}
+          >
+            Laktic
+          </Link>
+          <div
+            className="mt-8 rounded-xl p-8"
+            style={{
+              background: 'var(--color-bg-secondary)',
+              border: '1px solid var(--color-border)',
+            }}
+          >
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{
+                background: 'var(--color-accent-dim)',
+                border: '1px solid rgba(0,229,160,0.2)',
+              }}
+            >
+              <span
+                className="text-sm font-bold"
+                style={{ color: 'var(--color-accent)' }}
+              >
+                +
+              </span>
             </div>
-            <h2 className="font-display font-semibold text-lg mb-2">Check your email</h2>
-            <p className="text-sm text-[var(--muted)]">We sent a password reset link to <strong className="text-[var(--text)]">{email}</strong>. Click the link to set a new password.</p>
-            <Link to="/" className="inline-block mt-6 text-sm text-brand-400 hover:underline">← Back to home</Link>
+            <h2
+              className="font-sans font-semibold text-lg mb-2"
+              style={{ color: 'var(--color-text-primary)' }}
+            >
+              Check your email
+            </h2>
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              We sent a password reset link to{' '}
+              <strong style={{ color: 'var(--color-text-primary)' }}>{email}</strong>. Click the link to set a new password.
+            </p>
+            <Link
+              to="/"
+              className="inline-block mt-6 text-sm transition-colors"
+              style={{ color: 'var(--color-accent)' }}
+            >
+              Back to home
+            </Link>
           </div>
         </div>
       </div>
     );
   }
 
-  return <AuthForm title="Reset Password" subtitle="Enter your email and we'll send you a reset link." error={error}>
-    <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" autoFocus />
-    <Button onClick={handle} loading={loading} disabled={!email} className="w-full" size="lg">Send Reset Link</Button>
-    <p className="text-center text-sm text-[var(--muted)]">
-      <Link to="/login/coach" className="text-brand-400 hover:underline">Coach login</Link>
-      {' · '}
-      <Link to="/login/athlete" className="text-brand-400 hover:underline">Athlete login</Link>
-    </p>
-  </AuthForm>;
+  return (
+    <SplitAuth title="Reset Password" subtitle="Enter your email and we'll send you a reset link." error={error}>
+      <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" autoFocus />
+      <Button onClick={handle} loading={loading} disabled={!email} className="w-full font-semibold" size="lg">
+        Send Reset Link
+      </Button>
+      <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
+        <Link
+          to="/login/coach"
+          className="transition-colors"
+          style={{ color: 'var(--color-accent)' }}
+        >
+          Coach login
+        </Link>
+        {' · '}
+        <Link
+          to="/login/athlete"
+          className="transition-colors"
+          style={{ color: 'var(--color-accent)' }}
+        >
+          Athlete login
+        </Link>
+      </p>
+    </SplitAuth>
+  );
 }
 
 // ── Password Reset Confirm ────────────────────────────────────────────────────
@@ -360,50 +710,73 @@ export function PasswordResetConfirm() {
 
   if (done) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="w-full max-w-md fade-up text-center">
-          <Link to="/" className="font-display font-black text-3xl text-brand-400 tracking-tighter">LAKTIC</Link>
-          <div className="mt-8 bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 shadow-card-lg">
-            <div className="w-12 h-12 rounded-full bg-brand-900/40 border border-brand-700/30 flex items-center justify-center mx-auto mb-4">
-              <span className="text-brand-400 text-xl">✓</span>
+      <div
+        className="min-h-screen flex items-center justify-center px-4"
+        style={{ background: 'var(--color-bg-primary)' }}
+      >
+        <div className="w-full max-w-sm text-center">
+          <Link
+            to="/"
+            className="font-sans font-semibold text-[17px] tracking-tight"
+            style={{ color: 'var(--color-text-primary)' }}
+          >
+            Laktic
+          </Link>
+          <div
+            className="mt-8 rounded-xl p-8"
+            style={{
+              background: 'var(--color-bg-secondary)',
+              border: '1px solid var(--color-border)',
+            }}
+          >
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{
+                background: 'var(--color-accent-dim)',
+                border: '1px solid rgba(0,229,160,0.2)',
+              }}
+            >
+              <span
+                className="text-sm font-bold"
+                style={{ color: 'var(--color-accent)' }}
+              >
+                +
+              </span>
             </div>
-            <h2 className="font-display font-semibold text-lg mb-2">Password updated</h2>
-            <p className="text-sm text-[var(--muted)]">Redirecting you to login…</p>
+            <h2
+              className="font-sans font-semibold text-lg mb-2"
+              style={{ color: 'var(--color-text-primary)' }}
+            >
+              Password updated
+            </h2>
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              Redirecting you to login...
+            </p>
           </div>
         </div>
       </div>
     );
   }
 
-  return <AuthForm title="Set New Password" subtitle="Must be at least 8 characters." error={error}>
-    {!sessionReady && (
-      <div className="text-sm text-[var(--muted)] bg-[var(--surface2)] border border-[var(--border)] rounded-lg px-3 py-2">
-        Verifying your reset link…
-      </div>
-    )}
-    <Input label="New password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" disabled={!sessionReady} autoFocus />
-    <Input label="Confirm password" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="••••••••" disabled={!sessionReady} />
-    <Button onClick={handle} loading={loading} disabled={!sessionReady || !password || !confirm} className="w-full" size="lg">Update Password</Button>
-  </AuthForm>;
-}
-
-// ── Shared Auth Form wrapper ──────────────────────────────────────────────────
-function AuthForm({ title, subtitle, error, children }: { title: string; subtitle: string; error: string; children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-md fade-up">
-        <div className="text-center mb-8">
-          <Link to="/" className="font-display font-black text-3xl text-brand-400 tracking-tighter">LAKTIC</Link>
-          <h1 className="font-display text-xl font-semibold mt-3">{title}</h1>
-          <p className="text-sm text-[var(--muted)] mt-1">{subtitle}</p>
+    <SplitAuth title="Set New Password" subtitle="Must be at least 8 characters." error={error}>
+      {!sessionReady && (
+        <div
+          className="text-sm rounded-lg px-3 py-2"
+          style={{
+            color: 'var(--color-text-secondary)',
+            background: 'var(--color-bg-tertiary)',
+            border: '1px solid var(--color-border)',
+          }}
+        >
+          Verifying your reset link...
         </div>
-        <Card>
-          <div className="flex flex-col gap-4">
-            {error && <div className="text-sm text-red-400 bg-red-900/20 border border-red-900/40 rounded-lg px-3 py-2">{error}</div>}
-            {children}
-          </div>
-        </Card>
-      </div>
-    </div>
+      )}
+      <Input label="New password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" disabled={!sessionReady} autoFocus />
+      <Input label="Confirm password" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="••••••••" disabled={!sessionReady} />
+      <Button onClick={handle} loading={loading} disabled={!sessionReady || !password || !confirm} className="w-full font-semibold" size="lg">
+        Update Password
+      </Button>
+    </SplitAuth>
   );
 }
