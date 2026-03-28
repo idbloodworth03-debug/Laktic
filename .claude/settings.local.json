@@ -22,7 +22,9 @@
       "Bash(node -e \"const {z} = require\\(''''zod''''\\); z.record\\(z.unknown\\(\\)\\)\")",
       "Bash(node -e \"const {z} = require\\(''''/c/Users/Nick/Projects/Laktic/backend/node_modules/zod''''\\); console.log\\(z.string\\(\\).optional\\(\\).toString\\(\\)\\)\")",
       "Bash(grep:*)",
-      "Bash(find /c/Users/Nick/Projects/Laktic/backend/src -name schemas* -o -name *.schema*)"
+      "Bash(find /c/Users/Nick/Projects/Laktic/backend/src -name schemas* -o -name *.schema*)",
+      "Bash(python3 -c \":*)",
+      "Bash(node -e \":*)"
     ]
   }
 }
