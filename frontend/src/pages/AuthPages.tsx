@@ -127,11 +127,12 @@ export function Landing() {
 export function CoachRegister() {
   const nav = useNavigate();
   const setAuth = useAuthStore(s => s.setAuth);
-  const [form, setForm] = useState({ name: '', email: '', password: '', school_or_org: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', school_or_org: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handle = async () => {
+    if (form.password !== form.confirmPassword) { setError('Passwords do not match'); return; }
     setError(''); setLoading(true);
     try {
       const { data, error: signErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
@@ -151,6 +152,7 @@ export function CoachRegister() {
     <Input label="School / Organization (optional)" value={form.school_or_org} onChange={e => setForm(f => ({ ...f, school_or_org: e.target.value }))} placeholder="State University XC" />
     <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="coach@example.com" />
     <Input label="Password" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
+    <Input label="Confirm password" type="password" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))} placeholder="••••••••" />
     <Button onClick={handle} loading={loading} className="w-full" size="lg">Create Coach Account</Button>
     <p className="text-center text-sm text-[var(--muted)]">Already have an account? <Link to="/login/coach" className="text-brand-400 hover:underline">Sign in</Link></p>
   </AuthForm>;
@@ -162,7 +164,7 @@ const EVENT_OPTIONS = ['800m', '1500m', 'Mile', '3000m', '5K', '10K', 'Half Mara
 export function AthleteRegister() {
   const nav = useNavigate();
   const setAuth = useAuthStore(s => s.setAuth);
-  const [form, setForm] = useState({ name: '', email: '', password: '', weekly_volume_miles: '20', pr_mile: '', pr_5k: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', weekly_volume_miles: '20', pr_mile: '', pr_5k: '' });
   const [events, setEvents] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -170,6 +172,7 @@ export function AthleteRegister() {
   const toggleEvent = (e: string) => setEvents(prev => prev.includes(e) ? prev.filter(x => x !== e) : [...prev, e]);
 
   const handle = async () => {
+    if (form.password !== form.confirmPassword) { setError('Passwords do not match'); return; }
     setError(''); setLoading(true);
     try {
       const { data, error: signErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
@@ -188,6 +191,7 @@ export function AthleteRegister() {
     <Input label="Full name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Your name" />
     <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="you@example.com" />
     <Input label="Password" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
+    <Input label="Confirm password" type="password" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))} placeholder="••••••••" />
     <div>
       <label className="text-sm font-medium text-[var(--muted)] block mb-2">Primary events</label>
       <div className="flex flex-wrap gap-2">
