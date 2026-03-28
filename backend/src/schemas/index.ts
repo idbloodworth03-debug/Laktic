@@ -67,6 +67,7 @@ export const athleteProfileUpdateSchema = z.object({
     stats: z.boolean(),
     milestones: z.boolean(),
   }).optional(),
+  onboarding_completed: z.boolean().optional(),
 });
 
 export const chatMessageSchema = z.object({

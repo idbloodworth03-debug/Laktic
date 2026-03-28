@@ -55,8 +55,16 @@ router.get(
       return res.status(400).json({ error: error.message });
     }
 
-    // Redirect back to frontend settings page
-    const redirectUrl = `${env.FRONTEND_URL}/athlete/settings?strava=connected`;
+    // Redirect back to onboarding if not yet complete, otherwise dashboard
+    const { data: athleteProfile } = await supabase
+      .from('athlete_profiles')
+      .select('onboarding_completed')
+      .eq('id', athleteId)
+      .single();
+
+    const redirectUrl = athleteProfile?.onboarding_completed
+      ? `${env.FRONTEND_URL}/athlete/dashboard`
+      : `${env.FRONTEND_URL}/athlete/onboarding?strava=connected`;
     res.redirect(redirectUrl);
   })
 );
