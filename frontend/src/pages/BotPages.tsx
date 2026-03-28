@@ -44,13 +44,11 @@ export function BrowseBots() {
   return (
     <div className="min-h-screen">
       <Navbar role="athlete" name={profile?.name} onLogout={logout} />
-      <div className="max-w-5xl mx-auto px-6 py-10">
-        <div className="flex items-end justify-between mb-8 fade-up">
+      <div className="max-w-6xl mx-auto px-6 py-10">
+        <div className="flex items-end justify-between mb-6 fade-up">
           <div>
-            <h1 className="font-display text-2xl font-bold text-[var(--text)]">Find Your Coach Bot</h1>
-            <p className="text-sm text-[var(--muted)] mt-1 leading-snug">
-              Subscribe to get a personalized season plan built on your coach's methods.
-            </p>
+            <h1 className="font-display text-3xl font-bold">Find Your Coach Bot</h1>
+            <p className="text-sm text-[var(--muted)] mt-1">Subscribe to get a personalized season plan built on your coach's methods.</p>
           </div>
           <div className="flex gap-3">
             <Select value={eventFilter} onChange={e => setEventFilter(e.target.value)} options={EVENT_FILTER} />
@@ -61,17 +59,15 @@ export function BrowseBots() {
         {loading ? (
           <div className="flex justify-center py-20"><Spinner size="lg" /></div>
         ) : bots.length === 0 ? (
-          <div className="text-center py-20 text-[var(--muted)] text-sm">No bots found matching your filters.</div>
+          <div className="text-center py-20 text-[var(--muted)]">No bots found matching your filters.</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 fade-up-1">
             {bots.map((bot: any) => (
               <Link key={bot.id} to={`/athlete/bots/${bot.id}`} className="block group">
-                <div className="bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border2)] rounded-xl p-5 shadow-card hover:shadow-card-lg transition-all h-full">
+                <Card className="h-full hover:border-brand-700/50 transition-colors cursor-pointer">
                   <div className="flex flex-col gap-3">
                     <div>
-                      <h3 className="font-display font-semibold text-base text-[var(--text)] group-hover:text-brand-400 transition-colors mb-0.5">
-                        {bot.name}
-                      </h3>
+                      <h3 className="font-display font-semibold text-base group-hover:text-brand-400 transition-colors">{bot.name}</h3>
                       <p className="text-sm text-[var(--muted)]">
                         {bot.coach?.name}{bot.coach?.school_or_org ? ` · ${bot.coach.school_or_org}` : ''}
                       </p>
@@ -85,7 +81,7 @@ export function BrowseBots() {
                       {bot.philosophy_excerpt}{bot.philosophy?.length > 200 ? '...' : ''}
                     </p>
                   </div>
-                </div>
+                </Card>
               </Link>
             ))}
           </div>
@@ -125,19 +121,15 @@ export function BotDetail() {
   return (
     <div className="min-h-screen">
       <Navbar role="athlete" name={profile?.name} onLogout={logout} />
-      <div className="max-w-3xl mx-auto px-6 py-10">
-        <Link to="/athlete/browse">
-          <Button variant="ghost" size="sm" className="mb-6">← Browse Bots</Button>
-        </Link>
+      <div className="max-w-4xl mx-auto px-6 py-10">
+        <Link to="/athlete/browse"><Button variant="ghost" size="sm" className="mb-6">← Browse Bots</Button></Link>
 
         <div className="fade-up">
           <div className="flex items-start justify-between gap-4 mb-6">
             <div>
-              <h1 className="font-display text-2xl font-bold text-[var(--text)] mb-1">{bot.name}</h1>
-              <p className="text-[var(--muted)] text-sm">
-                {bot.coach?.name}{bot.coach?.school_or_org ? ` · ${bot.coach.school_or_org}` : ''}
-              </p>
-              <div className="flex gap-2 mt-2.5">
+              <h1 className="font-display text-2xl font-bold mb-1">{bot.name}</h1>
+              <p className="text-[var(--muted)]">{bot.coach?.name}{bot.coach?.school_or_org ? ` · ${bot.coach.school_or_org}` : ''}</p>
+              <div className="flex gap-2 mt-2">
                 {bot.event_focus && <Badge label={bot.event_focus} color="blue" />}
                 {bot.level_focus && <Badge label={bot.level_focus} color="purple" />}
               </div>
@@ -149,35 +141,27 @@ export function BotDetail() {
             </div>
           </div>
 
-          <Card className="mb-5">
-            <div className="pb-3 mb-4 border-b border-[var(--border)]/70">
-              <h3 className="font-display text-sm font-semibold text-[var(--text)] tracking-tight">Coaching Philosophy</h3>
-            </div>
+          <Card className="mb-6">
+            <h3 className="font-display font-semibold mb-2">Coaching Philosophy</h3>
             <p className="text-sm text-[var(--muted)] leading-relaxed whitespace-pre-wrap">{bot.philosophy}</p>
           </Card>
 
-          <Card className="mb-5">
-            <div className="pb-3 mb-4 border-b border-[var(--border)]/70">
-              <h3 className="font-display text-sm font-semibold text-[var(--text)] tracking-tight">Sample Training Week</h3>
-            </div>
-            <div className="grid grid-cols-7 gap-1.5">
+          <Card className="mb-6">
+            <h3 className="font-display font-semibold mb-4">Sample Training Week</h3>
+            <div className="grid grid-cols-7 gap-2">
               {DAYS.map((day, i) => {
                 const wo = bot.workouts?.find((w: any) => w.day_of_week === i + 1);
                 return (
-                  <div key={day} className={`rounded-lg border p-2 text-center min-h-[90px] flex flex-col gap-1 transition-colors ${
-                    wo
-                      ? 'border-[var(--border)] bg-[var(--surface2)] hover:border-[var(--border2)]'
-                      : 'border-dashed border-[var(--border)] opacity-35'
-                  }`}>
-                    <div className="text-[10px] font-medium text-[var(--muted)] uppercase tracking-wide">{day}</div>
+                  <div key={day} className={`rounded-lg border p-2 text-center min-h-[90px] flex flex-col gap-1 ${wo ? 'border-[var(--border)] bg-dark-700' : 'border-dashed border-dark-500'}`}>
+                    <div className="text-xs font-medium text-[var(--muted)]">{day}</div>
                     {wo ? (
                       <>
-                        <div className="text-xs font-medium leading-tight text-[var(--text)]">{wo.title}</div>
-                        {wo.distance_miles && <div className="text-xs text-brand-400 font-medium">{wo.distance_miles}mi</div>}
+                        <div className="text-xs font-medium leading-tight">{wo.title}</div>
+                        {wo.distance_miles && <div className="text-xs text-brand-400">{wo.distance_miles}mi</div>}
                         {wo.pace_guideline && <div className="text-xs text-[var(--muted)]">{wo.pace_guideline}</div>}
                       </>
                     ) : (
-                      <div className="text-xs text-[var(--muted2)] mt-2">Rest</div>
+                      <div className="text-xs text-dark-500 mt-2">Rest</div>
                     )}
                   </div>
                 );
@@ -186,16 +170,12 @@ export function BotDetail() {
           </Card>
 
           <Card>
-            <div className="pb-3 mb-4 border-b border-[var(--border)]/70">
-              <h3 className="font-display text-sm font-semibold text-[var(--text)] tracking-tight">Training Knowledge Base</h3>
-            </div>
-            <p className="text-sm text-[var(--muted)] mb-4 leading-relaxed">
-              The AI uses these documents to coach in your coach's voice. Content is private.
-            </p>
-            <div className="flex flex-col gap-1.5">
+            <h3 className="font-display font-semibold mb-3">Training Knowledge Base</h3>
+            <p className="text-sm text-[var(--muted)] mb-3">The AI uses these documents to coach in your coach's voice. Content is private.</p>
+            <div className="flex flex-col gap-2">
               {bot.knowledge_titles?.map((doc: any) => (
-                <div key={doc.id} className="flex items-center justify-between py-2 border-b border-[var(--border)]/60 last:border-0">
-                  <span className="text-sm text-[var(--text)]">{doc.title}</span>
+                <div key={doc.id} className="flex items-center justify-between py-2 border-b border-[var(--border)] last:border-0">
+                  <span className="text-sm">{doc.title}</span>
                   <Badge label={doc.document_type.replace('_', ' ')} color="gray" />
                 </div>
               ))}

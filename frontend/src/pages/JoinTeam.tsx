@@ -35,13 +35,8 @@ export function JoinTeam() {
         botId: result.defaultBot?.id
       });
 
-      setTimeout(() => {
-        if (result.defaultBot?.id) {
-          nav(`/athlete/bots/${result.defaultBot.id}`);
-        } else {
-          nav('/athlete/browse');
-        }
-      }, 2000);
+      // Redirect to race calendar after joining so athlete sets upcoming races
+      setTimeout(() => nav('/athlete/races'), 2000);
     } catch (e: any) {
       setError(e.message || 'Failed to join team.');
     } finally {
@@ -55,24 +50,22 @@ export function JoinTeam() {
 
       <div className="max-w-md mx-auto px-6 py-16">
         <div className="text-center mb-8 fade-up">
-          <h1 className="font-display text-2xl font-bold text-[var(--text)] mb-2">Join a Team</h1>
-          <p className="text-sm text-[var(--muted)] leading-relaxed">
+          <h1 className="font-display text-2xl font-bold mb-2">Join a Team</h1>
+          <p className="text-sm text-[var(--muted)]">
             Enter the invite code your coach shared with you.
           </p>
         </div>
 
         <Card className="fade-up-1">
           {success ? (
-            <div className="flex flex-col items-center gap-4 py-6">
-              <div className="w-14 h-14 rounded-full bg-brand-950/50 border border-brand-800/50 flex items-center justify-center shadow-glow-sm">
-                <span className="text-brand-400 text-2xl">✓</span>
+            <div className="flex flex-col items-center gap-4 py-4">
+              <div className="w-12 h-12 rounded-full bg-brand-900/40 border border-brand-700/30 flex items-center justify-center">
+                <span className="text-brand-400 text-xl">&#10003;</span>
               </div>
               <div className="text-center">
-                <h3 className="font-display font-semibold text-lg text-[var(--text)]">Welcome to {success.teamName}!</h3>
-                <p className="text-sm text-[var(--muted)] mt-1.5 leading-relaxed">
-                  {success.botId
-                    ? "Redirecting you to your team's coaching bot..."
-                    : 'Redirecting you to browse available bots...'}
+                <h3 className="font-display font-semibold text-lg">Welcome to {success.teamName}!</h3>
+                <p className="text-sm text-[var(--muted)] mt-1">
+                  Next up: add your upcoming races so we can build your plan.
                 </p>
               </div>
               <Spinner size="sm" />
@@ -85,7 +78,7 @@ export function JoinTeam() {
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
                 maxLength={8}
-                style={{ textTransform: 'uppercase', letterSpacing: '0.2em', textAlign: 'center', fontSize: '1.1rem', fontFamily: 'JetBrains Mono, monospace' }}
+                style={{ textTransform: 'uppercase', letterSpacing: '0.15em', textAlign: 'center', fontSize: '1.1rem' }}
                 onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
               />
 
@@ -105,6 +98,15 @@ export function JoinTeam() {
               <p className="text-xs text-[var(--muted)] text-center">
                 Don't have a code? Ask your coach for an invite link.
               </p>
+
+              <div className="pt-1 border-t border-[var(--border)] text-center">
+                <button
+                  onClick={() => nav('/athlete/races')}
+                  className="text-xs text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+                >
+                  Skip for now — set up your race calendar →
+                </button>
+              </div>
             </div>
           )}
         </Card>

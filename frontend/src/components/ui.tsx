@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 
-// ── Button ──────────────────────────────────────────────────────────────────
+// ── Button ────────────────────────────────────────────────────────────────────────────
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   loading?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 export function Button({
   variant = 'primary', loading, size = 'md', children, disabled, className = '', ...rest
@@ -22,6 +22,7 @@ export function Button({
     sm: 'px-3 py-1.5 text-xs',
     md: 'px-4 py-2 text-sm',
     lg: 'px-6 py-2.5 text-sm',
+    xl: 'px-8 py-3.5 text-base',
   };
   const variants = {
     primary:   'bg-gradient-to-b from-brand-500 to-brand-600 hover:from-brand-400 hover:to-brand-500 text-white shadow-btn-primary hover:shadow-btn-primary-hover focus-visible:ring-brand-500/50',
@@ -41,7 +42,7 @@ export function Button({
   );
 }
 
-// ── Input ────────────────────────────────────────────────────────────────────
+// ── Input ──────────────────────────────────────────────────────────────────────────
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
@@ -69,7 +70,7 @@ export function Input({ label, error, className = '', ...rest }: InputProps) {
   );
 }
 
-// ── Textarea ─────────────────────────────────────────────────────────────────
+// ── Textarea ─────────────────────────────────────────────────────────────────────────
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string;
@@ -97,11 +98,11 @@ export function Textarea({ label, error, className = '', ...rest }: TextareaProp
   );
 }
 
-// ── Card ─────────────────────────────────────────────────────────────────────
+// ── Card ───────────────────────────────────────────────────────────────────────────
 interface CardProps { title?: string; children: React.ReactNode; className?: string; }
 export function Card({ title, children, className = '' }: CardProps) {
   return (
-    <div className={`bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 shadow-card ${className}`}>
+    <div className={`bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 shadow-card ${className}`}>
       {title && (
         <div className="pb-3 mb-4 border-b border-[var(--border)]/70">
           <h3 className="font-display text-sm font-semibold text-[var(--text)] tracking-tight">
@@ -114,8 +115,8 @@ export function Card({ title, children, className = '' }: CardProps) {
   );
 }
 
-// ── Badge ─────────────────────────────────────────────────────────────────────
-interface BadgeProps { label: string; color?: 'green' | 'blue' | 'amber' | 'purple' | 'gray'; dot?: boolean; }
+// ── Badge ───────────────────────────────────────────────────────────────────────────
+interface BadgeProps { label: string; color?: 'green' | 'blue' | 'amber' | 'purple' | 'gray' | 'red'; dot?: boolean; }
 export function Badge({ label, color = 'green', dot = false }: BadgeProps) {
   const colors = {
     green:  'bg-brand-900/50 text-brand-400 border-brand-800/50',
@@ -123,10 +124,11 @@ export function Badge({ label, color = 'green', dot = false }: BadgeProps) {
     amber:  'bg-amber-950/60 text-amber-400 border-amber-900/50',
     purple: 'bg-purple-950/60 text-purple-400 border-purple-900/50',
     gray:   'bg-[var(--surface2)] text-[var(--muted)] border-[var(--border)]',
+    red:    'bg-red-950/60 text-red-400 border-red-900/50',
   };
   const dotColors = {
     green: 'bg-brand-400', blue: 'bg-blue-400', amber: 'bg-amber-400',
-    purple: 'bg-purple-400', gray: 'bg-[var(--muted)]',
+    purple: 'bg-purple-400', gray: 'bg-[var(--muted)]', red: 'bg-red-400',
   };
   return (
     <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${colors[color]}`}>
@@ -136,7 +138,7 @@ export function Badge({ label, color = 'green', dot = false }: BadgeProps) {
   );
 }
 
-// ── Spinner ───────────────────────────────────────────────────────────────────
+// ── Spinner ─────────────────────────────────────────────────────────────────────────────
 export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const s = { sm: 'w-3.5 h-3.5', md: 'w-5 h-5', lg: 'w-8 h-8' };
   return (
@@ -144,31 +146,116 @@ export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   );
 }
 
-// ── Navbar ────────────────────────────────────────────────────────────────────
+// ── Navbar ────────────────────────────────────────────────────────────────────────────
 interface NavbarProps { role?: string; name?: string; onLogout?: () => void; }
 export function Navbar({ role, name, onLogout }: NavbarProps) {
+  const [open, setOpen] = useState(false);
+
+  const athleteLinks = [
+    { label: 'Season Plan',    href: '/athlete/plan' },
+    { label: 'Race Calendar',  href: '/athlete/races' },
+    { label: 'Coach Bot',      href: '/athlete/chat' },
+    { label: 'Progress',       href: '/athlete/progress' },
+    { label: 'Activities',     href: '/athlete/activities' },
+    { label: 'Calendar',       href: '/athlete/calendar' },
+    { label: 'Nutrition',      href: '/athlete/nutrition' },
+    { label: 'Team Feed',      href: '/athlete/feed' },
+    { label: 'Leaderboard',    href: '/athlete/leaderboard' },
+    { label: 'Marketplace',    href: '/marketplace' },
+    { label: 'Browse Bots',    href: '/athlete/browse' },
+    { label: 'Settings',       href: '/athlete/settings' },
+  ];
+
+  const coachLinks = [
+    { label: 'Dashboard',      href: '/coach/dashboard' },
+    { label: 'Team Progress',  href: '/coach/progress' },
+    { label: 'Team Calendar',  href: '/coach/calendar' },
+    { label: 'Bot Setup',      href: '/coach/bot/edit' },
+    { label: 'Knowledge Docs', href: '/coach/knowledge' },
+    { label: 'Marketplace',    href: '/coach/marketplace/apply' },
+  ];
+
+  const links = role === 'athlete' ? athleteLinks : role === 'coach' ? coachLinks : [];
+  const homeHref = role === 'coach' ? '/coach/dashboard' : role === 'athlete' ? '/athlete/plan' : '/';
+  const current = typeof window !== 'undefined' ? window.location.pathname : '';
+
   return (
-    <nav className="surface-glass border-b border-[var(--border)] px-6 py-3.5 flex items-center justify-between sticky top-0 z-40">
-      <div className="flex items-center gap-3">
-        <span className="font-display font-black text-xl tracking-tight text-gradient">LAKTIC</span>
-        {role && <Badge label={role} color={role === 'coach' ? 'blue' : 'green'} dot />}
-      </div>
-      {name && (
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-[var(--surface2)] border border-[var(--border2)] flex items-center justify-center text-xs font-semibold text-brand-400 shrink-0">
-              {name.charAt(0).toUpperCase()}
+    <>
+      <nav className="surface-glass border-b border-[var(--border)] px-5 py-4 flex items-center justify-between sticky top-0 z-40">
+        <a href={homeHref} className="font-display font-black text-xl tracking-tight text-gradient hover:opacity-80 transition-opacity">
+          LAKTIC
+        </a>
+        {name && (
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-[var(--surface2)] border border-[var(--border2)] flex items-center justify-center text-xs font-semibold text-brand-400 shrink-0">
+                {name.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-sm text-[var(--text2)]">{name}</span>
             </div>
-            <span className="text-sm text-[var(--text2)]">{name}</span>
+            <button
+              onClick={() => setOpen(true)}
+              aria-label="Open menu"
+              className="w-9 h-9 flex flex-col items-center justify-center gap-[5px] rounded-lg hover:bg-[var(--surface2)] transition-colors"
+            >
+              <span className="w-5 h-[2px] bg-[var(--text2)] rounded-full" />
+              <span className="w-5 h-[2px] bg-[var(--text2)] rounded-full" />
+              <span className="w-5 h-[2px] bg-[var(--text2)] rounded-full" />
+            </button>
           </div>
-          <Button variant="ghost" size="sm" onClick={onLogout}>Sign out</Button>
+        )}
+      </nav>
+
+      {open && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" onClick={() => setOpen(false)} />}
+
+      <div className={`fixed top-0 right-0 h-full w-72 bg-[var(--surface)] border-l border-[var(--border)] z-50 flex flex-col transition-transform duration-300 ${open ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-[var(--surface2)] border border-[var(--border2)] flex items-center justify-center text-sm font-semibold text-brand-400">
+              {name?.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div className="text-sm font-medium text-[var(--text)]">{name}</div>
+              {role && <div className="text-xs text-[var(--muted)] capitalize">{role}</div>}
+            </div>
+          </div>
+          <button onClick={() => setOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors text-lg">×</button>
         </div>
-      )}
-    </nav>
+
+        <nav className="flex-1 overflow-y-auto py-3">
+          {links.map(link => {
+            const active = current === link.href;
+            return (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={() => setOpen(false)}
+                className={`flex items-center px-5 py-3 text-sm font-medium transition-colors ${
+                  active
+                    ? 'text-brand-400 bg-brand-950/40 border-r-2 border-brand-500'
+                    : 'text-[var(--text2)] hover:text-[var(--text)] hover:bg-[var(--surface2)]'
+                }`}
+              >
+                {link.label}
+              </a>
+            );
+          })}
+        </nav>
+
+        <div className="px-5 py-4 border-t border-[var(--border)]">
+          <button
+            onClick={() => { setOpen(false); onLogout?.(); }}
+            className="w-full text-left text-sm text-[var(--muted)] hover:text-[var(--danger)] transition-colors py-2"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 
-// ── EmptyState ────────────────────────────────────────────────────────────────
+// ── EmptyState ──────────────────────────────────────────────────────────────────────────
 interface EmptyStateProps { title: string; message: string; action?: React.ReactNode; }
 export function EmptyState({ title, message, action }: EmptyStateProps) {
   return (
@@ -183,7 +270,7 @@ export function EmptyState({ title, message, action }: EmptyStateProps) {
   );
 }
 
-// ── ChatBubble ────────────────────────────────────────────────────────────────
+// ── ChatBubble ──────────────────────────────────────────────────────────────────────────
 interface ChatBubbleProps { role: 'athlete' | 'bot'; content: string; planUpdated?: boolean; }
 export function ChatBubble({ role, content, planUpdated }: ChatBubbleProps) {
   const isBot = role === 'bot';
@@ -216,16 +303,17 @@ export function ChatBubble({ role, content, planUpdated }: ChatBubbleProps) {
   );
 }
 
-// ── DocumentCard ──────────────────────────────────────────────────────────────
+// ── DocumentCard ──────────────────────────────────────────────────────────────────────────
 interface DocumentCardProps {
   id: string; title: string; document_type: string; created_at: string;
   onEdit: (id: string) => void; onDelete: (id: string) => void;
+  onHistory?: (id: string) => void;
 }
 const DOC_COLORS: Record<string, any> = {
   philosophy: 'purple', sample_week: 'green', training_block: 'blue',
   taper: 'amber', injury_rule: 'amber', faq: 'gray', notes: 'gray',
 };
-export function DocumentCard({ id, title, document_type, created_at, onEdit, onDelete }: DocumentCardProps) {
+export function DocumentCard({ id, title, document_type, created_at, onEdit, onDelete, onHistory }: DocumentCardProps) {
   const [confirming, setConfirming] = useState(false);
   return (
     <div className="flex items-center justify-between bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border2)] rounded-xl px-4 py-3 transition-colors group">
@@ -235,6 +323,9 @@ export function DocumentCard({ id, title, document_type, created_at, onEdit, onD
         <span className="text-xs text-[var(--muted)] shrink-0">{new Date(created_at).toLocaleDateString()}</span>
       </div>
       <div className="flex items-center gap-1.5 ml-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        {onHistory && (
+          <Button variant="ghost" size="sm" onClick={() => onHistory(id)}>History</Button>
+        )}
         <Button variant="ghost" size="sm" onClick={() => onEdit(id)}>Edit</Button>
         {confirming
           ? <Button variant="danger" size="sm" onClick={() => { onDelete(id); setConfirming(false); }}>Confirm</Button>
@@ -245,7 +336,7 @@ export function DocumentCard({ id, title, document_type, created_at, onEdit, onD
   );
 }
 
-// ── TypingIndicator ───────────────────────────────────────────────────────────
+// ── TypingIndicator ───────────────────────────────────────────────────────────────────────────
 export function TypingIndicator() {
   return (
     <div className="flex justify-start mb-3">
@@ -259,7 +350,7 @@ export function TypingIndicator() {
   );
 }
 
-// ── Select ────────────────────────────────────────────────────────────────────
+// ── Select ────────────────────────────────────────────────────────────────────────────
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string; options: { value: string; label: string }[];
 }
@@ -281,7 +372,7 @@ export function Select({ label, options, className = '', ...rest }: SelectProps)
   );
 }
 
-// ── Toggle ────────────────────────────────────────────────────────────────────
+// ── Toggle ────────────────────────────────────────────────────────────────────────────
 interface ToggleProps { checked: boolean; onChange: (v: boolean) => void; label?: string; }
 export function Toggle({ checked, onChange, label }: ToggleProps) {
   return (
@@ -301,7 +392,40 @@ export function Toggle({ checked, onChange, label }: ToggleProps) {
   );
 }
 
-// ── Alert / Banner ────────────────────────────────────────────────────────────
+// ── StepIndicator ────────────────────────────────────────────────────────────────────────
+interface StepIndicatorProps { steps: string[]; current: number; }
+export function StepIndicator({ steps, current }: StepIndicatorProps) {
+  return (
+    <div className="flex items-center gap-0 w-full mb-8">
+      {steps.map((label, i) => {
+        const done = i < current;
+        const active = i === current;
+        return (
+          <div key={i} className="flex items-center flex-1 last:flex-none">
+            <div className="flex flex-col items-center gap-1.5 shrink-0">
+              <div className={[
+                'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-200',
+                done  ? 'bg-brand-500 border-brand-500 text-white' : '',
+                active ? 'bg-[var(--surface)] border-brand-500 text-brand-400' : '',
+                !done && !active ? 'bg-[var(--surface)] border-[var(--border)] text-[var(--muted)]' : '',
+              ].join(' ')}>
+                {done ? '✓' : i + 1}
+              </div>
+              <span className={`text-[10px] font-medium whitespace-nowrap ${active ? 'text-[var(--text)]' : 'text-[var(--muted)]'}`}>
+                {label}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div className={`h-px flex-1 mx-2 mb-4 transition-colors duration-200 ${done ? 'bg-brand-500' : 'bg-[var(--border)]'}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Alert / Banner ────────────────────────────────────────────────────────────────────────
 interface AlertProps { type?: 'success' | 'error' | 'info'; message: string; onClose?: () => void; action?: React.ReactNode; }
 export function Alert({ type = 'info', message, onClose, action }: AlertProps) {
   const styles = {

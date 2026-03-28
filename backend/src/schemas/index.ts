@@ -139,8 +139,95 @@ export const weeklyQuerySchema = z.object({
   weeks: z.coerce.number().int().min(1).max(52).default(12)
 });
 
+// ── Direct Messages ─────────────────────────────────────────────────────────
+
+export const directMessageSchema = z.object({
+  message: z.string().min(1).max(5000)
+});
+
+// ── Calendar & Attendance ────────────────────────────────────────────────────
+
+export const calendarEventSchema = z.object({
+  title: z.string().min(1).max(200),
+  event_type: z.enum(['practice', 'race', 'off_day', 'travel', 'meeting', 'other']),
+  event_date: z.string().min(1),
+  start_time: z.string().max(10).optional(),
+  end_time: z.string().max(10).optional(),
+  location_name: z.string().max(300).optional(),
+  location_lat: z.number().min(-90).max(90).optional(),
+  location_lng: z.number().min(-180).max(180).optional(),
+  notes: z.string().max(2000).optional()
+});
+
+export const calendarEventUpdateSchema = calendarEventSchema.partial();
+
+export const checkInSchema = z.object({
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180)
+});
+
+export const manualAttendanceSchema = z.object({
+  athlete_id: z.string().uuid(),
+  status: z.enum(['present', 'absent', 'excused', 'late']),
+  notes: z.string().max(500).optional()
+});
+
 // ── Billing ────────────────────────────────────────────────────────────────
 
 export const checkoutSchema = z.object({
   plan_type: z.enum(['coach_team', 'athlete_individual'])
 });
+
+// ── Nutrition ───────────────────────────────────────────────────────────────
+
+export const bodyMetricsSchema = z.object({
+  weight_kg: z.number().min(20).max(300).optional(),
+  height_cm: z.number().min(100).max(250).optional(),
+  sweat_rate_ml_per_hr: z.number().min(100).max(3000).optional()
+});
+
+export const fuelLogEntrySchema = z.object({
+  logged_at: z.string().min(1),
+  calories: z.number().int().min(0).max(10000).optional(),
+  carbs_g: z.number().min(0).max(2000).optional(),
+  protein_g: z.number().min(0).max(500).optional(),
+  hydration_ml: z.number().int().min(0).max(20000).optional(),
+  notes: z.string().max(500).optional()
+});
+
+export const fuelCalculatorSchema = z.object({
+  duration_min: z.number().min(1).max(600),
+  temp_c: z.number().min(-30).max(55).optional()
+});
+
+// ── Push Notifications ──────────────────────────────────────────────────────
+
+export const pushSubscribeSchema = z.object({
+  endpoint: z.string().url(),
+  p256dh: z.string().min(1),
+  auth: z.string().min(1)
+});
+
+export const pushUnsubscribeSchema = z.object({
+  endpoint: z.string().url()
+});
+
+// ── Marketplace ──────────────────────────────────────────────────────────────
+
+export const marketplaceApplySchema = z.object({
+  bio: z.string().min(50).max(2000),
+  credentials: z.string().min(10).max(1000),
+  specialization: z.enum(['distance', 'sprints', 'triathlon', 'trail', 'field', 'cross_country', 'multi_event']),
+  price_per_month: z.number().min(5).max(200).default(25)
+});
+
+export const marketplaceRejectSchema = z.object({
+  rejection_reason: z.string().min(10).max(500)
+});
+
+// ── Social Feed ──────────────────────────────────────────────────────────────
+
+export const feedPostSchema = z.object({
+  body: z.string().min(1).max(500)
+});
+

@@ -120,3 +120,158 @@ ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
 
 -- The backend uses the service role key which bypasses RLS.
 -- No client-side RLS policies needed for this architecture.
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 008 — trial period support
+-- ─────────────────────────────────────────────────────────────────
+ALTER TABLE public.coach_profiles
+  ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '14 days');
+
+-- Back-fill existing coaches so they get 14 days from now if not yet set
+UPDATE public.coach_profiles SET trial_ends_at = (NOW() + INTERVAL '14 days') WHERE trial_ends_at IS NULL;
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 009 — team_calendar_events + attendance_records
+-- (Phase 2 — already applied if you ran the Phase 2 branch)
+-- ─────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.teams (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  coach_id UUID REFERENCES coach_profiles(id) ON DELETE CASCADE UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  invite_code TEXT UNIQUE NOT NULL,
+  default_bot_id UUID REFERENCES coach_bots(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.team_members (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID REFERENCES teams(id) ON DELETE CASCADE NOT NULL,
+  athlete_id UUID REFERENCES athlete_profiles(id) ON DELETE CASCADE NOT NULL,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active','injured','inactive')),
+  joined_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(team_id, athlete_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.team_calendar_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID REFERENCES teams(id) ON DELETE CASCADE NOT NULL,
+  coach_id UUID REFERENCES coach_profiles(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  event_type TEXT NOT NULL CHECK (event_type IN ('practice','race','off_day','travel','meeting','other')),
+  event_date DATE NOT NULL,
+  start_time TEXT,
+  end_time TEXT,
+  location_name TEXT,
+  location_lat FLOAT,
+  location_lng FLOAT,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.attendance_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID REFERENCES team_calendar_events(id) ON DELETE CASCADE NOT NULL,
+  athlete_id UUID REFERENCES athlete_profiles(id) ON DELETE CASCADE NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('present','absent','excused','late')),
+  check_in_at TIMESTAMPTZ,
+  check_in_lat FLOAT,
+  check_in_lng FLOAT,
+  marked_by TEXT CHECK (marked_by IN ('gps','self','coach')),
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(event_id, athlete_id)
+);
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 010 — athlete_body_metrics + fuel_log (Phase 3)
+-- ─────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.athlete_body_metrics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  athlete_id UUID REFERENCES athlete_profiles(id) ON DELETE CASCADE UNIQUE NOT NULL,
+  weight_kg FLOAT,
+  height_cm FLOAT,
+  sweat_rate_ml_per_hr FLOAT DEFAULT 500,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.fuel_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  athlete_id UUID REFERENCES athlete_profiles(id) ON DELETE CASCADE NOT NULL,
+  logged_at DATE NOT NULL DEFAULT CURRENT_DATE,
+  calories INT,
+  carbs_g FLOAT,
+  protein_g FLOAT,
+  hydration_ml INT,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 011 — push_subscriptions (Phase 3)
+-- ─────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.push_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  endpoint TEXT NOT NULL,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, endpoint)
+);
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 012 — Phase 4: Marketplace + Content Versioning + Social Feed
+-- ─────────────────────────────────────────────────────────────────
+
+-- 4.1 Elite Coaching Marketplace
+CREATE TABLE IF NOT EXISTS public.marketplace_coaches (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  coach_id UUID REFERENCES public.coach_profiles(id) ON DELETE CASCADE UNIQUE NOT NULL,
+  bio TEXT NOT NULL,
+  credentials TEXT NOT NULL,
+  specialization TEXT NOT NULL CHECK (specialization IN ('distance','sprints','triathlon','trail','field','cross_country','multi_event')),
+  price_per_month NUMERIC(8,2) NOT NULL DEFAULT 25.00,
+  approval_status TEXT NOT NULL DEFAULT 'pending' CHECK (approval_status IN ('pending','approved','rejected')),
+  rejection_reason TEXT,
+  submitted_at TIMESTAMPTZ DEFAULT NOW(),
+  approved_at TIMESTAMPTZ,
+  last_content_refresh_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 4.2 Knowledge Document Version History
+CREATE TABLE IF NOT EXISTS public.knowledge_doc_versions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  doc_id UUID REFERENCES public.coach_knowledge_documents(id) ON DELETE CASCADE NOT NULL,
+  version_number INT NOT NULL,
+  title TEXT NOT NULL,
+  content_text TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS knowledge_doc_versions_doc_id_idx ON public.knowledge_doc_versions(doc_id, version_number DESC);
+
+-- 4.3 Social Feed
+CREATE TABLE IF NOT EXISTS public.team_feed (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE NOT NULL,
+  athlete_id UUID REFERENCES public.athlete_profiles(id) ON DELETE CASCADE NOT NULL,
+  feed_type TEXT NOT NULL CHECK (feed_type IN ('activity','race_result','milestone','manual')),
+  activity_id UUID REFERENCES public.athlete_activities(id) ON DELETE SET NULL,
+  race_result_id UUID REFERENCES public.race_results(id) ON DELETE SET NULL,
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS team_feed_team_created_idx ON public.team_feed(team_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS public.feed_kudos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  feed_post_id UUID REFERENCES public.team_feed(id) ON DELETE CASCADE NOT NULL,
+  athlete_id UUID REFERENCES public.athlete_profiles(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(feed_post_id, athlete_id)
+);

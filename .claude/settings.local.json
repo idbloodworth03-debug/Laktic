@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(winget install:*)",
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)",
+      "Bash(ls /c/Users/Nick/Projects/Laktic/*.sql)",
+      "Bash(where gh:*)"
+    ]
+  }
+}

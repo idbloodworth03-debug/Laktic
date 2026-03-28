@@ -44,7 +44,7 @@ h1, h2, h3, h4, h5 {
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted2); }
 
-/* ── Keyframes ─────────────────────────────── */
+/* ── Keyframes ─────────────────────────────────────── */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -58,14 +58,14 @@ h1, h2, h3, h4, h5 {
   100% { background-position:  200% center; }
 }
 
-/* ── Staggered fade-up ─────────────────────── */
+/* ── Staggered fade-up ────────────────────────── */
 .fade-up   { animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .fade-up-1 { animation: fadeUp 0.4s 0.06s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .fade-up-2 { animation: fadeUp 0.4s 0.12s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .fade-up-3 { animation: fadeUp 0.4s 0.18s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .fade-up-4 { animation: fadeUp 0.4s 0.24s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
-/* ── Brand gradient text ───────────────────── */
+/* ── Brand gradient text ─────────────────────── */
 .text-gradient {
   background: linear-gradient(135deg, #4ade80 0%, #22c55e 55%, #16a34a 100%);
   -webkit-background-clip: text;
@@ -73,7 +73,31 @@ h1, h2, h3, h4, h5 {
   background-clip: text;
 }
 
-/* ── Glass navbar surface ──────────────────── */
+/* ── Landing grid pan ────────────────────────── */
+@keyframes grid-pan {
+  0%   { background-position: 0 0; }
+  100% { background-position: 48px 48px; }
+}
+.landing-grid { animation: grid-pan 6s linear infinite; }
+
+/* ── Landing orb animations ──────────────────── */
+@keyframes orb-1 {
+  0%, 100% { opacity: 0.30; transform: scale(1)    translate(0px,   0px);  }
+  50%      { opacity: 0.55; transform: scale(1.2)  translate(0px, -40px);  }
+}
+@keyframes orb-2 {
+  0%, 100% { opacity: 0.20; transform: scale(1)    translate(0px,  0px);   }
+  50%      { opacity: 0.42; transform: scale(1.25) translate(40px, 25px);  }
+}
+@keyframes orb-3 {
+  0%, 100% { opacity: 0.15; transform: scale(1)    translate(0px,  0px);   }
+  50%      { opacity: 0.32; transform: scale(1.15) translate(-25px, 20px); }
+}
+.landing-orb-1 { animation: orb-1 11s ease-in-out infinite; }
+.landing-orb-2 { animation: orb-2 15s ease-in-out infinite; }
+.landing-orb-3 { animation: orb-3  9s ease-in-out infinite; }
+
+/* ── Glass navbar surface ────────────────────── */
 .surface-glass {
   background: rgba(13, 22, 16, 0.85);
   backdrop-filter: blur(16px) saturate(1.5);

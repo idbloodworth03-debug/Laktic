@@ -64,15 +64,15 @@
 - [ ] "Plan deviation" alerts to coach when athlete is consistently under/over
 
 ### 2.3 Team Calendar (Shared)
-- [ ] `team_calendar_events` table (practice, race, off-day, travel)
-- [ ] Coach creates events → syncs to all athletes
+- [x] `team_calendar_events` table (practice, race, off_day, travel, meeting, other)
+- [x] Coach creates events → syncs to all athletes
 - [ ] AI plan generator accounts for team events (no hard workout on travel day)
-- [ ] iCal export (.ics) for athletes to add to their phone calendar
+- [x] iCal export (.ics) for athletes to add to their phone calendar
 
 ### 2.4 Attendance Tracker
-- [ ] GPS check-in: athlete opens app within 200m of practice location → auto-marked present
-- [ ] Manual check-in by coach
-- [ ] Attendance report for coach (who missed what)
+- [x] GPS check-in: athlete opens app within 200m of practice location → auto-marked present
+- [x] Manual check-in by coach
+- [x] Attendance report for coach (who missed what, % attendance per athlete)
 - [ ] Integrate with readiness (absent + low readiness = possible injury flag)
 
 ---

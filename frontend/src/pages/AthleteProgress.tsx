@@ -5,6 +5,8 @@ import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
 import { Navbar, Button, Card, Badge, Spinner, Alert } from '../components/ui';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL as string || 'http://localhost:3001';
+
 type WeeklySummary = {
   id: string;
   week_start: string;
@@ -150,6 +152,24 @@ export function AthleteProgress() {
     }
   };
 
+  const downloadReport = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch(`${API_BASE}/api/athlete/report.pdf`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to generate report.');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'laktic-season-report.pdf'; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      setError(e.message || 'Failed to download report.');
+    }
+  };
+
   const currentWeek = summaries.length > 0 ? summaries[summaries.length - 1] : null;
   const prs = races.filter(r => r.is_pr);
 
@@ -166,7 +186,7 @@ export function AthleteProgress() {
   return (
     <div className="min-h-screen">
       <Navbar role="athlete" name={profile?.name} onLogout={logout} />
-      <div className="max-w-3xl mx-auto px-6 py-10">
+      <div className="max-w-5xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-6 fade-up">
           <div>
             <h1 className="font-display text-2xl font-bold text-[var(--text)]">Training Progress</h1>
@@ -176,6 +196,7 @@ export function AthleteProgress() {
             <Link to="/athlete/plan"><Button variant="ghost" size="sm">Plan</Button></Link>
             <Link to="/athlete/races"><Button variant="ghost" size="sm">Races</Button></Link>
             <Button variant="secondary" size="sm" onClick={recompute} loading={computing}>Refresh Data</Button>
+            <Button variant="secondary" size="sm" onClick={downloadReport}>Download Report</Button>
           </div>
         </div>
 
@@ -185,7 +206,6 @@ export function AthleteProgress() {
           <div className="flex items-center justify-center py-20"><Spinner size="lg" /></div>
         ) : (
           <div className="flex flex-col gap-5 fade-up-1">
-            {/* Current Week Stats */}
             {currentWeek && (
               <Card title="This Week">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -212,21 +232,18 @@ export function AthleteProgress() {
               </Card>
             )}
 
-            {/* Volume Chart */}
             {volumeData.length > 0 && (
               <Card title="Weekly Volume (miles)">
                 <BarChart data={volumeData} label="" />
               </Card>
             )}
 
-            {/* Pace Trend */}
             {paceData.some(d => d.seconds > 0) && (
               <Card title="Pace Trend">
                 <PaceTrend data={paceData} />
               </Card>
             )}
 
-            {/* PRs */}
             {prs.length > 0 && (
               <Card title="Personal Records">
                 <div className="flex flex-col gap-2">
