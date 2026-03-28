@@ -176,7 +176,7 @@ export function AthleteRegister() {
       if (signErr || !data.session) throw new Error(signErr?.message || 'Sign up failed');
       const profile = await apiFetch('/api/athlete/profile', {
         method: 'POST',
-        body: JSON.stringify({ name: form.name, weekly_volume_miles: parseFloat(form.weekly_volume_miles), primary_events: events, pr_mile: form.pr_mile, pr_5k: form.pr_5k })
+        body: JSON.stringify({ name: form.name, weekly_volume_miles: parseFloat(form.weekly_volume_miles) || undefined, primary_events: events.length ? events : undefined, pr_mile: form.pr_mile || undefined, pr_5k: form.pr_5k || undefined })
       });
       setAuth(data.session, 'athlete', profile);
       nav('/athlete/onboarding');

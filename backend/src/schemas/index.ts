@@ -50,7 +50,7 @@ export const knowledgeUpdateSchema = z.object({
 export const athleteProfileSchema = z.object({
   name: z.string().min(1).max(200),
   weekly_volume_miles: z.number().min(0).max(200).optional(),
-  primary_events: z.string().max(200).optional(),
+  primary_events: z.array(z.string().max(100)).max(20).optional(),
   pr_mile: z.string().max(20).optional(),
   pr_5k: z.string().max(20).optional()
 });
@@ -58,7 +58,7 @@ export const athleteProfileSchema = z.object({
 export const athleteProfileUpdateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   weekly_volume_miles: z.number().min(0).max(200).optional(),
-  primary_events: z.string().max(200).optional(),
+  primary_events: z.array(z.string().max(100)).max(20).optional(),
   pr_mile: z.string().max(20).optional(),
   pr_5k: z.string().max(20).optional()
 });
