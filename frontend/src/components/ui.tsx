@@ -36,13 +36,14 @@ export function Button({ variant = 'primary', loading, size = 'md', children, di
 }
 
 // ── Input ──────────────────────────────────────────────────────────────────────
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> { label?: string; error?: string; }
-export function Input({ label, error, className = '', ...rest }: InputProps) {
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> { label?: string; error?: string; hint?: string; }
+export function Input({ label, error, hint, className = '', ...rest }: InputProps) {
   return (
     <div className="flex flex-col gap-1.5">
       {label && <label className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">{label}</label>}
       <input className={['bg-[var(--color-bg-tertiary)] border rounded-btn px-[14px] py-[10px] text-sm', 'font-sans text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)]', 'outline-none transition-all duration-150', error ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)] focus:border-[var(--color-accent)] focus:shadow-[0_0_0_3px_var(--color-accent-dim)]', className].join(' ')} {...rest} />
       {error && <span className="text-xs text-[var(--color-danger)]">{error}</span>}
+      {!error && hint && <span className="text-xs text-[var(--color-text-tertiary)]">{hint}</span>}
     </div>
   );
 }

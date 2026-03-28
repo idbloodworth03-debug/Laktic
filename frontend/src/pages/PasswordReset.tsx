@@ -121,6 +121,11 @@ export function ResetPassword() {
   const [error, setError] = useState('');
   const [sessionReady, setSessionReady] = useState(false);
 
+  const pwTooShort = password.length > 0 && password.length < 8;
+  const confirmMismatch = confirm.length > 0 && password !== confirm;
+  const confirmMatch = confirm.length > 0 && password === confirm && password.length >= 8;
+  const canSubmit = sessionReady && !loading && password.length >= 8 && password === confirm;
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') setSessionReady(true);
@@ -129,8 +134,12 @@ export function ResetPassword() {
   }, []);
 
   const handle = async () => {
-    if (password !== confirm) { setError('Passwords do not match.'); return; }
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    if (password !== confirm) {
+      setError('Passwords do not match.');
+      document.getElementById('reset-confirm-pw-page')?.focus();
+      return;
+    }
     setError(''); setLoading(true);
     try {
       const { error: err } = await supabase.auth.updateUser({ password });
@@ -194,17 +203,26 @@ export function ResetPassword() {
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••"
               disabled={!sessionReady}
+              hint="Minimum 8 characters"
+              error={pwTooShort ? 'Password must be at least 8 characters' : undefined}
             />
-            <Input
-              label="Confirm password"
-              type="password"
-              value={confirm}
-              onChange={e => setConfirm(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handle()}
-              placeholder="••••••••"
-              disabled={!sessionReady}
-            />
-            <Button onClick={handle} loading={loading} disabled={!sessionReady || !password} className="w-full" size="lg">
+            <div className="flex flex-col gap-1">
+              <Input
+                id="reset-confirm-pw-page"
+                label="Confirm password"
+                type="password"
+                value={confirm}
+                onChange={e => setConfirm(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handle()}
+                placeholder="••••••••"
+                disabled={!sessionReady}
+                error={confirmMismatch ? 'Passwords do not match' : undefined}
+              />
+              {confirmMatch && (
+                <p className="text-xs" style={{ color: 'var(--color-accent)' }}>✓ Passwords match</p>
+              )}
+            </div>
+            <Button onClick={handle} loading={loading} disabled={!canSubmit} className="w-full" size="lg">
               Update password
             </Button>
           </div>

@@ -326,8 +326,18 @@ export function CoachRegister() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const pwTooShort = form.password.length > 0 && form.password.length < 8;
+  const confirmMismatch = form.confirmPassword.length > 0 && form.password !== form.confirmPassword;
+  const confirmMatch = form.confirmPassword.length > 0 && form.password === form.confirmPassword && form.password.length >= 8;
+  const canSubmit = !loading && !!form.name && !!form.email && form.password.length >= 8 && form.password === form.confirmPassword;
+
   const handle = async () => {
-    if (form.password !== form.confirmPassword) { setError('Passwords do not match'); return; }
+    if (form.password.length < 8) { setError('Password must be at least 8 characters'); return; }
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords do not match');
+      document.getElementById('coach-confirm-pw')?.focus();
+      return;
+    }
     setError(''); setLoading(true);
     try {
       const { data, error: signErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
@@ -347,9 +357,30 @@ export function CoachRegister() {
       <Input label="Full name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Coach Jane Smith" />
       <Input label="School / Organization (optional)" value={form.school_or_org} onChange={e => setForm(f => ({ ...f, school_or_org: e.target.value }))} placeholder="State University XC" />
       <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="coach@example.com" />
-      <Input label="Password" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
-      <Input label="Confirm password" type="password" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))} placeholder="••••••••" />
-      <Button onClick={handle} loading={loading} className="w-full font-semibold" size="lg">
+      <Input
+        label="Password"
+        type="password"
+        value={form.password}
+        onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+        placeholder="••••••••"
+        hint="Minimum 8 characters"
+        error={pwTooShort ? 'Password must be at least 8 characters' : undefined}
+      />
+      <div className="flex flex-col gap-1">
+        <Input
+          id="coach-confirm-pw"
+          label="Confirm password"
+          type="password"
+          value={form.confirmPassword}
+          onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))}
+          placeholder="••••••••"
+          error={confirmMismatch ? 'Passwords do not match' : undefined}
+        />
+        {confirmMatch && (
+          <p className="text-xs" style={{ color: 'var(--color-accent)' }}>✓ Passwords match</p>
+        )}
+      </div>
+      <Button onClick={handle} loading={loading} disabled={!canSubmit} className="w-full font-semibold" size="lg">
         Create Coach Account
       </Button>
       <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
@@ -377,10 +408,20 @@ export function AthleteRegister() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const pwTooShort = form.password.length > 0 && form.password.length < 8;
+  const confirmMismatch = form.confirmPassword.length > 0 && form.password !== form.confirmPassword;
+  const confirmMatch = form.confirmPassword.length > 0 && form.password === form.confirmPassword && form.password.length >= 8;
+  const canSubmit = !loading && !!form.name && !!form.email && form.password.length >= 8 && form.password === form.confirmPassword;
+
   const toggleEvent = (e: string) => setEvents(prev => prev.includes(e) ? prev.filter(x => x !== e) : [...prev, e]);
 
   const handle = async () => {
-    if (form.password !== form.confirmPassword) { setError('Passwords do not match'); return; }
+    if (form.password.length < 8) { setError('Password must be at least 8 characters'); return; }
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords do not match');
+      document.getElementById('athlete-confirm-pw')?.focus();
+      return;
+    }
     setError(''); setLoading(true);
     try {
       const { data, error: signErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
@@ -405,8 +446,29 @@ export function AthleteRegister() {
     <SplitAuth title="Create Athlete Account" subtitle="Find your coach bot. Get a personalized season plan." error={error}>
       <Input label="Full name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Your name" />
       <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="you@example.com" />
-      <Input label="Password" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
-      <Input label="Confirm password" type="password" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))} placeholder="••••••••" />
+      <Input
+        label="Password"
+        type="password"
+        value={form.password}
+        onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+        placeholder="••••••••"
+        hint="Minimum 8 characters"
+        error={pwTooShort ? 'Password must be at least 8 characters' : undefined}
+      />
+      <div className="flex flex-col gap-1">
+        <Input
+          id="athlete-confirm-pw"
+          label="Confirm password"
+          type="password"
+          value={form.confirmPassword}
+          onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))}
+          placeholder="••••••••"
+          error={confirmMismatch ? 'Passwords do not match' : undefined}
+        />
+        {confirmMatch && (
+          <p className="text-xs" style={{ color: 'var(--color-accent)' }}>✓ Passwords match</p>
+        )}
+      </div>
       <div>
         <label
           className="text-[11px] font-semibold uppercase tracking-wider block mb-2"
@@ -444,7 +506,7 @@ export function AthleteRegister() {
         <Input label="PR Mile" value={form.pr_mile} onChange={e => setForm(f => ({ ...f, pr_mile: e.target.value }))} placeholder="4:32" />
         <Input label="PR 5K" value={form.pr_5k} onChange={e => setForm(f => ({ ...f, pr_5k: e.target.value }))} placeholder="15:30" />
       </div>
-      <Button onClick={handle} loading={loading} className="w-full font-semibold" size="lg">
+      <Button onClick={handle} loading={loading} disabled={!canSubmit} className="w-full font-semibold" size="lg">
         Create Athlete Account
       </Button>
       <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
@@ -686,6 +748,11 @@ export function PasswordResetConfirm() {
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
 
+  const pwTooShort = password.length > 0 && password.length < 8;
+  const confirmMismatch = confirm.length > 0 && password !== confirm;
+  const confirmMatch = confirm.length > 0 && password === confirm && password.length >= 8;
+  const canSubmit = sessionReady && !loading && password.length >= 8 && password === confirm;
+
   // Supabase delivers the recovery token via URL hash; wait for PASSWORD_RECOVERY
   // event before allowing the user to submit, otherwise updateUser will fail.
   useEffect(() => {
@@ -696,8 +763,12 @@ export function PasswordResetConfirm() {
   }, []);
 
   const handle = async () => {
-    if (password !== confirm) { setError('Passwords do not match'); return; }
     if (password.length < 8) { setError('Password must be at least 8 characters'); return; }
+    if (password !== confirm) {
+      setError('Passwords do not match');
+      document.getElementById('reset-confirm-pw')?.focus();
+      return;
+    }
     setError(''); setLoading(true);
     try {
       const { error: err } = await supabase.auth.updateUser({ password });
@@ -772,9 +843,33 @@ export function PasswordResetConfirm() {
           Verifying your reset link...
         </div>
       )}
-      <Input label="New password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" disabled={!sessionReady} autoFocus />
-      <Input label="Confirm password" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="••••••••" disabled={!sessionReady} />
-      <Button onClick={handle} loading={loading} disabled={!sessionReady || !password || !confirm} className="w-full font-semibold" size="lg">
+      <Input
+        label="New password"
+        type="password"
+        value={password}
+        onChange={e => setPassword(e.target.value)}
+        placeholder="••••••••"
+        disabled={!sessionReady}
+        autoFocus
+        hint="Minimum 8 characters"
+        error={pwTooShort ? 'Password must be at least 8 characters' : undefined}
+      />
+      <div className="flex flex-col gap-1">
+        <Input
+          id="reset-confirm-pw"
+          label="Confirm password"
+          type="password"
+          value={confirm}
+          onChange={e => setConfirm(e.target.value)}
+          placeholder="••••••••"
+          disabled={!sessionReady}
+          error={confirmMismatch ? 'Passwords do not match' : undefined}
+        />
+        {confirmMatch && (
+          <p className="text-xs" style={{ color: 'var(--color-accent)' }}>✓ Passwords match</p>
+        )}
+      </div>
+      <Button onClick={handle} loading={loading} disabled={!canSubmit} className="w-full font-semibold" size="lg">
         Update Password
       </Button>
     </SplitAuth>
