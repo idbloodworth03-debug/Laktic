@@ -36,12 +36,13 @@ type RaceResult = {
 
 function BarChart({ data, label }: { data: { label: string; value: number }[]; label: string }) {
   const maxVal = Math.max(...data.map(d => d.value), 1);
+  const showEvery = data.length > 8 ? 2 : 1;
   return (
-    <div>
+    <div className="overflow-hidden">
       {label && <div className="text-xs text-[var(--muted)] mb-3 font-medium uppercase tracking-wide">{label}</div>}
-      <div className="flex items-end gap-1" style={{ height: 120 }}>
+      <div className="flex items-end gap-0.5 sm:gap-1" style={{ height: 120 }}>
         {data.map((d, i) => (
-          <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
+          <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-1 min-w-0">
             <div
               className="w-full rounded-t min-h-[2px] transition-all duration-500"
               style={{
@@ -51,7 +52,9 @@ function BarChart({ data, label }: { data: { label: string; value: number }[]; l
               }}
               title={`${d.label}: ${d.value}`}
             />
-            <div className="text-[9px] text-[var(--muted)] truncate w-full text-center leading-tight">{d.label}</div>
+            <div className="text-[8px] text-[var(--muted)] truncate w-full text-center leading-tight">
+              {i % showEvery === 0 ? d.label : ''}
+            </div>
           </div>
         ))}
       </div>
@@ -67,14 +70,15 @@ function PaceTrend({ data }: { data: { label: string; seconds: number }[] }) {
   const maxS = Math.max(...valid.map(d => d.seconds));
   const range = maxS - minS || 60;
 
+  const showEvery = data.length > 8 ? 2 : 1;
   return (
-    <div>
+    <div className="overflow-hidden">
       <div className="text-xs text-[var(--muted)] mb-3 font-medium uppercase tracking-wide">Avg Pace / Mile — lower is faster</div>
-      <div className="flex items-end gap-1" style={{ height: 80 }}>
+      <div className="flex items-end gap-0.5 sm:gap-1" style={{ height: 80 }}>
         {data.map((d, i) => {
           const pct = d.seconds > 0 ? ((d.seconds - minS) / range) * 75 + 25 : 0;
           return (
-            <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
+            <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-1 min-w-0">
               {d.seconds > 0 && (
                 <div
                   className="w-full rounded-t min-h-[2px]"
@@ -85,7 +89,9 @@ function PaceTrend({ data }: { data: { label: string; seconds: number }[] }) {
                   title={`${d.label}: ${formatPace(d.seconds)}`}
                 />
               )}
-              <div className="text-[9px] text-[var(--muted)] truncate w-full text-center leading-tight">{d.label}</div>
+              <div className="text-[8px] text-[var(--muted)] truncate w-full text-center leading-tight">
+                {i % showEvery === 0 ? d.label : ''}
+              </div>
             </div>
           );
         })}
@@ -187,12 +193,12 @@ export function AthleteProgress() {
     <div className="min-h-screen">
       <Navbar role="athlete" name={profile?.name} onLogout={logout} />
       <div className="max-w-5xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-6 fade-up">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 fade-up gap-3">
           <div>
-            <h1 className="font-display text-2xl font-bold text-[var(--text)]">Training Progress</h1>
+            <h1 className="font-display text-2xl font-bold text-[var(--text)] leading-normal pb-1">Training Progress</h1>
             <p className="text-sm text-[var(--muted)] mt-1">Weekly volume, pace trends, and race results</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Link to="/athlete/plan"><Button variant="ghost" size="sm">Plan</Button></Link>
             <Link to="/athlete/races"><Button variant="ghost" size="sm">Races</Button></Link>
             <Button variant="secondary" size="sm" onClick={recompute} loading={computing}>Refresh Data</Button>
