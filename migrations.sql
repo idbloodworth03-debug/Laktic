@@ -429,3 +429,97 @@ CREATE TABLE IF NOT EXISTS public.team_challenges (
 );
 
 ALTER TABLE public.team_challenges ENABLE ROW LEVEL SECURITY;
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 020 — Sprint 2 AI features
+-- injury_risk_scores, race_gameplans, performance_predictions,
+-- race_debriefs, coach_digests, daily_readiness, recovery_profiles
+-- ─────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.injury_risk_scores (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  athlete_id UUID NOT NULL REFERENCES public.athlete_profiles(id) ON DELETE CASCADE,
+  score INTEGER NOT NULL CHECK (score BETWEEN 0 AND 100),
+  risk_level TEXT NOT NULL CHECK (risk_level IN ('low','moderate','high','critical')),
+  factors JSONB NOT NULL DEFAULT '{}',
+  explanation TEXT,
+  computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  notified_coach BOOLEAN NOT NULL DEFAULT FALSE
+);
+CREATE INDEX IF NOT EXISTS injury_risk_athlete_idx ON public.injury_risk_scores(athlete_id, computed_at DESC);
+ALTER TABLE public.injury_risk_scores ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.race_gameplans (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  athlete_id UUID NOT NULL REFERENCES public.athlete_profiles(id) ON DELETE CASCADE,
+  race_event_id UUID REFERENCES public.team_calendar_events(id) ON DELETE SET NULL,
+  race_name TEXT NOT NULL,
+  race_date DATE NOT NULL,
+  generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  gameplan JSONB NOT NULL DEFAULT '{}',
+  coach_approved BOOLEAN NOT NULL DEFAULT FALSE,
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','approved','delivered'))
+);
+CREATE INDEX IF NOT EXISTS race_gameplans_athlete_idx ON public.race_gameplans(athlete_id, race_date DESC);
+ALTER TABLE public.race_gameplans ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.performance_predictions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  athlete_id UUID NOT NULL REFERENCES public.athlete_profiles(id) ON DELETE CASCADE,
+  distance TEXT NOT NULL CHECK (distance IN ('5K','10K','half_marathon','marathon')),
+  predicted_time_seconds INTEGER NOT NULL,
+  confidence TEXT NOT NULL CHECK (confidence IN ('low','medium','high')),
+  trend TEXT NOT NULL CHECK (trend IN ('improving','plateau','declining')),
+  explanation TEXT,
+  computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(athlete_id, distance)
+);
+ALTER TABLE public.performance_predictions ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.race_debriefs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  athlete_id UUID NOT NULL REFERENCES public.athlete_profiles(id) ON DELETE CASCADE,
+  race_result_id UUID REFERENCES public.race_results(id) ON DELETE SET NULL,
+  messages JSONB NOT NULL DEFAULT '[]',
+  summary TEXT,
+  insights JSONB,
+  completed_at TIMESTAMPTZ,
+  coach_flagged BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS race_debriefs_athlete_idx ON public.race_debriefs(athlete_id, created_at DESC);
+ALTER TABLE public.race_debriefs ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.coach_digests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  coach_id UUID NOT NULL REFERENCES public.coach_profiles(id) ON DELETE CASCADE,
+  sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  digest_content TEXT NOT NULL,
+  athlete_count INTEGER NOT NULL DEFAULT 0,
+  dismissed BOOLEAN NOT NULL DEFAULT FALSE
+);
+CREATE INDEX IF NOT EXISTS coach_digests_coach_idx ON public.coach_digests(coach_id, sent_at DESC);
+ALTER TABLE public.coach_digests ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.daily_readiness (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  athlete_id UUID NOT NULL REFERENCES public.athlete_profiles(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  readiness_score INTEGER NOT NULL CHECK (readiness_score BETWEEN 0 AND 100),
+  recommended_intensity TEXT NOT NULL CHECK (recommended_intensity IN ('rest','easy','moderate','hard','race')),
+  explanation TEXT,
+  computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(athlete_id, date)
+);
+CREATE INDEX IF NOT EXISTS daily_readiness_athlete_idx ON public.daily_readiness(athlete_id, date DESC);
+ALTER TABLE public.daily_readiness ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.recovery_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  athlete_id UUID NOT NULL REFERENCES public.athlete_profiles(id) ON DELETE CASCADE UNIQUE,
+  hrv_baseline NUMERIC,
+  avg_recovery_hours NUMERIC,
+  hard_effort_pattern JSONB,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE public.recovery_profiles ENABLE ROW LEVEL SECURITY;

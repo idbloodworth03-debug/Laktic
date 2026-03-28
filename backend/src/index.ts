@@ -27,8 +27,16 @@ import aiCaptionRouter from './routes/aiCaption';
 import milestonesRouter from './routes/milestones';
 import challengesRouter from './routes/challenges';
 import teamChallengesRouter from './routes/teamChallenges';
+import injuryRiskRouter from './routes/injuryRisk';
+import gameplansRouter from './routes/gameplans';
+import predictionsRouter from './routes/predictions';
+import debriefsRouter from './routes/debriefs';
+import coachDigestRouter from './routes/coachDigest';
+import recoveryRouter from './routes/recovery';
 import cron from 'node-cron';
 import { runRaceCountdownCron } from './services/notificationService';
+import { runGameplanCron } from './routes/gameplans';
+import { runWeeklyDigest } from './routes/coachDigest';
 
 import { apiLimiter } from './middleware/rateLimit';
 import { errorHandler } from './middleware/errorHandler';
@@ -82,6 +90,12 @@ app.use('/api/ai', aiCaptionRouter);
 app.use('/api/milestones', milestonesRouter);
 app.use('/api/challenges', challengesRouter);
 app.use('/api/team-challenges', teamChallengesRouter);
+app.use('/api/injury-risk', injuryRiskRouter);
+app.use('/api/gameplans', gameplansRouter);
+app.use('/api/predictions', predictionsRouter);
+app.use('/api/debriefs', debriefsRouter);
+app.use('/api/digest', coachDigestRouter);
+app.use('/api/recovery', recoveryRouter);
 
 app.use('/api', gdprRouter);
 
@@ -96,6 +110,23 @@ app.listen(env.PORT, () => {
 // Race countdown notifications — runs daily at 7:00 AM UTC
 cron.schedule('0 7 * * *', () => {
   runRaceCountdownCron().catch(() => {});
+});
+
+// Gameplan auto-generation — runs every 6 hours for upcoming races in next 48h
+cron.schedule('0 */6 * * *', () => {
+  runGameplanCron().catch(() => {});
+});
+
+// Weekly coach digest — runs every Monday at 8:00 AM UTC
+cron.schedule('0 8 * * 1', async () => {
+  try {
+    const { data: coaches } = await (await import('./db/supabase')).supabase
+      .from('coach_profiles')
+      .select('id');
+    for (const coach of coaches ?? []) {
+      await runWeeklyDigest(coach.id).catch(() => {});
+    }
+  } catch {}
 });
 
 export default app;

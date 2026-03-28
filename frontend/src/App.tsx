@@ -26,6 +26,11 @@ import { MarketplacePage, MarketplaceCoachProfile, MarketplaceApply } from './pa
 import { TeamFeed } from './pages/TeamFeed';
 import { TeamLeaderboard } from './pages/TeamLeaderboard';
 import { Community } from './pages/Community';
+import { TeamReadiness } from './pages/TeamReadiness';
+import { TeamRecovery } from './pages/TeamRecovery';
+import { GameplanViewer } from './pages/GameplanViewer';
+import { AthleteGameplans } from './pages/AthleteGameplans';
+import { RaceDebrief } from './pages/RaceDebrief';
 
 function RequireCoach({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
@@ -93,6 +98,14 @@ export default function App() {
 
         {/* Community — athletes and coaches */}
         <Route path="/community" element={<Community />} />
+
+        {/* Sprint 2 — AI Features */}
+        <Route path="/coach/readiness" element={<RequireCoach><TeamReadiness /></RequireCoach>} />
+        <Route path="/coach/recovery" element={<RequireCoach><TeamRecovery /></RequireCoach>} />
+        <Route path="/coach/gameplans" element={<RequireCoach><GameplanViewer /></RequireCoach>} />
+        <Route path="/athlete/gameplans" element={<RequireAthlete><AthleteGameplans /></RequireAthlete>} />
+        <Route path="/athlete/gameplan/:id" element={<RequireAthlete><GameplanViewer /></RequireAthlete>} />
+        <Route path="/athlete/debrief/:id" element={<RequireAthlete><RaceDebrief /></RequireAthlete>} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
