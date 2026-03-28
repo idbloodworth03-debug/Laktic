@@ -339,3 +339,15 @@ ALTER TABLE public.plan_jobs
 -- ─────────────────────────────────────────────────────────────────
 ALTER TABLE public.direct_messages
   ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 018 — multi-team support
+-- Athletes can belong to multiple teams simultaneously.
+-- active_team_id = which team's context is currently active.
+-- left_at IS NULL = current member; IS NOT NULL = has left.
+-- ─────────────────────────────────────────────────────────────────
+ALTER TABLE public.team_members
+  ADD COLUMN IF NOT EXISTS left_at TIMESTAMPTZ;
+
+ALTER TABLE public.athlete_profiles
+  ADD COLUMN IF NOT EXISTS active_team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL;

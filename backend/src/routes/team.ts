@@ -97,6 +97,7 @@ router.get(
         athlete_profiles!athlete_id (id, name, weekly_volume_miles, primary_events)
       `)
       .eq('team_id', team.id)
+      .is('left_at', null)
       .order('joined_at', { ascending: true });
 
     res.json({ team, members: members || [] });
@@ -128,6 +129,7 @@ router.get(
       `)
       .eq('team_id', team.id)
       .eq('status', 'active')
+      .is('left_at', null)
       .order('joined_at', { ascending: true });
 
     res.json(members || []);
@@ -161,31 +163,46 @@ router.post(
       return res.status(400).json({ error: 'This invite link has reached its limit.' });
     }
 
-    // Check already a member
+    // Check existing membership (active or previously left)
     const { data: existingMember } = await supabase
       .from('team_members')
-      .select('id')
+      .select('id, left_at')
       .eq('team_id', team.id)
       .eq('athlete_id', req.athlete.id)
       .single();
 
     if (existingMember) {
-      return res.status(400).json({ error: 'You are already a member of this team.' });
+      if (!existingMember.left_at) {
+        return res.status(400).json({ error: 'You are already a member of this team.' });
+      }
+      // Re-join: clear left_at
+      const { error: rejoinError } = await supabase
+        .from('team_members')
+        .update({ left_at: null, status: 'active' })
+        .eq('id', existingMember.id);
+      if (rejoinError) return res.status(400).json({ error: rejoinError.message });
+    } else {
+      // New member
+      const { error: memberError } = await supabase.from('team_members').insert({
+        team_id: team.id,
+        athlete_id: req.athlete.id
+      });
+      if (memberError) return res.status(400).json({ error: memberError.message });
     }
-
-    // Add member
-    const { error: memberError } = await supabase.from('team_members').insert({
-      team_id: team.id,
-      athlete_id: req.athlete.id
-    });
-
-    if (memberError) return res.status(400).json({ error: memberError.message });
 
     // Increment uses_count
     await supabase
       .from('teams')
       .update({ uses_count: (team.uses_count ?? 0) + 1, updated_at: new Date().toISOString() })
       .eq('id', team.id);
+
+    // Set active_team_id if the athlete doesn't have one yet
+    if (!req.athlete.active_team_id) {
+      await supabase
+        .from('athlete_profiles')
+        .update({ active_team_id: team.id })
+        .eq('id', req.athlete.id);
+    }
 
     // Log event
     await supabase.from('team_events').insert({

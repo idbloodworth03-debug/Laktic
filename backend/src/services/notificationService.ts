@@ -106,6 +106,15 @@ export async function notifyCoachReplied(userId: string, coachName: string) {
   });
 }
 
+export async function notifyAthleteLeft(coachUserId: string, athleteName: string) {
+  await sendToUser(coachUserId, {
+    title: 'Athlete left your team',
+    body: `${athleteName} has left your team.`,
+    url: '/coach/dashboard',
+    tag: `athlete-left-${athleteName}`
+  });
+}
+
 export async function notifyWorkoutReminder(userId: string, workoutTitle: string) {
   await sendToUser(userId, {
     title: 'Workout Today',

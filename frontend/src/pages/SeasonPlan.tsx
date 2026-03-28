@@ -237,6 +237,149 @@ function PlanMonthView({ plan }: { plan: any[] }) {
   );
 }
 
+// ── Team Switcher ─────────────────────────────────────────────────────────────
+function TeamSwitcher({ onTeamChange }: { onTeamChange: () => void }) {
+  const [teams, setTeams] = useState<any[]>([]);
+  const [switching, setSwitching] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState<string | null>(null);
+  const [confirmLeave, setConfirmLeave] = useState<any | null>(null);
+  const [showJoin, setShowJoin] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState('');
+
+  const load = () =>
+    apiFetch('/api/athlete/teams').then(setTeams).catch(console.error);
+
+  useEffect(() => { load(); }, []);
+
+  const switchTeam = async (teamId: string) => {
+    setSwitching(teamId);
+    try {
+      await apiFetch('/api/athlete/active-team', {
+        method: 'PUT',
+        body: JSON.stringify({ team_id: teamId }),
+      });
+      await load();
+      onTeamChange();
+    } catch (e: any) { console.error(e); }
+    finally { setSwitching(null); }
+  };
+
+  const leaveTeam = async (team: any) => {
+    setLeaving(team.id);
+    try {
+      await apiFetch('/api/athlete/teams/leave', {
+        method: 'POST',
+        body: JSON.stringify({ team_id: team.id }),
+      });
+      setConfirmLeave(null);
+      await load();
+      onTeamChange();
+    } catch (e: any) { console.error(e); }
+    finally { setLeaving(null); }
+  };
+
+  const joinTeam = async () => {
+    const code = joinCode.trim().toUpperCase();
+    if (!code) return;
+    setJoinError('');
+    setJoining(true);
+    try {
+      await apiFetch(`/api/athlete/join/${code}`, { method: 'POST' });
+      setJoinCode('');
+      setShowJoin(false);
+      await load();
+      onTeamChange();
+    } catch (e: any) { setJoinError(e.message || 'Invalid invite code'); }
+    finally { setJoining(false); }
+  };
+
+  if (teams.length === 0 && !showJoin) return null;
+
+  return (
+    <>
+      {/* Confirm leave modal */}
+      {confirmLeave && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setConfirmLeave(null)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div
+            className="relative bg-[var(--surface)] border border-[var(--border2)] rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="font-display font-semibold text-base mb-2">Leave {confirmLeave.name}?</h3>
+            <p className="text-sm text-[var(--muted)] mb-5">
+              You will lose access to their coaching bot and plan. You can rejoin later with an invite code.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="ghost" size="sm" onClick={() => setConfirmLeave(null)}>Cancel</Button>
+              <Button
+                variant="danger"
+                size="sm"
+                loading={leaving === confirmLeave.id}
+                onClick={() => leaveTeam(confirmLeave)}
+              >
+                Leave Team
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="mb-5 fade-up">
+        <div className="flex items-center gap-2 flex-wrap">
+          {teams.map(t => (
+            <div key={t.id} className="flex items-center gap-1">
+              <button
+                onClick={() => !t.is_active && switchTeam(t.id)}
+                disabled={!!switching}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center gap-1.5 ${
+                  t.is_active
+                    ? 'bg-brand-600 border-brand-500 text-white'
+                    : 'border-[var(--border)] text-[var(--muted)] hover:border-brand-500 hover:text-[var(--text)]'
+                }`}
+              >
+                {switching === t.id ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> : null}
+                {t.name}
+                {t.is_active && <span className="text-[10px] opacity-75">· active</span>}
+              </button>
+              <button
+                onClick={() => setConfirmLeave(t)}
+                className="w-5 h-5 flex items-center justify-center rounded text-[var(--muted2)] hover:text-red-400 hover:bg-red-950/40 transition-colors text-xs"
+                title={`Leave ${t.name}`}
+              >×</button>
+            </div>
+          ))}
+
+          {showJoin ? (
+            <div className="flex items-center gap-2">
+              <input
+                value={joinCode}
+                onChange={e => setJoinCode(e.target.value.toUpperCase())}
+                onKeyDown={e => e.key === 'Enter' && joinTeam()}
+                placeholder="INVITE CODE"
+                maxLength={8}
+                autoFocus
+                className="w-28 bg-[var(--surface2)] border border-[var(--border2)] rounded-lg px-2.5 py-1.5 text-xs text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-brand-500 tracking-widest uppercase"
+              />
+              <Button size="sm" variant="primary" loading={joining} onClick={joinTeam}>Join</Button>
+              <Button size="sm" variant="ghost" onClick={() => { setShowJoin(false); setJoinCode(''); setJoinError(''); }}>Cancel</Button>
+              {joinError && <span className="text-xs text-red-400">{joinError}</span>}
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowJoin(true)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium border border-dashed border-[var(--border)] text-[var(--muted)] hover:text-brand-400 hover:border-brand-700 transition-colors"
+            >
+              + Join Another Team
+            </button>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── Season Plan ──────────────────────────────────────────────────────────────
 export function SeasonPlan() {
   const { profile, clearAuth } = useAuthStore();
@@ -253,7 +396,8 @@ export function SeasonPlan() {
   const [regenError, setRegenError] = useState<string | null>(null);
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
-  useEffect(() => {
+  const loadSeason = () => {
+    setLoading(true);
     apiFetch('/api/athlete/season').then(({ season }) => {
       setSeason(season);
       if (season?.season_plan?.length) {
@@ -265,7 +409,9 @@ export function SeasonPlan() {
         setCurrentWeek(Math.max(0, idx));
       }
     }).catch(console.error).finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { loadSeason(); }, []);
 
   // Poll job status while a regenerate job is in-flight
   useEffect(() => {
@@ -378,6 +524,9 @@ export function SeasonPlan() {
             )}
           </div>
         </div>
+
+        {/* Team switcher */}
+        <TeamSwitcher onTeamChange={loadSeason} />
 
         {/* Regen success / error banners */}
         {regenSuccess && (

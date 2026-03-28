@@ -13,6 +13,50 @@ import { notifyPlanReady } from '../services/notificationService';
 
 const router = Router();
 
+// ── Helper: resolve the active season for the athlete's currently active team ──
+async function getActiveSeasonForTeam(
+  athleteId: string,
+  activeTeamId: string | null,
+  selectClause: string
+): Promise<any> {
+  if (activeTeamId) {
+    const { data: team } = await supabase
+      .from('teams')
+      .select('default_bot_id')
+      .eq('id', activeTeamId)
+      .single();
+    if (!team?.default_bot_id) return null;
+    const { data } = await supabase
+      .from('athlete_seasons')
+      .select(selectClause)
+      .eq('athlete_id', athleteId)
+      .eq('bot_id', team.default_bot_id)
+      .eq('status', 'active')
+      .single();
+    return data ?? null;
+  }
+  // No active team — return the most recent active season (backwards compat)
+  const { data: rows } = await supabase
+    .from('athlete_seasons')
+    .select(selectClause)
+    .eq('athlete_id', athleteId)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1);
+  return rows?.[0] ?? null;
+}
+
+// ── Helper: resolve coach_id for the active team ──────────────────────────────
+async function getActiveTeamCoachId(activeTeamId: string | null): Promise<string | null> {
+  if (!activeTeamId) return null;
+  const { data: team } = await supabase
+    .from('teams')
+    .select('coach_id')
+    .eq('id', activeTeamId)
+    .single();
+  return team?.coach_id ?? null;
+}
+
 // POST /api/athlete/profile
 router.post(
   '/profile',
@@ -62,17 +106,11 @@ router.get(
   auth,
   requireAthlete,
   asyncHandler(async (req: AuthRequest, res) => {
-    const { data: season } = await supabase
-      .from('athlete_seasons')
-      .select(
-        `
-      *,
-      coach_bots!bot_id (id, name, philosophy, event_focus, level_focus)
-    `
-      )
-      .eq('athlete_id', req.athlete.id)
-      .eq('status', 'active')
-      .single();
+    const season = await getActiveSeasonForTeam(
+      req.athlete.id,
+      req.athlete.active_team_id ?? null,
+      '*, coach_bots!bot_id (id, name, philosophy, event_focus, level_focus)'
+    );
 
     if (!season) return res.json({ season: null });
     res.json({ season });
@@ -88,13 +126,7 @@ router.patch(
   asyncHandler(async (req: AuthRequest, res) => {
     const { races } = req.body;
 
-    const { data: season } = await supabase
-      .from('athlete_seasons')
-      .select('id')
-      .eq('athlete_id', req.athlete.id)
-      .eq('status', 'active')
-      .single();
-
+    const season = await getActiveSeasonForTeam(req.athlete.id, req.athlete.active_team_id ?? null, 'id');
     if (!season) return res.status(404).json({ error: 'No active season' });
 
     const { data, error } = await supabase
@@ -125,13 +157,14 @@ router.post(
       .from('athlete_seasons')
       .select('id')
       .eq('athlete_id', req.athlete.id)
+      .eq('bot_id', botId)
       .eq('status', 'active')
       .single();
 
     if (existingSeason) {
       return res
         .status(400)
-        .json({ error: 'Already subscribed. Use Regenerate Plan to update your schedule.' });
+        .json({ error: 'Already subscribed to this bot. Use Regenerate Plan to update your schedule.' });
     }
 
     const { data: botWorkouts } = await supabase
@@ -186,6 +219,19 @@ router.post(
         .from('plan_jobs')
         .update({ status: 'complete', result: { seasonId: season.id }, updated_at: new Date().toISOString() })
         .eq('id', jobId);
+
+      // Set active_team_id to the team that owns this bot (if not already set or if this is different)
+      const { data: botTeam } = await supabase
+        .from('teams')
+        .select('id')
+        .eq('default_bot_id', botId)
+        .single();
+      if (botTeam) {
+        await supabase
+          .from('athlete_profiles')
+          .update({ active_team_id: botTeam.id })
+          .eq('id', athleteId);
+      }
 
       notifyPlanReady(userId, bot.name).catch(() => {});
       return season.id;
@@ -255,13 +301,11 @@ router.post(
       });
     }
 
-    const { data: season } = await supabase
-      .from('athlete_seasons')
-      .select('*, coach_bots!bot_id(*)')
-      .eq('athlete_id', req.athlete.id)
-      .eq('status', 'active')
-      .single();
-
+    const season = await getActiveSeasonForTeam(
+      req.athlete.id,
+      req.athlete.active_team_id ?? null,
+      '*, coach_bots!bot_id(*)'
+    );
     if (!season) return res.status(404).json({ error: 'No active season' });
 
     const bot = (season as any).coach_bots;
@@ -347,12 +391,7 @@ router.get(
   auth,
   requireAthlete,
   asyncHandler(async (req: AuthRequest, res) => {
-    const { data: season } = await supabase
-      .from('athlete_seasons')
-      .select('id')
-      .eq('athlete_id', req.athlete.id)
-      .eq('status', 'active')
-      .single();
+    const season = await getActiveSeasonForTeam(req.athlete.id, req.athlete.active_team_id ?? null, 'id');
 
     if (!season) return res.json([]);
 
@@ -376,12 +415,11 @@ router.post(
   asyncHandler(async (req: AuthRequest, res) => {
     const { message } = req.body;
 
-    const { data: season } = await supabase
-      .from('athlete_seasons')
-      .select('*, coach_bots!bot_id(*)')
-      .eq('athlete_id', req.athlete.id)
-      .eq('status', 'active')
-      .single();
+    const season = await getActiveSeasonForTeam(
+      req.athlete.id,
+      req.athlete.active_team_id ?? null,
+      '*, coach_bots!bot_id(*)'
+    );
 
     if (!season) return res.status(404).json({ error: 'No active season. Subscribe to a coaching bot first.' });
 
@@ -461,12 +499,7 @@ router.delete(
   auth,
   requireAthlete,
   asyncHandler(async (req: AuthRequest, res) => {
-    const { data: season } = await supabase
-      .from('athlete_seasons')
-      .select('id')
-      .eq('athlete_id', req.athlete.id)
-      .eq('status', 'active')
-      .single();
+    const season = await getActiveSeasonForTeam(req.athlete.id, req.athlete.active_team_id ?? null, 'id');
 
     if (season) {
       await supabase.from('chat_messages').delete().eq('season_id', season.id);
@@ -481,14 +514,7 @@ router.get(
   auth,
   requireAthlete,
   asyncHandler(async (req: AuthRequest, res) => {
-    const { data: member } = await supabase
-      .from('team_members')
-      .select('teams!team_id(coach_id)')
-      .eq('athlete_id', req.athlete.id)
-      .single();
-
-    if (!member) return res.json([]);
-    const coachId = (member as any).teams?.coach_id;
+    const coachId = await getActiveTeamCoachId(req.athlete.active_team_id ?? null);
     if (!coachId) return res.json([]);
 
     const { data: messages } = await supabase
@@ -511,15 +537,8 @@ router.post(
   asyncHandler(async (req: AuthRequest, res) => {
     const { message } = req.body;
 
-    const { data: member } = await supabase
-      .from('team_members')
-      .select('teams!team_id(coach_id)')
-      .eq('athlete_id', req.athlete.id)
-      .single();
-
-    if (!member) return res.status(404).json({ error: 'Not on any team' });
-    const coachId = (member as any).teams?.coach_id;
-    if (!coachId) return res.status(404).json({ error: 'No coach found' });
+    const coachId = await getActiveTeamCoachId(req.athlete.active_team_id ?? null);
+    if (!coachId) return res.status(404).json({ error: 'No active team or coach found' });
 
     const { data, error } = await supabase
       .from('direct_messages')
@@ -529,6 +548,134 @@ router.post(
 
     if (error) return res.status(400).json({ error: error.message });
     res.json(data);
+  })
+);
+
+// GET /api/athlete/teams — list all active team memberships
+router.get(
+  '/teams',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { data: memberships } = await supabase
+      .from('team_members')
+      .select(`
+        id, status, joined_at,
+        teams!team_id (id, name, default_bot_id, coach_id,
+          coach_profiles!coach_id (name)
+        )
+      `)
+      .eq('athlete_id', req.athlete.id)
+      .is('left_at', null)
+      .order('joined_at', { ascending: true });
+
+    const teams = (memberships || []).map((m: any) => ({
+      membership_id: m.id,
+      status: m.status,
+      joined_at: m.joined_at,
+      ...m.teams,
+      coach_name: m.teams?.coach_profiles?.name,
+      is_active: m.teams?.id === req.athlete.active_team_id,
+    }));
+
+    res.json(teams);
+  })
+);
+
+// POST /api/athlete/teams/leave — leave a team
+router.post(
+  '/teams/leave',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { team_id } = req.body;
+    if (!team_id) return res.status(400).json({ error: 'team_id is required' });
+
+    const { data: member, error: findErr } = await supabase
+      .from('team_members')
+      .select('id')
+      .eq('team_id', team_id)
+      .eq('athlete_id', req.athlete.id)
+      .is('left_at', null)
+      .single();
+
+    if (findErr || !member) return res.status(404).json({ error: 'Not a member of this team' });
+
+    await supabase
+      .from('team_members')
+      .update({ left_at: new Date().toISOString() })
+      .eq('id', member.id);
+
+    // Get team info for notification
+    const { data: team } = await supabase
+      .from('teams')
+      .select('id, name, coach_id, coach_profiles!coach_id(user_id)')
+      .eq('id', team_id)
+      .single();
+
+    // Notify coach (fire-and-forget)
+    if (team) {
+      const coachUserId = (team as any).coach_profiles?.user_id;
+      if (coachUserId) {
+        const { notifyAthleteLeft } = await import('../services/notificationService');
+        notifyAthleteLeft(coachUserId, req.athlete.name).catch(() => {});
+      }
+
+      // Log team event
+      await supabase.from('team_events').insert({
+        team_id: team.id,
+        actor_id: req.athlete.id,
+        action: 'left',
+        details: { athlete_name: req.athlete.name }
+      });
+    }
+
+    // If this was the active team, switch to another team or clear
+    if (req.athlete.active_team_id === team_id) {
+      const { data: remaining } = await supabase
+        .from('team_members')
+        .select('teams!team_id(id)')
+        .eq('athlete_id', req.athlete.id)
+        .is('left_at', null)
+        .limit(1);
+
+      const nextTeamId = (remaining as any)?.[0]?.teams?.id ?? null;
+      await supabase
+        .from('athlete_profiles')
+        .update({ active_team_id: nextTeamId })
+        .eq('id', req.athlete.id);
+    }
+
+    res.json({ ok: true });
+  })
+);
+
+// PUT /api/athlete/active-team — switch active team
+router.put(
+  '/active-team',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { team_id } = req.body;
+    if (!team_id) return res.status(400).json({ error: 'team_id is required' });
+
+    // Verify athlete is on this team
+    const { data: member } = await supabase
+      .from('team_members')
+      .select('id')
+      .eq('team_id', team_id)
+      .eq('athlete_id', req.athlete.id)
+      .is('left_at', null)
+      .single();
+
+    if (!member) return res.status(403).json({ error: 'Not a member of this team' });
+
+    await supabase
+      .from('athlete_profiles')
+      .update({ active_team_id: team_id })
+      .eq('id', req.athlete.id);
+
+    res.json({ ok: true, active_team_id: team_id });
   })
 );
 

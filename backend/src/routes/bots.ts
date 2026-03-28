@@ -17,20 +17,17 @@ router.get(
     if (req.user) {
       const { data: athleteProfile } = await supabase
         .from('athlete_profiles')
-        .select('id')
+        .select('id, active_team_id')
         .eq('user_id', req.user.id)
         .single();
 
-      if (athleteProfile) {
-        const { data: membership } = await supabase
-          .from('team_members')
-          .select('teams!team_id(coach_id)')
-          .eq('athlete_id', athleteProfile.id)
-          .eq('status', 'active')
+      if (athleteProfile?.active_team_id) {
+        const { data: team } = await supabase
+          .from('teams')
+          .select('coach_id')
+          .eq('id', athleteProfile.active_team_id)
           .single();
-
-        const coachId = (membership as any)?.teams?.coach_id;
-        if (coachId) coachIdFilter = coachId;
+        if (team?.coach_id) coachIdFilter = team.coach_id;
       }
     }
 
@@ -81,27 +78,23 @@ router.get(
     if (req.user) {
       const { data: athleteProfile } = await supabase
         .from('athlete_profiles')
-        .select('id')
+        .select('id, active_team_id')
         .eq('user_id', req.user.id)
         .single();
 
-      if (athleteProfile) {
-        const { data: membership } = await supabase
-          .from('team_members')
-          .select('teams!team_id(coach_id)')
-          .eq('athlete_id', athleteProfile.id)
-          .eq('status', 'active')
+      if (athleteProfile?.active_team_id) {
+        const { data: team } = await supabase
+          .from('teams')
+          .select('coach_id')
+          .eq('id', athleteProfile.active_team_id)
           .single();
-
-        const coachId = (membership as any)?.teams?.coach_id;
-        if (coachId) {
+        if (team?.coach_id) {
           const { data: ownerCheck } = await supabase
             .from('coach_bots')
             .select('id')
             .eq('id', req.params.botId)
-            .eq('coach_id', coachId)
+            .eq('coach_id', team.coach_id)
             .single();
-
           if (!ownerCheck) return res.status(404).json({ error: 'Bot not found' });
         }
       }

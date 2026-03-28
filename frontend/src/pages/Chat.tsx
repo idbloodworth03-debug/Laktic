@@ -45,6 +45,7 @@ function BotChat() {
   const [error, setError] = useState('');
   const [clearConfirm, setClearConfirm] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [activeTeam, setActiveTeam] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,6 +55,15 @@ function BotChat() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, sending]);
+
+  useEffect(() => {
+    apiFetch('/api/athlete/teams')
+      .then((teams: any[]) => {
+        const active = teams.find(t => t.is_active);
+        setActiveTeam(active?.name ?? null);
+      })
+      .catch(() => {});
+  }, []);
 
   const send = async () => {
     const msg = input.trim();
@@ -88,7 +98,9 @@ function BotChat() {
     <div className="flex flex-col flex-1 min-h-0">
       {/* Toolbar */}
       <div className="border-b border-[var(--border)] bg-[var(--surface)] px-6 py-2 flex items-center justify-between">
-        <div className="text-sm text-[var(--muted)]">Chat with your coach bot</div>
+        <div className="text-sm text-[var(--muted)]">
+          {activeTeam ? <span>Chatting with <span className="text-[var(--text)] font-medium">{activeTeam}</span>'s bot</span> : 'Chat with your coach bot'}
+        </div>
         <div className="flex items-center gap-2">
           {clearConfirm ? (
             <>
@@ -160,12 +172,22 @@ function DirectChat() {
   const [sending, setSending] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
+  const [activeTeam, setActiveTeam] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     apiFetch('/api/athlete/messages')
       .then(msgs => { setMessages(msgs); setLoaded(true); })
       .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    apiFetch('/api/athlete/teams')
+      .then((teams: any[]) => {
+        const active = teams.find(t => t.is_active);
+        setActiveTeam(active?.name ?? null);
+      })
+      .catch(() => {});
   }, []);
 
   // Poll for new coach replies every 15s
@@ -203,7 +225,9 @@ function DirectChat() {
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="border-b border-[var(--border)] bg-[var(--surface)] px-6 py-2">
-        <div className="text-sm text-[var(--muted)]">Direct messages with your coach</div>
+        <div className="text-sm text-[var(--muted)]">
+          {activeTeam ? <span>Messaging <span className="text-[var(--text)] font-medium">{activeTeam}</span>'s coach</span> : 'Direct messages with your coach'}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6 max-w-4xl w-full mx-auto">
