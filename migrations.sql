@@ -331,3 +331,11 @@ ALTER TABLE public.teams
 ALTER TABLE public.plan_jobs
   ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'subscribe'
     CHECK (source IN ('subscribe', 'regenerate'));
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 017 — direct_messages schema drift fix
+-- read_at was missing if the table was created before Migration 014
+-- or via a manual CREATE TABLE without all columns.
+-- ─────────────────────────────────────────────────────────────────
+ALTER TABLE public.direct_messages
+  ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
