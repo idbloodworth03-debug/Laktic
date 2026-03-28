@@ -27,7 +27,8 @@
       "Bash(node -e \":*)",
       "Bash(find /c/Users/Nick/Projects/Laktic/backend/src -maxdepth 2 -type f \\\\\\(-name app.ts -o -name index.ts -o -name server.ts -o -name *env* -o -name router* \\\\\\))",
       "Bash(find /c/Users/Nick/Projects/Laktic/backend -type f -name *migration* -o -name *strava*connection*)",
-      "Bash(find /c/Users/Nick/Projects/Laktic -name supabase.json -o -name *.sql)"
+      "Bash(find /c/Users/Nick/Projects/Laktic -name supabase.json -o -name *.sql)",
+      "Bash(source /c/Users/Nick/Projects/Laktic/backend/.env)"
     ]
   }
 }
