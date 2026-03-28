@@ -28,8 +28,9 @@ export function ShareMomentModal({ data, onClose, raceResultId, onSharedToCommun
     const safeName = `${data.athleteName}-${data.raceName}`
       .replace(/[^a-z0-9]/gi, '-').toLowerCase().slice(0, 60);
 
-    const canvas = renderCardToCanvas(data);
-    uploadShareCard(canvas, safeName).then(url => {
+    renderCardToCanvas(data).then(canvas =>
+      uploadShareCard(canvas, safeName)
+    ).then(url => {
       if (url) {
         setCardUrl(url);
         // Save to race result if provided
@@ -43,17 +44,17 @@ export function ShareMomentModal({ data, onClose, raceResultId, onSharedToCommun
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     const safeName = `${data.athleteName}-${data.raceName}`
       .replace(/[^a-z0-9]/gi, '-').toLowerCase().slice(0, 60);
-    const canvas = renderCardToCanvas(data);
+    const canvas = await renderCardToCanvas(data);
     downloadShareCard(canvas, safeName);
     trackShare('download');
   };
 
   const handleShare = async () => {
     setSharing(true);
-    const canvas = renderCardToCanvas(data);
+    const canvas = await renderCardToCanvas(data);
     const title = data.isPr
       ? `New PR! ${data.finishTime} at ${data.raceName}`
       : `${data.finishTime} at ${data.raceName}`;

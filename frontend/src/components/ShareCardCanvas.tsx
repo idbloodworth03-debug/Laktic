@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 export type ShareCardData = {
@@ -15,7 +15,16 @@ export type ShareCardData = {
 const W = 1080;
 const H = 1080;
 
-function drawCard(ctx: CanvasRenderingContext2D, data: ShareCardData) {
+function loadIcon(): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = '/icon.png';
+  });
+}
+
+function drawCard(ctx: CanvasRenderingContext2D, data: ShareCardData, iconImg?: HTMLImageElement) {
   // Background
   ctx.fillStyle = '#0a0a0a';
   ctx.fillRect(0, 0, W, H);
@@ -126,6 +135,20 @@ function drawCard(ctx: CanvasRenderingContext2D, data: ShareCardData) {
   ctx.fillText('Trained with Laktic AI', W / 2, 940);
   ctx.textAlign = 'left';
 
+  // Icon watermark — bottom right
+  if (iconImg) {
+    const iconSize = 52;
+    const iconX = W - 72 - iconSize;
+    const iconY = H - 72 - iconSize;
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    ctx.roundRect(iconX, iconY, iconSize, iconSize, 10);
+    ctx.clip();
+    ctx.drawImage(iconImg, iconX, iconY, iconSize, iconSize);
+    ctx.restore();
+  }
+
   // Corner accent dots
   ctx.fillStyle = 'rgba(34,197,94,0.4)';
   [[40, 40], [W - 40, 40], [40, H - 40], [W - 40, H - 40]].forEach(([x, y]) => {
@@ -200,14 +223,19 @@ interface Props {
 
 export function ShareCardCanvas({ data, size = 360 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [iconImg, setIconImg] = useState<HTMLImageElement | undefined>(undefined);
+
+  useEffect(() => {
+    loadIcon().then(setIconImg).catch(() => {});
+  }, []);
 
   const render = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    drawCard(ctx, data);
-  }, [data]);
+    drawCard(ctx, data, iconImg);
+  }, [data, iconImg]);
 
   useEffect(() => { render(); }, [render]);
 
@@ -224,11 +252,12 @@ export function ShareCardCanvas({ data, size = 360 }: Props) {
 }
 
 // Return a raw canvas (not rendered to DOM) for upload/download
-export function renderCardToCanvas(data: ShareCardData): HTMLCanvasElement {
+export async function renderCardToCanvas(data: ShareCardData): Promise<HTMLCanvasElement> {
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext('2d')!;
-  drawCard(ctx, data);
+  const iconImg = await loadIcon().catch(() => undefined);
+  drawCard(ctx, data, iconImg);
   return canvas;
 }
