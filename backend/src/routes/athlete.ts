@@ -234,6 +234,27 @@ router.post(
   requireAthlete,
   aiLimiter,
   asyncHandler(async (req: AuthRequest, res) => {
+    // 24h rate limit: no regenerate job in last 24 hours
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: recentJob } = await supabase
+      .from('plan_jobs')
+      .select('id, created_at')
+      .eq('athlete_id', req.athlete.id)
+      .eq('source', 'regenerate')
+      .in('status', ['complete', 'generating'])
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (recentJob) {
+      const nextAllowed = new Date(new Date(recentJob.created_at).getTime() + 24 * 60 * 60 * 1000);
+      const hoursLeft = Math.ceil((nextAllowed.getTime() - Date.now()) / (60 * 60 * 1000));
+      return res.status(429).json({
+        error: `You can regenerate your plan once every 24 hours. Try again in ${hoursLeft} hour${hoursLeft === 1 ? '' : 's'}.`
+      });
+    }
+
     const { data: season } = await supabase
       .from('athlete_seasons')
       .select('*, coach_bots!bot_id(*)')
@@ -250,8 +271,22 @@ router.post(
       .eq('bot_id', season.bot_id)
       .order('day_of_week');
 
+    const { data: job, error: jobError } = await supabase
+      .from('plan_jobs')
+      .insert({ athlete_id: req.athlete.id, bot_id: season.bot_id, status: 'generating', source: 'regenerate' })
+      .select('id')
+      .single();
+
+    if (jobError || !job) {
+      console.error('[regenerate] plan_jobs insert failed:', jobError?.code, jobError?.message);
+      return res.status(500).json({ error: `Failed to initialise plan job: ${jobError?.message ?? 'unknown error'}` });
+    }
+
+    const jobId: string = job.id;
+    const seasonId: string = season.id;
     const startDate = getWeekStartDate();
-    const { plan, aiUsed } = await generate({
+
+    const generatePromise = generate({
       athleteProfile: req.athlete,
       bot,
       botWorkouts: botWorkouts || [],
@@ -260,13 +295,49 @@ router.post(
       existingWeeks: season.season_plan || []
     });
 
-    const { error } = await supabase
-      .from('athlete_seasons')
-      .update({ season_plan: plan, ai_used: aiUsed, updated_at: new Date().toISOString() })
-      .eq('id', season.id);
+    const savePlan = async (plan: any[], aiUsed: boolean): Promise<void> => {
+      const { error: updateErr } = await supabase
+        .from('athlete_seasons')
+        .update({ season_plan: plan, ai_used: aiUsed, updated_at: new Date().toISOString() })
+        .eq('id', seasonId);
 
-    if (error) return res.status(400).json({ error: error.message });
-    res.json({ weeksRegenerated: plan.length, aiUsed });
+      if (updateErr) throw new Error(updateErr.message);
+
+      await supabase
+        .from('plan_jobs')
+        .update({ status: 'complete', result: { seasonId }, updated_at: new Date().toISOString() })
+        .eq('id', jobId);
+    };
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('TIMEOUT')), 25000)
+    );
+
+    try {
+      const { plan, aiUsed } = await Promise.race([generatePromise, timeoutPromise]);
+      await savePlan(plan, aiUsed);
+      return res.json({ status: 'complete', jobId, weeksRegenerated: plan.length, aiUsed });
+    } catch (err: any) {
+      if (err.message !== 'TIMEOUT') {
+        await supabase
+          .from('plan_jobs')
+          .update({ status: 'failed', error: err.message, updated_at: new Date().toISOString() })
+          .eq('id', jobId);
+        return res.status(500).json({ error: 'Plan generation failed. Please try again.' });
+      }
+
+      // Timeout — return 202 so Railway doesn't kill the connection, finish in background
+      res.status(202).json({ status: 'generating', jobId });
+
+      generatePromise
+        .then(({ plan, aiUsed }) => savePlan(plan, aiUsed))
+        .catch(async (bgErr: any) => {
+          await supabase
+            .from('plan_jobs')
+            .update({ status: 'failed', error: bgErr.message || 'Generation failed', updated_at: new Date().toISOString() })
+            .eq('id', jobId);
+        });
+    }
   })
 );
 

@@ -323,3 +323,11 @@ ALTER TABLE public.teams
   ADD COLUMN IF NOT EXISTS max_uses INT,
   ADD COLUMN IF NOT EXISTS invite_code_expires_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 016 — plan_jobs source column
+-- Tracks whether a job was triggered by subscribe or regenerate.
+-- ─────────────────────────────────────────────────────────────────
+ALTER TABLE public.plan_jobs
+  ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'subscribe'
+    CHECK (source IN ('subscribe', 'regenerate'));

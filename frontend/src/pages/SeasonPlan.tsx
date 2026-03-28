@@ -248,6 +248,9 @@ export function SeasonPlan() {
   const [regenerating, setRegenerating] = useState(false);
   const [confirmRegen, setConfirmRegen] = useState(false);
   const [planView, setPlanView] = useState<'weekly' | 'monthly'>('weekly');
+  const [pollJobId, setPollJobId] = useState<string | null>(null);
+  const [regenSuccess, setRegenSuccess] = useState(false);
+  const [regenError, setRegenError] = useState<string | null>(null);
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
   useEffect(() => {
@@ -264,14 +267,62 @@ export function SeasonPlan() {
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
+  // Poll job status while a regenerate job is in-flight
+  useEffect(() => {
+    if (!pollJobId) return;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 20; // 60s escape hatch at 3s intervals
+    const interval = setInterval(async () => {
+      attempts++;
+      try {
+        const data = await apiFetch(`/api/plans/status/${pollJobId}`);
+        if (data.status === 'complete') {
+          clearInterval(interval);
+          setPollJobId(null);
+          const { season: updated } = await apiFetch('/api/athlete/season');
+          setSeason(updated);
+          setRegenerating(false);
+          setRegenSuccess(true);
+          setTimeout(() => setRegenSuccess(false), 5000);
+        } else if (data.status === 'failed') {
+          clearInterval(interval);
+          setPollJobId(null);
+          setRegenerating(false);
+          setRegenError(data.jobError || 'Plan generation failed. Please try again.');
+        } else if (attempts >= MAX_ATTEMPTS) {
+          clearInterval(interval);
+          setPollJobId(null);
+          setRegenerating(false);
+          setRegenError('Plan generation is taking longer than expected. Refresh the page in a minute.');
+        }
+      } catch {
+        // transient network error — keep polling
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [pollJobId]);
+
   const regenerate = async () => {
-    setRegenerating(true); setConfirmRegen(false);
+    setConfirmRegen(false);
+    setRegenError(null);
+    setRegenerating(true);
     try {
-      await apiFetch('/api/athlete/season/regenerate', { method: 'POST' });
-      const { season: updated } = await apiFetch('/api/athlete/season');
-      setSeason(updated);
-    } catch (e: any) { console.error(e); }
-    finally { setRegenerating(false); }
+      const data = await apiFetch('/api/athlete/season/regenerate', { method: 'POST' });
+      if (data.status === 'generating' && data.jobId) {
+        // Async path — poll for completion
+        setPollJobId(data.jobId);
+      } else {
+        // Fast path — plan returned immediately
+        const { season: updated } = await apiFetch('/api/athlete/season');
+        setSeason(updated);
+        setRegenerating(false);
+        setRegenSuccess(true);
+        setTimeout(() => setRegenSuccess(false), 5000);
+      }
+    } catch (e: any) {
+      setRegenerating(false);
+      setRegenError(e?.message || 'Something went wrong. Please try again.');
+    }
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Spinner size="lg" /></div>;
@@ -307,17 +358,39 @@ export function SeasonPlan() {
           <div className="flex items-center gap-2 flex-wrap justify-end">
             <Link to="/athlete/races"><Button variant="ghost" size="sm">Races</Button></Link>
             <Link to="/athlete/chat"><Button variant="secondary" size="sm">Chat with Bot</Button></Link>
-            {confirmRegen ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-[var(--muted)]">Rebuild remaining season?</span>
-                <Button variant="danger" size="sm" loading={regenerating} onClick={regenerate}>Confirm</Button>
-                <Button variant="ghost" size="sm" onClick={() => setConfirmRegen(false)}>Cancel</Button>
+            {regenerating ? (
+              <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
+                <Spinner size="sm" />
+                Your AI coach is building your new plan…
+              </div>
+            ) : confirmRegen ? (
+              <div className="flex flex-col items-end gap-1.5">
+                <span className="text-xs text-[var(--muted)] max-w-xs text-right">
+                  This will replace your current training plan with a freshly generated one based on your latest data and race calendar. Continue?
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button variant="danger" size="sm" onClick={regenerate}>Confirm</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setConfirmRegen(false)}>Cancel</Button>
+                </div>
               </div>
             ) : (
               <Button variant="secondary" size="sm" onClick={() => setConfirmRegen(true)}>↺ Regenerate</Button>
             )}
           </div>
         </div>
+
+        {/* Regen success / error banners */}
+        {regenSuccess && (
+          <div className="mb-4 fade-up flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-950/60 border border-green-800/50 text-green-300 text-sm">
+            <span>✓</span> Your new plan is ready!
+          </div>
+        )}
+        {regenError && (
+          <div className="mb-4 fade-up flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-red-950/60 border border-red-800/50 text-red-300 text-sm">
+            <span>{regenError}</span>
+            <button onClick={() => setRegenError(null)} className="text-red-400 hover:text-red-200 ml-2 shrink-0">×</button>
+          </div>
+        )}
 
         {/* View toggle — centered */}
         <div className="flex justify-center mb-6 fade-up-1">
