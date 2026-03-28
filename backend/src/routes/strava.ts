@@ -16,7 +16,7 @@ router.get(
   requireAthlete,
   asyncHandler(async (req: AuthRequest, res) => {
     if (!env.STRAVA_CLIENT_ID || !env.STRAVA_REDIRECT_URI) {
-      return res.status(500).json({ error: 'Strava integration is not configured' });
+      return res.status(503).json({ error: 'Strava integration is not yet configured' });
     }
     const url = strava.getAuthUrl(req.athlete.id);
     res.json({ url });

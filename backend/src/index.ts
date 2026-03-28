@@ -21,6 +21,7 @@ import nutritionRouter from './routes/nutrition';
 import notificationsRouter from './routes/notifications';
 import marketplaceRouter from './routes/marketplace';
 import feedRouter from './routes/feed';
+import plansRouter from './routes/plans';
 import cron from 'node-cron';
 import { runRaceCountdownCron } from './services/notificationService';
 
@@ -70,6 +71,7 @@ app.use('/api/athlete', nutritionRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/marketplace', marketplaceRouter);
 app.use('/api/athlete', feedRouter);
+app.use('/api/plans', plansRouter);
 
 app.use('/api', gdprRouter);
 

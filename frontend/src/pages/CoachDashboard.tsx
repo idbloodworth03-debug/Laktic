@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { Navbar, Button, Card, Badge, Spinner, EmptyState, Input, Alert } from '../components/ui'; // Alert kept for publishError
+import { Navbar, Button, Card, Badge, Spinner, EmptyState, Input, Alert, ChatBubble } from '../components/ui'; // Alert kept for publishError
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -33,11 +33,14 @@ export function CoachDashboard() {
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
   const [marketplaceApp, setMarketplaceApp] = useState<any>(null);
+  const [dashTab, setDashTab] = useState<'overview' | 'messages'>('overview');
+  const [conversations, setConversations] = useState<any[]>([]);
 
   useEffect(() => {
     apiFetch('/api/coach/bot').then(setBotData).catch(console.error).finally(() => setLoading(false));
     apiFetch('/api/coach/team').then(setTeamData).catch(console.error).finally(() => setTeamLoading(false));
     apiFetch('/api/marketplace/my-application').then(setMarketplaceApp).catch(() => {});
+    apiFetch('/api/coach/messages').then(setConversations).catch(() => {});
   }, []);
 
   const handlePublish = async () => {
@@ -95,6 +98,7 @@ export function CoachDashboard() {
   const knowledge = botData?.knowledge || [];
   const team = teamData?.team;
   const members = teamData?.members || [];
+  const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
 
   // Trial banner — uses trial_ends_at set explicitly on profile creation
   const trialDaysLeft = profile?.trial_ends_at
@@ -118,7 +122,7 @@ export function CoachDashboard() {
             </span>
             <span className="text-amber-500 hidden sm:inline">Make sure your bot is published before it ends.</span>
           </div>
-          <a href="#" className="text-xs text-amber-400 hover:underline shrink-0">Upgrade →</a>
+          <span className="text-xs text-amber-600 bg-amber-900/30 border border-amber-700/40 rounded px-2 py-0.5 shrink-0">Payments coming soon</span>
         </div>
       )}
 
@@ -144,7 +148,7 @@ export function CoachDashboard() {
       })()}
 
       <div className="max-w-5xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-8 fade-up">
+        <div className="flex items-center justify-between mb-6 fade-up">
           <div>
             <h1 className="font-display text-3xl font-bold">Coach Dashboard</h1>
             <p className="text-sm text-[var(--muted)] mt-1">
@@ -159,21 +163,52 @@ export function CoachDashboard() {
             </Link>
           )}
           {bot && !bot.is_published && (
-            <Link to="/coach/bot/edit">
-              <Button variant="secondary">Edit Bot</Button>
-            </Link>
+            <div className="flex gap-2">
+              <Link to="/coach/bot/edit"><Button variant="secondary">Edit Bot</Button></Link>
+              <Button variant="primary" onClick={handlePublish} loading={publishing}>Publish Bot</Button>
+            </div>
           )}
           {bot?.is_published && (
-            <Link to="/coach/bot/edit">
-              <Button variant="secondary">Edit Bot</Button>
-            </Link>
+            <div className="flex gap-2">
+              <Link to="/coach/bot/edit"><Button variant="secondary">Edit Bot</Button></Link>
+              <Link to={`/athlete/bots/${bot.id}`}><Button variant="ghost">View as Athlete</Button></Link>
+            </div>
           )}
           <Link to="/coach/settings">
             <Button variant="ghost" size="sm">Settings</Button>
           </Link>
         </div>
 
-        {!bot && (
+        {/* Tab strip */}
+        <div className="flex items-center gap-1 mb-6 border-b border-[var(--border)]">
+          {(['overview', 'messages'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setDashTab(t)}
+              className={`relative px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                dashTab === t
+                  ? 'border-brand-500 text-[var(--text)]'
+                  : 'border-transparent text-[var(--muted)] hover:text-[var(--text)]'
+              }`}
+            >
+              {t === 'overview' ? 'Overview' : 'Messages'}
+              {t === 'messages' && totalUnread > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
+                  {totalUnread}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {dashTab === 'messages' && (
+          <CoachInbox
+            conversations={conversations}
+            onUpdate={setConversations}
+          />
+        )}
+
+        {dashTab === 'overview' && !bot && (
           <EmptyState
             title="No bot yet"
             message="Create your coaching bot to start generating personalized plans for athletes."
@@ -181,7 +216,7 @@ export function CoachDashboard() {
           />
         )}
 
-        {bot && (
+        {dashTab === 'overview' && bot && (
           <div className="flex flex-col gap-6 fade-up-1">
             {/* Bot header */}
             <Card>
@@ -376,6 +411,178 @@ function PageLoader() {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <Spinner size="lg" />
+    </div>
+  );
+}
+
+// ── Coach inbox ───────────────────────────────────────────────────────────────
+function CoachInbox({
+  conversations,
+  onUpdate,
+}: {
+  conversations: any[];
+  onUpdate: (updater: (prev: any[]) => any[]) => void;
+}) {
+  const [selected, setSelected] = useState<any>(null);
+  const [thread, setThread] = useState<any[]>([]);
+  const [threadLoading, setThreadLoading] = useState(false);
+  const [reply, setReply] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const selectAthlete = (athlete: any) => {
+    if (selected?.id === athlete.id) return;
+    setSelected(athlete);
+    setThread([]);
+    setError('');
+    setThreadLoading(true);
+    apiFetch(`/api/coach/messages/${athlete.id}`)
+      .then(msgs => {
+        setThread(msgs);
+        // Mark this athlete's unread count as 0 in the parent list
+        onUpdate(prev =>
+          prev.map(c => c.athlete.id === athlete.id ? { ...c, unreadCount: 0 } : c)
+        );
+      })
+      .catch(console.error)
+      .finally(() => setThreadLoading(false));
+  };
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [thread]);
+
+  const sendReply = async () => {
+    const msg = reply.trim();
+    if (!msg || sending || !selected) return;
+    setReply('');
+    setSending(true);
+    setError('');
+    const optimistic = { id: `opt-${Date.now()}`, sender_role: 'coach', content: msg, created_at: new Date().toISOString() };
+    setThread(prev => [...prev, optimistic]);
+    try {
+      const dm = await apiFetch(`/api/coach/messages/${selected.id}/reply`, {
+        method: 'POST',
+        body: JSON.stringify({ message: msg }),
+      });
+      setThread(prev => [...prev.slice(0, -1), dm]);
+      onUpdate(prev =>
+        prev.map(c => c.athlete.id === selected.id ? { ...c, lastMessage: dm } : c)
+      );
+    } catch (e: any) {
+      setError(e.message || 'Failed to send reply');
+      setThread(prev => prev.slice(0, -1));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (conversations.length === 0) {
+    return (
+      <EmptyState
+        title="No messages yet"
+        message="Athletes can message you from the 'My Coach' tab in their chat. Conversations will appear here."
+      />
+    );
+  }
+
+  return (
+    <div className="flex border border-[var(--border)] rounded-2xl overflow-hidden fade-up-1" style={{ height: '70vh' }}>
+      {/* Left pane — conversation list */}
+      <div className="w-72 shrink-0 border-r border-[var(--border)] flex flex-col bg-[var(--surface)]">
+        <div className="px-4 py-3 border-b border-[var(--border)]">
+          <span className="text-xs font-medium text-[var(--muted)] uppercase tracking-wide">Athletes</span>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {conversations.map(conv => (
+            <button
+              key={conv.athlete.id}
+              onClick={() => selectAthlete(conv.athlete)}
+              className={`w-full text-left px-4 py-3 border-b border-[var(--border)] hover:bg-dark-700 transition-colors flex items-start gap-3 ${
+                selected?.id === conv.athlete.id ? 'bg-dark-700' : ''
+              }`}
+            >
+              <div className="w-8 h-8 rounded-full bg-dark-600 border border-[var(--border)] flex items-center justify-center text-xs font-medium shrink-0 mt-0.5">
+                {conv.athlete.name?.charAt(0)?.toUpperCase() || '?'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-sm font-medium truncate">{conv.athlete.name}</span>
+                  {conv.unreadCount > 0 && (
+                    <span className="shrink-0 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
+                      {conv.unreadCount}
+                    </span>
+                  )}
+                </div>
+                {conv.lastMessage && (
+                  <p className="text-xs text-[var(--muted)] truncate mt-0.5">
+                    {conv.lastMessage.sender_role === 'coach' ? 'You: ' : ''}{conv.lastMessage.content}
+                  </p>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Right pane — thread */}
+      <div className="flex-1 flex flex-col min-w-0 bg-[var(--bg)]">
+        {!selected ? (
+          <div className="flex-1 flex items-center justify-center text-[var(--muted)] text-sm">
+            Select an athlete to view the conversation
+          </div>
+        ) : (
+          <>
+            {/* Thread header */}
+            <div className="px-6 py-3 border-b border-[var(--border)] bg-[var(--surface)] flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-dark-600 border border-[var(--border)] flex items-center justify-center text-xs font-medium">
+                {selected.name?.charAt(0)?.toUpperCase() || '?'}
+              </div>
+              <span className="text-sm font-medium">{selected.name}</span>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              {threadLoading ? (
+                <div className="flex justify-center py-10"><Spinner /></div>
+              ) : thread.length === 0 ? (
+                <div className="text-center py-10 text-[var(--muted)] text-sm">
+                  No messages yet. Send the first one.
+                </div>
+              ) : (
+                thread.map((m, i) => (
+                  <ChatBubble
+                    key={m.id || i}
+                    // Coach sees their own messages on the right (athlete role = right-aligned)
+                    // and athlete messages on the left (coach role = left-aligned)
+                    role={m.sender_role === 'coach' ? 'athlete' : 'coach'}
+                    content={m.content}
+                    label={m.sender_role === 'athlete' ? selected.name : undefined}
+                  />
+                ))
+              )}
+              {error && <p className="text-xs text-red-400 mt-2 text-center">{error}</p>}
+              <div ref={bottomRef} />
+            </div>
+
+            {/* Reply input */}
+            <div className="border-t border-[var(--border)] bg-[var(--surface)] px-4 py-3 flex gap-3 items-end">
+              <textarea
+                value={reply}
+                onChange={e => setReply(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply(); } }}
+                rows={1}
+                placeholder={`Reply to ${selected.name}…`}
+                className="flex-1 bg-dark-700 border border-[var(--border)] rounded-xl px-4 py-2.5 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-brand-500 transition-colors resize-none min-h-[40px] max-h-32"
+                style={{ height: 'auto' }}
+                onInput={e => { const t = e.target as HTMLTextAreaElement; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }}
+              />
+              <Button onClick={sendReply} loading={sending} disabled={!reply.trim()} size="md">Reply</Button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

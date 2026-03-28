@@ -29,16 +29,21 @@ export function BrowseBots() {
   const nav = useNavigate();
   const [bots, setBots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
   const [eventFilter, setEventFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState('');
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
   useEffect(() => {
     setLoading(true);
+    setFetchError('');
     const params = new URLSearchParams();
     if (eventFilter) params.set('event_focus', eventFilter);
     if (levelFilter) params.set('level_focus', levelFilter);
-    apiFetch(`/api/bots?${params}`).then(setBots).catch(console.error).finally(() => setLoading(false));
+    apiFetch(`/api/bots?${params}`)
+      .then(setBots)
+      .catch((e: any) => setFetchError(e.message || 'Failed to load bots'))
+      .finally(() => setLoading(false));
   }, [eventFilter, levelFilter]);
 
   return (
@@ -58,6 +63,11 @@ export function BrowseBots() {
 
         {loading ? (
           <div className="flex justify-center py-20"><Spinner size="lg" /></div>
+        ) : fetchError ? (
+          <div className="text-center py-20">
+            <p className="text-sm text-red-400 mb-4">{fetchError}</p>
+            <Button variant="secondary" onClick={() => { clearAuth(); nav('/'); }}>Sign in again</Button>
+          </div>
         ) : bots.length === 0 ? (
           <div className="text-center py-20 text-[var(--muted)]">No bots found matching your filters.</div>
         ) : (
@@ -100,17 +110,52 @@ export function BotDetail() {
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
   const [error, setError] = useState('');
+  const [pollJobId, setPollJobId] = useState<string | null>(null);
+  const [pollTimedOut, setPollTimedOut] = useState(false);
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
   useEffect(() => {
     apiFetch(`/api/bots/${botId}`).then(setBot).catch(console.error).finally(() => setLoading(false));
   }, [botId]);
 
+  // Poll job status every 3s; give up after 60s and show escape hatch
+  useEffect(() => {
+    if (!pollJobId) return;
+    let cancelled = false;
+    const deadline = Date.now() + 60000;
+
+    const poll = async () => {
+      if (cancelled) return;
+      if (Date.now() >= deadline) {
+        setPollTimedOut(true);
+        return;
+      }
+      try {
+        const result = await apiFetch(`/api/plans/status/${pollJobId}`);
+        if (result.status === 'complete') { nav('/athlete/plan'); return; }
+        if (result.status === 'failed') {
+          setError(result.jobError || 'Plan generation failed. Please try again.');
+          setPollJobId(null);
+          return;
+        }
+      } catch { /* network blip — keep polling */ }
+      setTimeout(poll, 3000);
+    };
+
+    setTimeout(poll, 3000);
+    return () => { cancelled = true; };
+  }, [pollJobId]);
+
   const subscribe = async () => {
-    setSubscribing(true); setError('');
+    setSubscribing(true); setError(''); setPollTimedOut(false);
     try {
-      await apiFetch(`/api/athlete/subscribe/${botId}`, { method: 'POST' });
-      nav('/athlete/plan');
+      const result = await apiFetch(`/api/athlete/subscribe/${botId}`, { method: 'POST' });
+      if (result.status === 'generating' && result.jobId) {
+        // 202 path — backend timed out; switch to polling
+        setPollJobId(result.jobId);
+      } else {
+        nav('/athlete/plan');
+      }
     } catch (e: any) { setError(e.message); }
     finally { setSubscribing(false); }
   };
@@ -124,6 +169,32 @@ export function BotDetail() {
       <div className="max-w-4xl mx-auto px-6 py-10">
         <Link to="/athlete/browse"><Button variant="ghost" size="sm" className="mb-6">← Browse Bots</Button></Link>
 
+        {/* Async plan generation progress banner */}
+        {pollJobId && (
+          <Card className="mb-6 border-brand-700/40 bg-brand-900/20">
+            {pollTimedOut ? (
+              <div className="flex flex-col gap-3">
+                <p className="text-sm font-medium">This is taking longer than usual.</p>
+                <p className="text-sm text-[var(--muted)]">
+                  We'll notify you when your plan is ready. You can close this page safely.
+                </p>
+                <div className="flex gap-3 mt-1">
+                  <Button variant="ghost" size="sm" onClick={() => nav('/athlete/plan')}>Go to My Plan</Button>
+                  <Button variant="ghost" size="sm" onClick={() => nav('/athlete/races')}>Set Up Race Calendar</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-4">
+                <Spinner size="sm" />
+                <div>
+                  <p className="text-sm font-medium">Your AI coach is building your plan…</p>
+                  <p className="text-xs text-[var(--muted)] mt-0.5">This usually takes 15–30 seconds. Hang tight.</p>
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
+
         <div className="fade-up">
           <div className="flex items-start justify-between gap-4 mb-6">
             <div>
@@ -135,8 +206,10 @@ export function BotDetail() {
               </div>
             </div>
             <div className="text-right shrink-0">
-              <Button onClick={subscribe} loading={subscribing} size="lg">Subscribe & Get Plan</Button>
-              {subscribing && <p className="text-xs text-[var(--muted)] mt-2">Generating your season plan…</p>}
+              {!pollJobId && (
+                <Button onClick={subscribe} loading={subscribing} size="lg">Subscribe & Get Plan</Button>
+              )}
+              {subscribing && <p className="text-xs text-[var(--muted)] mt-2">Sending request…</p>}
               {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
             </div>
           </div>

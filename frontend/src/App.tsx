@@ -1,8 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 
-import { Landing, CoachRegister, AthleteRegister, CoachLogin, AthleteLogin } from './pages/AuthPages';
+import { Landing, CoachRegister, AthleteRegister, CoachLogin, AthleteLogin, PasswordResetConfirm } from './pages/AuthPages';
 import { ForgotPassword, ResetPassword } from './pages/PasswordReset';
+import { AthleteDashboard } from './pages/AthleteDashboard';
 import { CoachDashboard } from './pages/CoachDashboard';
 import { CoachOnboarding } from './pages/CoachOnboarding';
 import { BotSetupEdit } from './pages/BotSetupEdit';
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="/login/athlete" element={<AthleteLogin />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/reset-password/new" element={<PasswordResetConfirm />} />
 
         {/* Coach protected */}
         <Route path="/coach/onboarding" element={<RequireCoach><CoachOnboarding /></RequireCoach>} />
@@ -65,6 +67,7 @@ export default function App() {
         <Route path="/coach/calendar" element={<RequireCoach><TeamCalendar /></RequireCoach>} />
 
         {/* Athlete protected */}
+        <Route path="/athlete/dashboard" element={<RequireAthlete><AthleteDashboard /></RequireAthlete>} />
         <Route path="/athlete/onboarding" element={<RequireAthlete><AthleteOnboarding /></RequireAthlete>} />
         <Route path="/athlete/browse" element={<RequireAthlete><BrowseBots /></RequireAthlete>} />
         <Route path="/athlete/bots/:botId" element={<RequireAthlete><BotDetail /></RequireAthlete>} />

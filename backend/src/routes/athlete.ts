@@ -140,8 +140,23 @@ router.post(
       .eq('bot_id', botId)
       .order('day_of_week');
 
+    // Create job record before kicking off generation so we always have a traceable id
+    const { data: job, error: jobError } = await supabase
+      .from('plan_jobs')
+      .insert({ athlete_id: req.athlete.id, bot_id: botId, status: 'generating' })
+      .select('id')
+      .single();
+
+    if (jobError || !job) {
+      return res.status(500).json({ error: 'Failed to initialise plan job' });
+    }
+
+    const jobId: string = job.id;
+    const athleteId: string = req.athlete.id;
+    const userId: string = req.user!.id;
     const startDate = getWeekStartDate();
-    const { plan, aiUsed } = await generate({
+
+    const generatePromise = generate({
       athleteProfile: req.athlete,
       bot,
       botWorkouts: botWorkouts || [],
@@ -149,25 +164,65 @@ router.post(
       startDate
     });
 
-    const { data: season, error } = await supabase
-      .from('athlete_seasons')
-      .insert({
-        athlete_id: req.athlete.id,
-        bot_id: botId,
-        race_calendar: [],
-        season_plan: plan,
-        ai_used: aiUsed,
-        status: 'active'
-      })
-      .select()
-      .single();
+    // Helper: persist completed plan and mark job done
+    const savePlan = async (plan: any[], aiUsed: boolean): Promise<string> => {
+      const { data: season, error: seasonErr } = await supabase
+        .from('athlete_seasons')
+        .insert({
+          athlete_id: athleteId,
+          bot_id: botId,
+          race_calendar: [],
+          season_plan: plan,
+          ai_used: aiUsed,
+          status: 'active'
+        })
+        .select('id')
+        .single();
 
-    if (error) return res.status(400).json({ error: error.message });
+      if (seasonErr || !season) throw new Error(seasonErr?.message || 'Failed to save season');
 
-    // Fire-and-forget push notification (non-blocking)
-    notifyPlanReady(req.user!.id, bot.name).catch(() => {});
+      await supabase
+        .from('plan_jobs')
+        .update({ status: 'complete', result: { seasonId: season.id }, updated_at: new Date().toISOString() })
+        .eq('id', jobId);
 
-    res.json({ seasonId: season.id, weeksGenerated: plan.length, aiUsed });
+      notifyPlanReady(userId, bot.name).catch(() => {});
+      return season.id;
+    };
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('TIMEOUT')), 25000)
+    );
+
+    try {
+      const { plan, aiUsed } = await Promise.race([generatePromise, timeoutPromise]);
+
+      // Fast path: generation completed within the timeout window
+      const seasonId = await savePlan(plan, aiUsed);
+      return res.json({ seasonId, weeksGenerated: plan.length, aiUsed });
+    } catch (err: any) {
+      if (err.message !== 'TIMEOUT') {
+        // Generation itself failed — mark job failed and surface the error
+        await supabase
+          .from('plan_jobs')
+          .update({ status: 'failed', error: err.message, updated_at: new Date().toISOString() })
+          .eq('id', jobId);
+        return res.status(500).json({ error: 'Plan generation failed. Please try again.' });
+      }
+
+      // Timeout path — return 202 immediately so Railway doesn't kill the request,
+      // then let generation finish in the background and save via the job record.
+      res.status(202).json({ status: 'generating', jobId });
+
+      generatePromise
+        .then(({ plan, aiUsed }) => savePlan(plan, aiUsed))
+        .catch(async (bgErr: any) => {
+          await supabase
+            .from('plan_jobs')
+            .update({ status: 'failed', error: bgErr.message || 'Generation failed', updated_at: new Date().toISOString() })
+            .eq('id', jobId);
+        });
+    }
   })
 );
 

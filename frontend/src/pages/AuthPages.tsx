@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { apiFetch } from '../lib/api';
@@ -179,7 +179,7 @@ export function AthleteRegister() {
         body: JSON.stringify({ name: form.name, weekly_volume_miles: parseFloat(form.weekly_volume_miles), primary_events: events, pr_mile: form.pr_mile, pr_5k: form.pr_5k })
       });
       setAuth(data.session, 'athlete', profile);
-      nav('/athlete/join');
+      nav('/athlete/onboarding');
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
   };
@@ -334,10 +334,20 @@ export function PasswordResetConfirm() {
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+
+  // Supabase delivers the recovery token via URL hash; wait for PASSWORD_RECOVERY
+  // event before allowing the user to submit, otherwise updateUser will fail.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setSessionReady(true);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handle = async () => {
     if (password !== confirm) { setError('Passwords do not match'); return; }
-    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
+    if (password.length < 8) { setError('Password must be at least 8 characters'); return; }
     setError(''); setLoading(true);
     try {
       const { error: err } = await supabase.auth.updateUser({ password });
@@ -365,10 +375,15 @@ export function PasswordResetConfirm() {
     );
   }
 
-  return <AuthForm title="Set New Password" subtitle="Choose a strong password for your account." error={error}>
-    <Input label="New password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" autoFocus />
-    <Input label="Confirm password" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="••••••••" />
-    <Button onClick={handle} loading={loading} disabled={!password || !confirm} className="w-full" size="lg">Update Password</Button>
+  return <AuthForm title="Set New Password" subtitle="Must be at least 8 characters." error={error}>
+    {!sessionReady && (
+      <div className="text-sm text-[var(--muted)] bg-[var(--surface2)] border border-[var(--border)] rounded-lg px-3 py-2">
+        Verifying your reset link…
+      </div>
+    )}
+    <Input label="New password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" disabled={!sessionReady} autoFocus />
+    <Input label="Confirm password" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="••••••••" disabled={!sessionReady} />
+    <Button onClick={handle} loading={loading} disabled={!sessionReady || !password || !confirm} className="w-full" size="lg">Update Password</Button>
   </AuthForm>;
 }
 

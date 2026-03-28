@@ -97,6 +97,15 @@ export async function notifyRaceCountdown(userId: string, raceName: string, days
   });
 }
 
+export async function notifyCoachReplied(userId: string, coachName: string) {
+  await sendToUser(userId, {
+    title: 'Your coach replied',
+    body: `${coachName} replied to your message.`,
+    url: '/athlete/chat',
+    tag: 'coach-reply'
+  });
+}
+
 export async function notifyWorkoutReminder(userId: string, workoutTitle: string) {
   await sendToUser(userId, {
     title: 'Workout Today',

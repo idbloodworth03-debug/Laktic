@@ -10,15 +10,15 @@ export const coachProfileSchema = z.object({
 export const botCreateSchema = z.object({
   name: z.string().min(1).max(200),
   philosophy: z.string().max(5000).optional(),
-  event_focus: z.string().max(100).optional(),
-  level_focus: z.string().max(100).optional()
+  event_focus: z.string().max(100).nullish(),
+  level_focus: z.string().max(100).nullish()
 });
 
 export const botUpdateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   philosophy: z.string().max(5000).optional(),
-  event_focus: z.string().max(100).optional(),
-  level_focus: z.string().max(100).optional(),
+  event_focus: z.string().max(100).nullish(),
+  level_focus: z.string().max(100).nullish(),
   is_published: z.boolean().optional()
 });
 
@@ -83,7 +83,9 @@ export const racesSchema = z.object({
 
 export const teamCreateSchema = z.object({
   name: z.string().min(1).max(200),
-  default_bot_id: z.string().uuid().optional()
+  default_bot_id: z.string().uuid().optional(),
+  max_uses: z.number().int().positive().optional(),
+  invite_code_expires_at: z.string().optional()
 });
 
 export const memberStatusSchema = z.object({

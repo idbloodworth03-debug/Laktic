@@ -275,3 +275,51 @@ CREATE TABLE IF NOT EXISTS public.feed_kudos (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(feed_post_id, athlete_id)
 );
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 013 — plan_jobs (async plan generation tracking)
+-- ─────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.plan_jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  athlete_id UUID REFERENCES public.athlete_profiles(id) ON DELETE CASCADE NOT NULL,
+  bot_id UUID REFERENCES public.coach_bots(id) NOT NULL,
+  status TEXT NOT NULL DEFAULT 'generating' CHECK (status IN ('generating', 'complete', 'failed')),
+  result JSONB,
+  error TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.plan_jobs ENABLE ROW LEVEL SECURITY;
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 014 — direct_messages
+-- Athletes and coaches exchange direct messages outside the AI bot.
+-- read_at is NULL until the recipient opens the thread.
+-- ─────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.direct_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  athlete_id UUID REFERENCES public.athlete_profiles(id) ON DELETE CASCADE NOT NULL,
+  coach_id UUID REFERENCES public.coach_profiles(id) ON DELETE CASCADE NOT NULL,
+  sender_role TEXT NOT NULL CHECK (sender_role IN ('athlete', 'coach')),
+  content TEXT NOT NULL,
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS direct_messages_coach_idx
+  ON public.direct_messages(coach_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS direct_messages_athlete_coach_idx
+  ON public.direct_messages(athlete_id, coach_id, created_at DESC);
+
+ALTER TABLE public.direct_messages ENABLE ROW LEVEL SECURITY;
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 015 — teams schema drift fix
+-- The backend references these columns but they were never created.
+-- ─────────────────────────────────────────────────────────────────
+ALTER TABLE public.teams
+  ADD COLUMN IF NOT EXISTS uses_count INT NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS max_uses INT,
+  ADD COLUMN IF NOT EXISTS invite_code_expires_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();

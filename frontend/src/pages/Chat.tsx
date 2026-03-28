@@ -68,8 +68,8 @@ function BotChat() {
       setMessages(prev => [...prev, { id: Date.now() + 1, role: 'bot', content: result.botReply, plan_was_updated: result.planUpdated }]);
       if (result.planUpdated) setPlanUpdated(true);
     } catch (e: any) {
-      setError(e.message);
-      setMessages(prev => [...prev, { id: Date.now() + 1, role: 'bot', content: 'Sorry, I ran into a technical issue. Your plan has not been changed.', plan_was_updated: false }]);
+      setError(e.message || 'Something went wrong. Please try again.');
+      setMessages(prev => prev.slice(0, -1)); // rollback optimistic athlete message
     } finally { setSending(false); }
   };
 
@@ -83,9 +83,6 @@ function BotChat() {
       setError(e.message);
     } finally { setClearing(false); }
   };
-
-  const lastBotMsg = [...messages].reverse().find(m => m.role === 'bot');
-  const showRegenShortcut = lastBotMsg?.content?.toLowerCase().includes('regenerate plan');
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -103,6 +100,7 @@ function BotChat() {
             <Button variant="ghost" size="sm" onClick={() => setClearConfirm(true)}>Clear Chat</Button>
           )}
           <Link to="/athlete/plan"><Button variant="ghost" size="sm">← View Plan</Button></Link>
+          <Link to="/athlete/races"><Button variant="ghost" size="sm">↺ Regenerate Plan</Button></Link>
           <Link to="/athlete/races"><Button variant="ghost" size="sm">Race Calendar</Button></Link>
         </div>
       </div>
@@ -132,14 +130,7 @@ function BotChat() {
         )}
 
         {messages.map((msg, i) => (
-          <div key={msg.id || i}>
-            <ChatBubble role={msg.role} content={msg.content} planUpdated={msg.plan_was_updated} />
-            {msg.role === 'bot' && i === messages.length - 1 && showRegenShortcut && (
-              <div className="flex justify-start ml-2 mb-4">
-                <Link to="/athlete/races"><Button variant="secondary" size="sm">↺ Go to Regenerate Plan</Button></Link>
-              </div>
-            )}
-          </div>
+          <ChatBubble key={msg.id || i} role={msg.role} content={msg.content} planUpdated={msg.plan_was_updated} />
         ))}
         {sending && <TypingIndicator />}
         <div ref={bottomRef} />
@@ -218,7 +209,7 @@ function DirectChat() {
         {messages.map((m, i) => (
           <ChatBubble
             key={m.id || i}
-            role={m.sender_role === 'athlete' ? 'athlete' : 'bot'}
+            role={m.sender_role === 'athlete' ? 'athlete' : 'coach'}
             content={m.content}
           />
         ))}
@@ -232,6 +223,11 @@ function DirectChat() {
         onSend={send}
         sending={sending}
         placeholder="Message your coach… (Enter to send, Shift+Enter for new line)"
+        hint={
+          <p className="text-xs text-[var(--muted)]">
+            Messages are reviewed by your coach, not the AI bot.
+          </p>
+        }
       />
     </div>
   );

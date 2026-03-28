@@ -20,7 +20,7 @@ router.post(
   requireCoach,
   validate(teamCreateSchema),
   asyncHandler(async (req: AuthRequest, res) => {
-    const { name, default_bot_id } = req.body;
+    const { name, default_bot_id, max_uses, invite_code_expires_at } = req.body;
 
     // Check coach doesn't already have a team
     const { data: existing } = await supabase
@@ -58,7 +58,9 @@ router.post(
         coach_id: req.coach.id,
         name,
         default_bot_id: default_bot_id || null,
-        invite_code
+        invite_code,
+        ...(max_uses !== undefined && { max_uses }),
+        ...(invite_code_expires_at !== undefined && { invite_code_expires_at })
       })
       .select()
       .single();
@@ -154,12 +156,12 @@ router.post(
 
     // Check expiry
     if (team.invite_code_expires_at && new Date(team.invite_code_expires_at) < new Date()) {
-      return res.status(400).json({ error: 'This invite code has expired.' });
+      return res.status(400).json({ error: 'This invite link has expired.' });
     }
 
     // Check max uses
-    if (team.uses_count >= team.max_uses) {
-      return res.status(400).json({ error: 'This invite code has reached its maximum number of uses.' });
+    if (team.max_uses !== null && team.max_uses !== undefined && team.uses_count >= team.max_uses) {
+      return res.status(400).json({ error: 'This invite link has reached its limit.' });
     }
 
     // Check already a member
@@ -185,7 +187,7 @@ router.post(
     // Increment uses_count
     await supabase
       .from('teams')
-      .update({ uses_count: team.uses_count + 1, updated_at: new Date().toISOString() })
+      .update({ uses_count: (team.uses_count ?? 0) + 1, updated_at: new Date().toISOString() })
       .eq('id', team.id);
 
     // Log event

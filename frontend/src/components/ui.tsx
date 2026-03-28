@@ -271,24 +271,33 @@ export function EmptyState({ title, message, action }: EmptyStateProps) {
 }
 
 // ── ChatBubble ──────────────────────────────────────────────────────────────────────────
-interface ChatBubbleProps { role: 'athlete' | 'bot'; content: string; planUpdated?: boolean; }
-export function ChatBubble({ role, content, planUpdated }: ChatBubbleProps) {
-  const isBot = role === 'bot';
+// role="athlete"  → right-aligned blue bubble (the current user's own message)
+// role="bot"      → left-aligned gray bubble labelled "Coach Bot"
+// role="coach"    → left-aligned gray bubble labelled "Your Coach" (or override with label)
+interface ChatBubbleProps {
+  role: 'athlete' | 'bot' | 'coach';
+  content: string;
+  planUpdated?: boolean;
+  label?: string; // overrides the default left-side sender label
+}
+export function ChatBubble({ role, content, planUpdated, label }: ChatBubbleProps) {
+  const isRight = role === 'athlete';
+  const leftLabel = label ?? (role === 'coach' ? 'Your Coach' : 'Coach Bot');
   return (
-    <div className={`flex ${isBot ? 'justify-start' : 'justify-end'} mb-3`}>
-      <div className={`max-w-[78%] ${isBot ? '' : 'items-end flex flex-col'}`}>
-        {isBot && (
+    <div className={`flex ${isRight ? 'justify-end' : 'justify-start'} mb-3`}>
+      <div className={`max-w-[78%] ${isRight ? 'items-end flex flex-col' : ''}`}>
+        {!isRight && (
           <div className="flex items-center gap-1.5 mb-1.5">
             <div className="w-4 h-4 rounded-full bg-brand-950 border border-brand-800/60 flex items-center justify-center shrink-0">
               <span className="block w-1.5 h-1.5 rounded-full bg-brand-400" />
             </div>
-            <span className="text-xs text-[var(--muted)] font-medium">Coach Bot</span>
+            <span className="text-xs text-[var(--muted)] font-medium">{leftLabel}</span>
           </div>
         )}
         <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-          isBot
-            ? 'bg-[var(--surface2)] border border-[var(--border)] text-[var(--text)] rounded-tl-sm shadow-sm'
-            : 'bg-gradient-to-br from-brand-600 to-brand-700 text-white rounded-tr-sm shadow-glow-sm'
+          isRight
+            ? 'bg-gradient-to-br from-brand-600 to-brand-700 text-white rounded-tr-sm shadow-glow-sm'
+            : 'bg-[var(--surface2)] border border-[var(--border)] text-[var(--text)] rounded-tl-sm shadow-sm'
         }`}>
           {content}
         </div>

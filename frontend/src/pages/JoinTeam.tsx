@@ -30,13 +30,21 @@ export function JoinTeam() {
     setLoading(true);
     try {
       const result = await apiFetch(`/api/athlete/join/${trimmed}`, { method: 'POST' });
+      const botId = result.defaultBot?.id ?? null;
       setSuccess({
         teamName: result.team.name,
-        botId: result.defaultBot?.id
+        botId
       });
 
-      // Redirect to race calendar after joining so athlete sets upcoming races
-      setTimeout(() => nav('/athlete/races'), 2000);
+      // Navigate to the team's default bot so the athlete can subscribe, or to
+      // the browse page if no published default bot is assigned to this team.
+      setTimeout(() => {
+        if (botId) {
+          nav(`/athlete/bots/${botId}`);
+        } else {
+          nav('/athlete/bots');
+        }
+      }, 2000);
     } catch (e: any) {
       setError(e.message || 'Failed to join team.');
     } finally {
@@ -65,7 +73,9 @@ export function JoinTeam() {
               <div className="text-center">
                 <h3 className="font-display font-semibold text-lg">Welcome to {success.teamName}!</h3>
                 <p className="text-sm text-[var(--muted)] mt-1">
-                  Next up: add your upcoming races so we can build your plan.
+                  {success.botId
+                    ? "Your coach's training bot is ready — subscribe to get your season plan."
+                    : "You've joined the team! Browse your coach's bots to get started."}
                 </p>
               </div>
               <Spinner size="sm" />

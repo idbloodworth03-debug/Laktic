@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
-import { Button, Input, Textarea, Select, Toggle } from '../components/ui';
+import { Alert, Button, Input, Textarea, Select, Toggle } from '../components/ui';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Workout = {
@@ -131,6 +131,7 @@ export function CoachOnboarding() {
   const nav = useNavigate();
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
 
   // Step 1 — Bot Identity
   const [botForm, setBotForm] = useState({ name: '', philosophy: '', event_focus: '', level_focus: '' });
@@ -157,7 +158,7 @@ export function CoachOnboarding() {
   // ── Step 1 handlers ──────────────────────────────────────────────────────
   const saveBot = async () => {
     if (!botForm.name || !botForm.philosophy) { setError('Bot name and philosophy are required'); return; }
-    setError(''); setBotSaving(true);
+    setError(''); setInfo(''); setBotSaving(true);
     try {
       const payload = {
         ...botForm,
@@ -168,7 +169,22 @@ export function CoachOnboarding() {
       setBotId(created.id);
       setStep(2);
     } catch (e: any) {
-      if (e.message?.includes('already')) {
+      if (e.message?.toLowerCase().includes('already') || e.message?.toLowerCase().includes('duplicate')) {
+        // Bot already exists — fetch it and continue
+        try {
+          const existing = await apiFetch('/api/coach/bot');
+          if (existing?.bot?.id) {
+            setBotId(existing.bot.id);
+            setBotForm(f => ({
+              ...f,
+              name: existing.bot.name ?? f.name,
+              philosophy: existing.bot.philosophy ?? f.philosophy,
+              event_focus: existing.bot.event_focus ?? f.event_focus,
+              level_focus: existing.bot.level_focus ?? f.level_focus,
+            }));
+            setInfo('You already have a coaching bot — continuing with your existing bot.');
+          }
+        } catch { /* ignore, proceed anyway */ }
         setStep(2);
       } else {
         setError(e.message);
@@ -233,8 +249,16 @@ export function CoachOnboarding() {
     if (!teamName.trim()) { setError('Team name is required'); return; }
     setError(''); setTeamSaving(true);
     try {
+      // Ensure we have a botId — fetch existing bot if we don't
+      let resolvedBotId = botId;
+      if (!resolvedBotId) {
+        try {
+          const existing = await apiFetch('/api/coach/bot');
+          if (existing?.bot?.id) resolvedBotId = existing.bot.id;
+        } catch { /* proceed without bot */ }
+      }
       const body: any = { name: teamName.trim() };
-      if (botId) body.default_bot_id = botId;
+      if (resolvedBotId) body.default_bot_id = resolvedBotId;
       const created = await apiFetch('/api/coach/team', { method: 'POST', body: JSON.stringify(body) });
       setTeam(created);
     } catch (e: any) { setError(e.message); }
@@ -248,15 +272,18 @@ export function CoachOnboarding() {
   };
 
   // ── Render ───────────────────────────────────────────────────────────────
-  const renderError = () => error ? (
-    <div className="mb-4 text-sm text-red-400 bg-red-900/20 border border-red-900/40 rounded-lg px-3 py-2">{error}</div>
-  ) : null;
+  const renderMessages = () => (
+    <>
+      {info && <Alert type="info" message={info} onClose={() => setInfo('')} />}
+      {error && <div className="mb-4 text-sm text-red-400 bg-red-900/20 border border-red-900/40 rounded-lg px-3 py-2">{error}</div>}
+    </>
+  );
 
   if (step === 1) return (
     <Shell step={1} onNext={saveBot} nextLabel="Save & Continue →" nextDisabled={!botForm.name || !botForm.philosophy} nextLoading={botSaving}>
       <h2 className="font-display text-xl font-bold mb-1">Create Your Coaching Bot</h2>
       <p className="text-sm text-[var(--muted)] mb-6">Your bot coaches every athlete in your voice. The more detail you add, the better it performs.</p>
-      {renderError()}
+      {renderMessages()}
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 flex flex-col gap-4 shadow-card">
         <Input
           label="Bot name"
@@ -280,7 +307,7 @@ export function CoachOnboarding() {
         Define a typical training week. Save each day — the AI adapts distances and paces for each athlete.
         <span className="ml-2 text-brand-400 font-medium">{filledCount}/7 days filled</span>
       </p>
-      {renderError()}
+      {renderMessages()}
       <div className="flex flex-col gap-3">
         {workouts.map(wo => (
           <WorkoutRowSimple
@@ -304,7 +331,7 @@ export function CoachOnboarding() {
         These documents teach the AI your coaching system. Upload sample weeks, training blocks, taper notes, injury rules, etc.
         {docs.length > 0 && <span className="ml-2 text-brand-400 font-medium">{docs.length} saved</span>}
       </p>
-      {renderError()}
+      {renderMessages()}
 
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 flex flex-col gap-4 shadow-card mb-4">
         <div className="grid grid-cols-2 gap-3">
@@ -349,7 +376,7 @@ export function CoachOnboarding() {
     >
       <h2 className="font-display text-xl font-bold mb-1">Create Your Team</h2>
       <p className="text-sm text-[var(--muted)] mb-6">Create a team and share the invite code with your athletes. They'll join and connect directly to your coaching bot.</p>
-      {renderError()}
+      {renderMessages()}
 
       {!team ? (
         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 flex flex-col gap-4 shadow-card">
