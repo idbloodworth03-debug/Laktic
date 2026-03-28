@@ -377,7 +377,7 @@ export function CoachRegister() {
           error={confirmMismatch ? 'Passwords do not match' : undefined}
         />
         {confirmMatch && (
-          <p className="text-xs" style={{ color: 'var(--color-accent)' }}>✓ Passwords match</p>
+          <p className="text-xs" style={{ color: 'var(--color-accent)' }}>Passwords match</p>
         )}
       </div>
       <Button onClick={handle} loading={loading} disabled={!canSubmit} className="w-full font-semibold" size="lg">
@@ -466,7 +466,7 @@ export function AthleteRegister() {
           error={confirmMismatch ? 'Passwords do not match' : undefined}
         />
         {confirmMatch && (
-          <p className="text-xs" style={{ color: 'var(--color-accent)' }}>✓ Passwords match</p>
+          <p className="text-xs" style={{ color: 'var(--color-accent)' }}>Passwords match</p>
         )}
       </div>
       <div>
@@ -866,7 +866,7 @@ export function PasswordResetConfirm() {
           error={confirmMismatch ? 'Passwords do not match' : undefined}
         />
         {confirmMatch && (
-          <p className="text-xs" style={{ color: 'var(--color-accent)' }}>✓ Passwords match</p>
+          <p className="text-xs" style={{ color: 'var(--color-accent)' }}>Passwords match</p>
         )}
       </div>
       <Button onClick={handle} loading={loading} disabled={!canSubmit} className="w-full font-semibold" size="lg">

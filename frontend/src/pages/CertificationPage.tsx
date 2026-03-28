@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { apiFetch } from '../lib/api';
+import { Trophy } from 'lucide-react';
 import { Navbar, Card, Button, Spinner, Badge } from '../components/ui';
 
 interface ModuleMeta {
@@ -92,7 +93,7 @@ export function CertificationPage() {
 
         {certified && (
           <div className="mb-6 bg-green-950/30 border border-green-800/40 rounded-xl p-5 flex items-center gap-4">
-            <div className="text-3xl">🏆</div>
+            <Trophy size={28} style={{ color: 'var(--color-accent)' }} />
             <div>
               <p className="font-bold text-green-400 text-lg">Laktic Certified Coach</p>
               <p className="text-sm text-[var(--muted)]">Your certification badge is live on your public profile.</p>

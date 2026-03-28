@@ -219,7 +219,7 @@ export function ResetPassword() {
                 error={confirmMismatch ? 'Passwords do not match' : undefined}
               />
               {confirmMatch && (
-                <p className="text-xs" style={{ color: 'var(--color-accent)' }}>✓ Passwords match</p>
+                <p className="text-xs" style={{ color: 'var(--color-accent)' }}>Passwords match</p>
               )}
             </div>
             <Button onClick={handle} loading={loading} disabled={!canSubmit} className="w-full" size="lg">

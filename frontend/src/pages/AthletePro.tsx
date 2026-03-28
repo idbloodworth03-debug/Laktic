@@ -2,15 +2,16 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { apiFetch } from '../lib/api';
+import { BarChart2, Award, Bot, FileText, Target, Upload } from 'lucide-react';
 import { Navbar, Card, Button, Spinner, Badge } from '../components/ui';
 
 const PRO_FEATURES = [
-  { icon: '📊', title: 'Full Training Analytics', desc: '12-month ATL/CTL/TSB history instead of 30 days' },
-  { icon: '🏅', title: 'Advanced Performance Predictions', desc: 'Multi-distance race time predictions with confidence intervals' },
-  { icon: '🤖', title: 'Priority AI Responses', desc: 'Faster AI coaching responses with deeper analysis' },
-  { icon: '📄', title: 'Unlimited Gameplans', desc: 'AI race gameplans for every event on your calendar' },
-  { icon: '🎯', title: 'Smart Goal Tracking', desc: 'AI-driven goal recommendations based on your fitness trend' },
-  { icon: '📤', title: 'Export Data', desc: 'Export training history as CSV or PDF' },
+  { Icon: BarChart2, title: 'Full Training Analytics', desc: '12-month ATL/CTL/TSB history instead of 30 days' },
+  { Icon: Award, title: 'Advanced Performance Predictions', desc: 'Multi-distance race time predictions with confidence intervals' },
+  { Icon: Bot, title: 'Priority AI Responses', desc: 'Faster AI coaching responses with deeper analysis' },
+  { Icon: FileText, title: 'Unlimited Gameplans', desc: 'AI race gameplans for every event on your calendar' },
+  { Icon: Target, title: 'Smart Goal Tracking', desc: 'AI-driven goal recommendations based on your fitness trend' },
+  { Icon: Upload, title: 'Export Data', desc: 'Export training history as CSV or PDF' },
 ];
 
 export function AthletePro() {
@@ -85,9 +86,9 @@ export function AthletePro() {
           <div className="grid gap-4">
             {PRO_FEATURES.map(f => (
               <div key={f.title} className="flex items-start gap-3">
-                <span className="text-xl mt-0.5">{f.icon}</span>
+                <f.Icon size={18} className="shrink-0 mt-0.5" style={{ color: 'var(--color-accent)' }} />
                 <div>
-                  <p className="font-medium text-sm">{f.title} {isPro && <span className="text-xs text-green-400 ml-1">✓ Active</span>}</p>
+                  <p className="font-medium text-sm">{f.title} {isPro && <span className="text-xs ml-1" style={{ color: 'var(--color-accent)' }}>Active</span>}</p>
                   <p className="text-xs text-[var(--muted)]">{f.desc}</p>
                 </div>
               </div>
