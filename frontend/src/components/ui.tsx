@@ -149,44 +149,109 @@ export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
 // ── Navbar ────────────────────────────────────────────────────────────────────────────
 interface NavbarProps { role?: string; name?: string; onLogout?: () => void; }
 export function Navbar({ role, name, onLogout }: NavbarProps) {
+  const [open, setOpen] = useState(false);
+
+  const athleteLinks = [
+    { label: 'Season Plan',    href: '/athlete/plan' },
+    { label: 'Race Calendar',  href: '/athlete/races' },
+    { label: 'Coach Bot',      href: '/athlete/chat' },
+    { label: 'Progress',       href: '/athlete/progress' },
+    { label: 'Activities',     href: '/athlete/activities' },
+    { label: 'Calendar',       href: '/athlete/calendar' },
+    { label: 'Nutrition',      href: '/athlete/nutrition' },
+    { label: 'Team Feed',      href: '/athlete/feed' },
+    { label: 'Leaderboard',    href: '/athlete/leaderboard' },
+    { label: 'Marketplace',    href: '/marketplace' },
+    { label: 'Browse Bots',    href: '/athlete/browse' },
+    { label: 'Settings',       href: '/athlete/settings' },
+  ];
+
+  const coachLinks = [
+    { label: 'Dashboard',      href: '/coach/dashboard' },
+    { label: 'Team Progress',  href: '/coach/progress' },
+    { label: 'Team Calendar',  href: '/coach/calendar' },
+    { label: 'Bot Setup',      href: '/coach/bot/edit' },
+    { label: 'Knowledge Docs', href: '/coach/knowledge' },
+    { label: 'Marketplace',    href: '/coach/marketplace/apply' },
+  ];
+
+  const links = role === 'athlete' ? athleteLinks : role === 'coach' ? coachLinks : [];
+  const homeHref = role === 'coach' ? '/coach/dashboard' : role === 'athlete' ? '/athlete/plan' : '/';
+  const current = typeof window !== 'undefined' ? window.location.pathname : '';
+
   return (
-    <nav className="surface-glass border-b border-[var(--border)] px-8 py-4 flex items-center justify-between sticky top-0 z-40">
-      <div className="flex items-center gap-3">
-        <a
-          href={role === 'coach' ? '/coach/dashboard' : role === 'athlete' ? '/athlete/plan' : '/'}
-          className="font-display font-black text-xl tracking-tight text-gradient hover:opacity-80 transition-opacity"
-        >LAKTIC</a>
-        {role && <Badge label={role} color={role === 'coach' ? 'blue' : 'green'} dot />}
-      </div>
-      {name && (
-        <div className="flex items-center gap-4">
-          {role === 'athlete' && (
-            <>
-              <a href="/athlete/calendar" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Calendar</a>
-              <a href="/athlete/nutrition" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Nutrition</a>
-              <a href="/athlete/feed" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Feed</a>
-              <a href="/athlete/leaderboard" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Leaderboard</a>
-              <a href="/marketplace" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Marketplace</a>
-              <a href="/athlete/settings" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Settings</a>
-            </>
-          )}
-          {role === 'coach' && (
-            <>
-              <a href="/coach/calendar" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Calendar</a>
-              <a href="/coach/marketplace/apply" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Marketplace</a>
-              <a href="/coach/dashboard" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Dashboard</a>
-            </>
-          )}
-          <div className="hidden sm:flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-[var(--surface2)] border border-[var(--border2)] flex items-center justify-center text-xs font-semibold text-brand-400 shrink-0">
-              {name.charAt(0).toUpperCase()}
+    <>
+      <nav className="surface-glass border-b border-[var(--border)] px-5 py-4 flex items-center justify-between sticky top-0 z-40">
+        <a href={homeHref} className="font-display font-black text-xl tracking-tight text-gradient hover:opacity-80 transition-opacity">
+          LAKTIC
+        </a>
+        {name && (
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-[var(--surface2)] border border-[var(--border2)] flex items-center justify-center text-xs font-semibold text-brand-400 shrink-0">
+                {name.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-sm text-[var(--text2)]">{name}</span>
             </div>
-            <span className="text-sm text-[var(--text2)]">{name}</span>
+            <button
+              onClick={() => setOpen(true)}
+              aria-label="Open menu"
+              className="w-9 h-9 flex flex-col items-center justify-center gap-[5px] rounded-lg hover:bg-[var(--surface2)] transition-colors"
+            >
+              <span className="w-5 h-[2px] bg-[var(--text2)] rounded-full" />
+              <span className="w-5 h-[2px] bg-[var(--text2)] rounded-full" />
+              <span className="w-5 h-[2px] bg-[var(--text2)] rounded-full" />
+            </button>
           </div>
-          <Button variant="ghost" size="sm" onClick={onLogout}>Sign out</Button>
+        )}
+      </nav>
+
+      {open && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" onClick={() => setOpen(false)} />}
+
+      <div className={`fixed top-0 right-0 h-full w-72 bg-[var(--surface)] border-l border-[var(--border)] z-50 flex flex-col transition-transform duration-300 ${open ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-[var(--surface2)] border border-[var(--border2)] flex items-center justify-center text-sm font-semibold text-brand-400">
+              {name?.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div className="text-sm font-medium text-[var(--text)]">{name}</div>
+              {role && <div className="text-xs text-[var(--muted)] capitalize">{role}</div>}
+            </div>
+          </div>
+          <button onClick={() => setOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors text-lg">×</button>
         </div>
-      )}
-    </nav>
+
+        <nav className="flex-1 overflow-y-auto py-3">
+          {links.map(link => {
+            const active = current === link.href;
+            return (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={() => setOpen(false)}
+                className={`flex items-center px-5 py-3 text-sm font-medium transition-colors ${
+                  active
+                    ? 'text-brand-400 bg-brand-950/40 border-r-2 border-brand-500'
+                    : 'text-[var(--text2)] hover:text-[var(--text)] hover:bg-[var(--surface2)]'
+                }`}
+              >
+                {link.label}
+              </a>
+            );
+          })}
+        </nav>
+
+        <div className="px-5 py-4 border-t border-[var(--border)]">
+          <button
+            onClick={() => { setOpen(false); onLogout?.(); }}
+            className="w-full text-left text-sm text-[var(--muted)] hover:text-[var(--danger)] transition-colors py-2"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 
