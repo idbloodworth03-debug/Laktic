@@ -10,8 +10,11 @@
       "Bash(winget install:*)",
       "Bash(git fetch:*)",
       "Bash(git merge:*)",
+      "Bash(git pull:*)",
+      "Bash(git rebase:*)",
       "Bash(ls /c/Users/Nick/Projects/Laktic/*.sql)",
-      "Bash(where gh:*)"
+      "Bash(where gh:*)",
+      "Bash(chmod +x \"C:\\\\Users\\\\Nick\\\\Projects\\\\Laktic\\\\.git\\\\hooks\\\\post-commit\")"
     ]
   }
 }

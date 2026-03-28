@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /c/Users/Nick/Projects/Laktic && git add -A && git diff --cached --quiet || git commit -m 'chore: auto-commit from Claude Code session' && git pull origin master --rebase && git push origin master"
+          }
+        ]
+      }
+    ]
+  }
+}

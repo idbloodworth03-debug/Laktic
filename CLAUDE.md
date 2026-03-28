@@ -42,9 +42,9 @@ Owns .github/workflows/, Railway config, Vercel config
 Handles deployment and environment variables
 
 ## Rules
-1. Never push directly to master — always feature branches
-2. Never commit .env files
+1. After every code change, fix, or feature you implement, automatically run: git add -A && git commit -m '[describe what you just changed in one line]' && git pull origin master --rebase && git push origin master. Never wait for the user to push manually. Always push before reporting that a task is complete.
+2. Never commit .env files or any file containing secrets/credentials
 3. Never expose SUPABASE_SERVICE_ROLE_KEY to frontend
-4. Run npm run build and npm run typecheck before every PR
+4. Run npm run build and npx tsc --noEmit before declaring a task done
 5. Output COMPLETED: [task] when done
 6. Output BLOCKED: [reason] when stuck
