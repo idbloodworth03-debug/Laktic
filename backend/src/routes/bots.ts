@@ -12,6 +12,28 @@ router.get(
   asyncHandler(async (req: AuthRequest, res) => {
     const { event_focus, level_focus } = req.query;
 
+    // If the athlete is on a team, only show that team's coach's bots
+    let coachIdFilter: string | null = null;
+    if (req.user) {
+      const { data: athleteProfile } = await supabase
+        .from('athlete_profiles')
+        .select('id')
+        .eq('user_id', req.user.id)
+        .single();
+
+      if (athleteProfile) {
+        const { data: membership } = await supabase
+          .from('team_members')
+          .select('teams!team_id(coach_id)')
+          .eq('athlete_id', athleteProfile.id)
+          .eq('status', 'active')
+          .single();
+
+        const coachId = (membership as any)?.teams?.coach_id;
+        if (coachId) coachIdFilter = coachId;
+      }
+    }
+
     let query = supabase
       .from('coach_bots')
       .select(
@@ -22,6 +44,7 @@ router.get(
       )
       .eq('is_published', true);
 
+    if (coachIdFilter) query = query.eq('coach_id', coachIdFilter);
     if (event_focus) query = query.eq('event_focus', event_focus);
     if (level_focus) query = query.eq('level_focus', level_focus);
 
@@ -54,6 +77,36 @@ router.get(
   '/:botId',
   auth,
   asyncHandler(async (req: AuthRequest, res) => {
+    // If athlete is on a team, verify this bot belongs to their team's coach
+    if (req.user) {
+      const { data: athleteProfile } = await supabase
+        .from('athlete_profiles')
+        .select('id')
+        .eq('user_id', req.user.id)
+        .single();
+
+      if (athleteProfile) {
+        const { data: membership } = await supabase
+          .from('team_members')
+          .select('teams!team_id(coach_id)')
+          .eq('athlete_id', athleteProfile.id)
+          .eq('status', 'active')
+          .single();
+
+        const coachId = (membership as any)?.teams?.coach_id;
+        if (coachId) {
+          const { data: ownerCheck } = await supabase
+            .from('coach_bots')
+            .select('id')
+            .eq('id', req.params.botId)
+            .eq('coach_id', coachId)
+            .single();
+
+          if (!ownerCheck) return res.status(404).json({ error: 'Bot not found' });
+        }
+      }
+    }
+
     const { data: bot, error } = await supabase
       .from('coach_bots')
       .select(

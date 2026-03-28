@@ -148,7 +148,8 @@ router.post(
       .single();
 
     if (jobError || !job) {
-      return res.status(500).json({ error: 'Failed to initialise plan job' });
+      console.error('[subscribe] plan_jobs insert failed:', jobError?.code, jobError?.message);
+      return res.status(500).json({ error: `Failed to initialise plan job: ${jobError?.message ?? 'unknown error'}` });
     }
 
     const jobId: string = job.id;
