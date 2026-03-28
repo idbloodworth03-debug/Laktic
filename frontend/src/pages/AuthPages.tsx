@@ -7,15 +7,15 @@ import { Button, Input } from '../components/ui';
 
 // ── Landing ──────────────────────────────────────────────────────────────────
 const STATS = [
-  { value: '14-day', label: 'AI coaching window' },
+  { value: '14-day', label: 'coaching window' },
   { value: 'GPT-4o', label: 'Powered by' },
   { value: '100%', label: 'Coach-voice plans' },
 ];
 
 const FEATURES = [
   {
-    title: 'AI-Powered Plans',
-    desc: "GPT-4o generates a full season plan from your coach's philosophy — tailored to your race calendar and fitness.",
+    title: 'Personalized Plans',
+    desc: "A full season plan built from your coach's philosophy — tailored to your race calendar and current fitness.",
   },
   {
     title: '14-Day Coaching',
@@ -23,7 +23,7 @@ const FEATURES = [
   },
   {
     title: 'Strava Connected',
-    desc: "Every run you log syncs automatically. The AI tracks compliance and adjusts intensity when you're ahead or behind.",
+    desc: "Every run you log syncs automatically. Your bot tracks compliance and adjusts intensity when you're ahead or behind.",
   },
 ];
 
@@ -56,7 +56,7 @@ export function Landing() {
       <div className="relative z-10 flex items-center justify-between px-8 pt-6">
         <span
           className="font-sans font-semibold text-[17px] tracking-tight"
-          style={{ color: 'var(--color-text-primary)' }}
+          style={{ color: 'var(--color-accent)' }}
         >
           Laktic
         </span>
@@ -103,7 +103,7 @@ export function Landing() {
             color: 'var(--color-text-primary)',
           }}
         >
-          Train with AI.
+          Train smarter.
           <br />
           <span style={{ color: 'var(--color-accent)' }}>Race faster.</span>
         </h1>
@@ -199,7 +199,7 @@ export function Landing() {
 
 // ── Auth Split Layout ─────────────────────────────────────────────────────────
 const PANEL_BULLETS = [
-  'AI-generated season plan from your coach',
+  'Personalized season plan from your coach',
   'Adaptive 14-day coaching window',
   'Strava-connected compliance tracking',
 ];
@@ -229,7 +229,7 @@ function SplitAuth({ title, subtitle, error, children }: SplitAuthProps) {
         <Link
           to="/"
           className="font-sans font-semibold text-[17px] tracking-tight"
-          style={{ color: 'var(--color-text-primary)' }}
+          style={{ color: 'var(--color-accent)' }}
         >
           Laktic
         </Link>
@@ -279,7 +279,7 @@ function SplitAuth({ title, subtitle, error, children }: SplitAuthProps) {
         <Link
           to="/"
           className="md:hidden font-sans font-semibold text-[17px] tracking-tight mb-8"
-          style={{ color: 'var(--color-text-primary)' }}
+          style={{ color: 'var(--color-accent)' }}
         >
           Laktic
         </Link>
@@ -663,7 +663,7 @@ export function PasswordResetRequest() {
           <Link
             to="/"
             className="font-sans font-semibold text-[17px] tracking-tight"
-            style={{ color: 'var(--color-text-primary)' }}
+            style={{ color: 'var(--color-accent)' }}
           >
             Laktic
           </Link>
@@ -789,7 +789,7 @@ export function PasswordResetConfirm() {
           <Link
             to="/"
             className="font-sans font-semibold text-[17px] tracking-tight"
-            style={{ color: 'var(--color-text-primary)' }}
+            style={{ color: 'var(--color-accent)' }}
           >
             Laktic
           </Link>

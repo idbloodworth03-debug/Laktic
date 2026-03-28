@@ -15,7 +15,7 @@ const PLANS = [
     description: 'Perfect for coaches training up to 20 athletes individually.',
     features: [
       'Up to 20 athletes',
-      'AI coaching bot (GPT-4o)',
+      'Intelligent coaching bot',
       'Season plan generation',
       'Injury risk monitoring',
       'Race gameplans',
@@ -59,7 +59,7 @@ const PLANS = [
       'Everything in Team',
       'Custom integrations',
       'SLA & dedicated support',
-      'Custom AI training',
+      'Custom training models',
       'White-label options',
       'Annual contract',
     ],
