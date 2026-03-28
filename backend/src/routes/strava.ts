@@ -45,7 +45,7 @@ router.get(
           access_token: tokenData.access_token,
           refresh_token: tokenData.refresh_token,
           token_expires_at: new Date(tokenData.expires_at * 1000).toISOString(),
-          scope: 'read,activity:read',
+          scope: 'read,activity:read_all',
           is_active: true
         },
         { onConflict: 'athlete_id' }

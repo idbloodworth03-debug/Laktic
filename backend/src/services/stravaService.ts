@@ -48,7 +48,7 @@ export function getAuthUrl(athleteId: string): string {
     client_id: env.STRAVA_CLIENT_ID!,
     redirect_uri: env.STRAVA_REDIRECT_URI!,
     response_type: 'code',
-    scope: 'read,activity:read',
+    scope: 'read,activity:read_all',
     state: athleteId,
     approval_prompt: 'auto'
   });
