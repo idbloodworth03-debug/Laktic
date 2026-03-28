@@ -119,20 +119,24 @@ router.delete(
 // POST /api/strava/webhook — Strava webhook receiver (new activity push)
 router.post(
   '/webhook',
-  asyncHandler(async (req: Request, res: Response) => {
+  (req: Request, res: Response) => {
+    // Respond 200 immediately — Strava requires this within 2 seconds
+    res.status(200).json({ ok: true });
+
     const { object_type, aspect_type, object_id, owner_id } = req.body;
 
-    // Strava sends events for activities and athletes
+    // Process in background — Strava sends events for activities and athletes
     if (object_type === 'activity' && aspect_type === 'create') {
-      // Find the connection by strava_athlete_id
-      const { data: connection } = await supabase
-        .from('strava_connections')
-        .select('*')
-        .eq('strava_athlete_id', owner_id)
-        .eq('is_active', true)
-        .single();
+      (async () => {
+        const { data: connection } = await supabase
+          .from('strava_connections')
+          .select('*')
+          .eq('strava_athlete_id', owner_id)
+          .eq('is_active', true)
+          .single();
 
-      if (connection) {
+        if (!connection) return;
+
         try {
           const accessToken = await strava.refreshToken(connection);
           const activity = await strava.getActivity(accessToken, object_id);
@@ -162,16 +166,12 @@ router.post(
             { onConflict: 'strava_activity_id' }
           );
         } catch (err) {
-          // Log but don't fail — Strava expects 200
           // eslint-disable-next-line no-console
           console.error('[Strava webhook] Error syncing activity:', err);
         }
-      }
+      })();
     }
-
-    // Strava requires a 200 response within 2 seconds
-    res.status(200).json({ ok: true });
-  })
+  }
 );
 
 // GET /api/strava/webhook — Strava webhook verification (GET challenge)
