@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { Navbar, Button, Badge, Spinner, Card } from '../components/ui';
+import { AppLayout, Button, Badge, Spinner, Card } from '../components/ui';
 
 type PacingStrategy = {
   first_mile: string;
@@ -58,7 +58,6 @@ export function GameplanViewer() {
     if (!id) return;
     apiFetch(`/api/gameplans/${id}`)
       .then((data: any) => {
-        // Backend stores gameplan fields nested under `gameplan` JSON column — flatten
         setGameplan({ ...data, ...(data.gameplan ?? {}) });
       })
       .catch((e: any) => setError(e?.message || 'Failed to load gameplan'))
@@ -79,138 +78,141 @@ export function GameplanViewer() {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Spinner size="lg" /></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--color-bg-primary)' }}><Spinner size="lg" /></div>;
 
   return (
-    <div className="min-h-screen bg-[var(--bg)]">
-      <Navbar role={role ?? 'athlete'} name={profile?.name} onLogout={logout} />
+    <AppLayout role={role ?? 'athlete'} name={profile?.name} onLogout={logout}>
+      <div className="min-h-screen bg-[var(--color-bg-primary)]">
+        <div className="max-w-3xl mx-auto px-6 py-10">
+          {error && (
+            <div className="mb-4 px-4 py-3 rounded-xl text-sm" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--color-danger)' }}>
+              {error}
+            </div>
+          )}
 
-      <div className="max-w-3xl mx-auto px-6 py-10">
-        {error && (
-          <div className="mb-4 px-4 py-3 rounded-xl bg-red-950/40 border border-red-800/40 text-red-300 text-sm">
-            {error}
-          </div>
-        )}
-
-        {!gameplan ? (
-          <div className="text-center py-20 text-[var(--muted)]">Gameplan not found.</div>
-        ) : (
-          <div className="fade-up flex flex-col gap-6">
-            {/* Header */}
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <h1 className="font-display text-2xl font-bold text-[var(--text)]">{gameplan.race_name}</h1>
-                  <Badge label={gameplan.status} color={STATUS_BADGE[gameplan.status] || 'gray'} />
+          {!gameplan ? (
+            <div className="text-center py-20 text-[var(--color-text-tertiary)]">Gameplan not found.</div>
+          ) : (
+            <div className="fade-up flex flex-col gap-6">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-3 mb-1">
+                    <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{gameplan.race_name}</h1>
+                    <Badge label={gameplan.status} color={STATUS_BADGE[gameplan.status] || 'gray'} />
+                  </div>
+                  <p className="text-sm text-[var(--color-text-tertiary)]">
+                    {new Date(gameplan.race_date + 'T00:00:00').toLocaleDateString('en-US', {
+                      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+                    })}
+                  </p>
                 </div>
-                <p className="text-sm text-[var(--muted)]">
-                  {new Date(gameplan.race_date + 'T00:00:00').toLocaleDateString('en-US', {
-                    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-                  })}
-                </p>
+                {role === 'coach' && gameplan.status === 'draft' && (
+                  <Button variant="primary" onClick={approve} loading={approving}>
+                    Approve &amp; Deliver
+                  </Button>
+                )}
               </div>
-              {role === 'coach' && gameplan.status === 'draft' && (
-                <Button variant="primary" onClick={approve} loading={approving}>
-                  Approve &amp; Deliver
-                </Button>
+
+              {/* Pacing Strategy */}
+              {gameplan.pacing_strategy && (
+                <Card title="Pacing Strategy">
+                  <div className="grid grid-cols-3 gap-4 mb-4">
+                    {[
+                      { label: 'First Mile', value: gameplan.pacing_strategy.first_mile },
+                      { label: 'Middle Miles', value: gameplan.pacing_strategy.middle_miles },
+                      { label: 'Final Mile', value: gameplan.pacing_strategy.final_mile },
+                    ].map(col => (
+                      <div key={col.label} className="text-center rounded-xl p-4" style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}>
+                        <div className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-1.5">{col.label}</div>
+                        <div className="font-semibold text-[var(--color-text-primary)] text-sm leading-snug">{col.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {gameplan.pacing_strategy.explanation && (
+                    <p className="text-sm text-[var(--color-text-tertiary)] leading-relaxed">{gameplan.pacing_strategy.explanation}</p>
+                  )}
+                </Card>
+              )}
+
+              {/* Warmup Routine */}
+              {gameplan.warmup_routine?.length > 0 && (
+                <Card title="Warmup Routine">
+                  <ol className="flex flex-col gap-3">
+                    {gameplan.warmup_routine.map((step, i) => (
+                      <li key={i} className="flex items-start gap-3">
+                        <span
+                          className="w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shrink-0 mt-0.5"
+                          style={{ background: 'var(--color-accent-dim)', border: '1px solid rgba(0,229,160,0.2)', color: 'var(--color-accent)' }}
+                        >
+                          {i + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm text-[var(--color-text-primary)]">{step.step}</span>
+                          {(step.duration || step.intensity) && (
+                            <div className="flex gap-2 mt-0.5 text-xs text-[var(--color-text-tertiary)]">
+                              {step.duration && <span>{step.duration}</span>}
+                              {step.intensity && <span>· {step.intensity}</span>}
+                            </div>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </Card>
+              )}
+
+              {/* Nutrition Timing */}
+              {gameplan.nutrition_timing?.length > 0 && (
+                <Card title="Nutrition Timing">
+                  <div className="flex flex-col gap-3">
+                    {gameplan.nutrition_timing.map((item, i) => (
+                      <div key={i} className="flex items-start gap-4 py-2 border-b border-[var(--color-border)]/50 last:border-0">
+                        <div className="text-xs font-mono font-bold shrink-0 w-24 pt-0.5" style={{ color: 'var(--color-accent)' }}>
+                          {item.time_before_race}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-[var(--color-text-primary)]">{item.what}</div>
+                          {item.why && <div className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{item.why}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Weather Adjustments */}
+              {gameplan.weather_adjustments && (
+                <Card title="Weather Adjustments">
+                  <p className="text-sm text-[var(--color-text-tertiary)] leading-relaxed">{gameplan.weather_adjustments}</p>
+                </Card>
+              )}
+
+              {/* Mental Cues */}
+              {gameplan.mental_cues && gameplan.mental_cues.length > 0 && (
+                <Card title="Mental Cues">
+                  <ul className="flex flex-col gap-2">
+                    {gameplan.mental_cues.map((cue, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-[var(--color-text-primary)]">
+                        <span className="font-bold shrink-0 mt-0.5" style={{ color: 'var(--color-accent)' }}>–</span>
+                        {cue}
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
+
+              {/* Coach Note */}
+              {gameplan.coach_note && (
+                <div className="pl-4 py-2 border-l-4" style={{ borderColor: 'var(--color-accent)' }}>
+                  <div className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-1.5">Coach Note</div>
+                  <p className="text-sm text-[var(--color-text-primary)] leading-relaxed italic">"{gameplan.coach_note}"</p>
+                </div>
               )}
             </div>
-
-            {/* Pacing Strategy */}
-            {gameplan.pacing_strategy && (
-              <Card title="Pacing Strategy">
-                <div className="grid grid-cols-3 gap-4 mb-4">
-                  {[
-                    { label: 'First Mile', value: gameplan.pacing_strategy.first_mile },
-                    { label: 'Middle Miles', value: gameplan.pacing_strategy.middle_miles },
-                    { label: 'Final Mile', value: gameplan.pacing_strategy.final_mile },
-                  ].map(col => (
-                    <div key={col.label} className="text-center bg-[var(--surface2)] border border-[var(--border)] rounded-xl p-4">
-                      <div className="text-xs text-[var(--muted)] uppercase tracking-wide mb-1.5">{col.label}</div>
-                      <div className="font-semibold text-[var(--text)] text-sm leading-snug">{col.value}</div>
-                    </div>
-                  ))}
-                </div>
-                {gameplan.pacing_strategy.explanation && (
-                  <p className="text-sm text-[var(--muted)] leading-relaxed">{gameplan.pacing_strategy.explanation}</p>
-                )}
-              </Card>
-            )}
-
-            {/* Warmup Routine */}
-            {gameplan.warmup_routine?.length > 0 && (
-              <Card title="Warmup Routine">
-                <ol className="flex flex-col gap-3">
-                  {gameplan.warmup_routine.map((step, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <span className="w-6 h-6 rounded-full bg-brand-950/60 border border-brand-800/40 text-brand-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-                        {i + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm text-[var(--text)]">{step.step}</span>
-                        {(step.duration || step.intensity) && (
-                          <div className="flex gap-2 mt-0.5 text-xs text-[var(--muted)]">
-                            {step.duration && <span>{step.duration}</span>}
-                            {step.intensity && <span>· {step.intensity}</span>}
-                          </div>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              </Card>
-            )}
-
-            {/* Nutrition Timing */}
-            {gameplan.nutrition_timing?.length > 0 && (
-              <Card title="Nutrition Timing">
-                <div className="flex flex-col gap-3">
-                  {gameplan.nutrition_timing.map((item, i) => (
-                    <div key={i} className="flex items-start gap-4 py-2 border-b border-[var(--border)]/50 last:border-0">
-                      <div className="text-xs font-mono font-bold text-brand-400 shrink-0 w-24 pt-0.5">
-                        {item.time_before_race}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-[var(--text)]">{item.what}</div>
-                        {item.why && <div className="text-xs text-[var(--muted)] mt-0.5">{item.why}</div>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )}
-
-            {/* Weather Adjustments */}
-            {gameplan.weather_adjustments && (
-              <Card title="Weather Adjustments">
-                <p className="text-sm text-[var(--muted)] leading-relaxed">{gameplan.weather_adjustments}</p>
-              </Card>
-            )}
-
-            {/* Mental Cues */}
-            {gameplan.mental_cues && gameplan.mental_cues.length > 0 && (
-              <Card title="Mental Cues">
-                <ul className="flex flex-col gap-2">
-                  {gameplan.mental_cues.map((cue, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-[var(--text)]">
-                      <span className="text-brand-500 font-bold shrink-0 mt-0.5">-</span>
-                      {cue}
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            )}
-
-            {/* Coach Note */}
-            {gameplan.coach_note && (
-              <div className="border-l-4 border-brand-600 pl-4 py-2">
-                <div className="text-xs text-[var(--muted)] uppercase tracking-wide mb-1.5">Coach Note</div>
-                <p className="text-sm text-[var(--text)] leading-relaxed italic">"{gameplan.coach_note}"</p>
-              </div>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { apiFetch } from '../lib/api';
-import { Navbar, Card, Button, Input, Textarea, Alert, Spinner, Badge } from '../components/ui';
+import { AppLayout, Card, Button, Input, Textarea, Alert, Spinner, Badge } from '../components/ui';
+import { supabase } from '../lib/supabaseClient';
 
 type BodyMetrics = {
   weight_kg: number | null;
@@ -55,6 +56,8 @@ export function NutritionPage() {
   const nav = useNavigate();
   const [tab, setTab] = useState<Tab>('metrics');
   const [alert, setAlert] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
+
+  const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
   // Body metrics
   const [metrics, setMetrics] = useState<BodyMetrics>({ weight_kg: null, height_cm: null, sweat_rate_ml_per_hr: null });
@@ -208,300 +211,303 @@ export function NutritionPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg)]">
-      <Navbar role={role || undefined} name={profile?.name} onLogout={clearAuth} />
-      <div className="max-w-3xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="font-display text-3xl font-bold">Nutrition & Hydration</h1>
-        </div>
-
-        {alert && (
-          <div className="mb-6">
-            <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
+    <AppLayout role={role ?? 'athlete'} name={profile?.name} onLogout={logout}>
+      <div className="min-h-screen bg-[var(--color-bg-primary)]">
+        <div className="max-w-3xl mx-auto px-6 py-8">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">Nutrition & Hydration</h1>
           </div>
-        )}
 
-        {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-[var(--surface)] border border-[var(--border)] rounded-xl p-1">
-          {(['metrics', 'log', 'calculator'] as Tab[]).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={[
-                'flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all capitalize',
-                tab === t
-                  ? 'bg-[var(--surface2)] text-[var(--text)] shadow-sm'
-                  : 'text-[var(--muted)] hover:text-[var(--text)]'
-              ].join(' ')}
-            >
-              {t === 'metrics' ? 'Body Metrics' : t === 'log' ? 'Fuel Log' : 'Calculator'}
-            </button>
-          ))}
-        </div>
+          {alert && (
+            <div className="mb-6">
+              <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
+            </div>
+          )}
 
-        {/* ── Body Metrics ─────────────────────────────────── */}
-        {tab === 'metrics' && (
-          <Card title="Body Metrics">
-            {metricsLoading ? (
-              <div className="flex justify-center py-8"><Spinner /></div>
-            ) : (
-              <div className="flex flex-col gap-5">
-                <p className="text-sm text-[var(--muted)]">
-                  These metrics personalise your hydration and fueling recommendations.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <Input
-                    label="Weight (kg)"
-                    type="number"
-                    min={20} max={300} step={0.1}
-                    value={metrics.weight_kg ?? ''}
-                    onChange={e => setMetrics(m => ({ ...m, weight_kg: e.target.value ? parseFloat(e.target.value) : null }))}
-                    placeholder="e.g. 68"
-                  />
-                  <Input
-                    label="Height (cm)"
-                    type="number"
-                    min={100} max={250}
-                    value={metrics.height_cm ?? ''}
-                    onChange={e => setMetrics(m => ({ ...m, height_cm: e.target.value ? parseFloat(e.target.value) : null }))}
-                    placeholder="e.g. 175"
-                  />
-                  <Input
-                    label="Sweat rate (ml/hr)"
-                    type="number"
-                    min={100} max={3000} step={50}
-                    value={metrics.sweat_rate_ml_per_hr ?? ''}
-                    onChange={e => setMetrics(m => ({ ...m, sweat_rate_ml_per_hr: e.target.value ? parseFloat(e.target.value) : null }))}
-                    placeholder="e.g. 500"
-                  />
-                </div>
-                <div className="text-xs text-[var(--muted)] bg-[var(--surface2)] rounded-lg p-3 border border-[var(--border)]">
-                  <strong className="text-[var(--text2)]">Tip:</strong> Average sweat rate is 400–1,000 ml/hr.
-                  If you finish runs feeling very thirsty with visible salt on skin, try 800–1,200.
-                  If you rarely feel thirsty, use 300–500.
-                </div>
-                <div className="flex justify-end">
-                  <Button onClick={saveMetrics} loading={metricsSaving}>Save Metrics</Button>
-                </div>
-              </div>
-            )}
-          </Card>
-        )}
+          {/* Tabs */}
+          <div className="flex gap-1 mb-6 p-1 rounded-xl" style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
+            {(['metrics', 'log', 'calculator'] as Tab[]).map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all capitalize"
+                style={tab === t
+                  ? { background: 'var(--color-bg-tertiary)', color: 'var(--color-text-primary)' }
+                  : { color: 'var(--color-text-tertiary)' }
+                }
+              >
+                {t === 'metrics' ? 'Body Metrics' : t === 'log' ? 'Fuel Log' : 'Calculator'}
+              </button>
+            ))}
+          </div>
 
-        {/* ── Fuel Log ─────────────────────────────────────── */}
-        {tab === 'log' && (
-          <div className="flex flex-col gap-4">
-            {/* 7-day totals */}
-            {last7.length > 0 && (
-              <Card title="Last 7 Days">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {[
-                    { label: 'Calories', value: totals7.calories.toLocaleString(), unit: 'kcal' },
-                    { label: 'Carbs', value: totals7.carbs_g.toFixed(0), unit: 'g' },
-                    { label: 'Protein', value: totals7.protein_g.toFixed(0), unit: 'g' },
-                    { label: 'Hydration', value: (totals7.hydration_ml / 1000).toFixed(1), unit: 'L' },
-                  ].map(s => (
-                    <div key={s.label} className="bg-[var(--surface2)] rounded-lg p-3 border border-[var(--border)]">
-                      <div className="text-xs text-[var(--muted)] mb-1">{s.label}</div>
-                      <div className="font-display text-lg font-bold text-[var(--text)]">
-                        {s.value}<span className="text-xs font-normal text-[var(--muted)] ml-1">{s.unit}</span>
+          {/* ── Body Metrics ─────────────────────────────────── */}
+          {tab === 'metrics' && (
+            <Card title="Body Metrics">
+              {metricsLoading ? (
+                <div className="flex justify-center py-8"><Spinner /></div>
+              ) : (
+                <div className="flex flex-col gap-5">
+                  <p className="text-sm text-[var(--color-text-tertiary)]">
+                    These metrics personalise your hydration and fueling recommendations.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Input
+                      label="Weight (kg)"
+                      type="number"
+                      min={20} max={300} step={0.1}
+                      value={metrics.weight_kg ?? ''}
+                      onChange={e => setMetrics(m => ({ ...m, weight_kg: e.target.value ? parseFloat(e.target.value) : null }))}
+                      placeholder="e.g. 68"
+                    />
+                    <Input
+                      label="Height (cm)"
+                      type="number"
+                      min={100} max={250}
+                      value={metrics.height_cm ?? ''}
+                      onChange={e => setMetrics(m => ({ ...m, height_cm: e.target.value ? parseFloat(e.target.value) : null }))}
+                      placeholder="e.g. 175"
+                    />
+                    <Input
+                      label="Sweat rate (ml/hr)"
+                      type="number"
+                      min={100} max={3000} step={50}
+                      value={metrics.sweat_rate_ml_per_hr ?? ''}
+                      onChange={e => setMetrics(m => ({ ...m, sweat_rate_ml_per_hr: e.target.value ? parseFloat(e.target.value) : null }))}
+                      placeholder="e.g. 500"
+                    />
+                  </div>
+                  <div className="text-xs rounded-lg p-3" style={{ color: 'var(--color-text-secondary)', background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}>
+                    <strong className="text-[var(--color-text-primary)]">Tip:</strong> Average sweat rate is 400–1,000 ml/hr.
+                    If you finish runs feeling very thirsty with visible salt on skin, try 800–1,200.
+                    If you rarely feel thirsty, use 300–500.
+                  </div>
+                  <div className="flex justify-end">
+                    <Button onClick={saveMetrics} loading={metricsSaving}>Save Metrics</Button>
+                  </div>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {/* ── Fuel Log ─────────────────────────────────────── */}
+          {tab === 'log' && (
+            <div className="flex flex-col gap-4">
+              {/* 7-day totals */}
+              {last7.length > 0 && (
+                <Card title="Last 7 Days">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {[
+                      { label: 'Calories', value: totals7.calories.toLocaleString(), unit: 'kcal' },
+                      { label: 'Carbs', value: totals7.carbs_g.toFixed(0), unit: 'g' },
+                      { label: 'Protein', value: totals7.protein_g.toFixed(0), unit: 'g' },
+                      { label: 'Hydration', value: (totals7.hydration_ml / 1000).toFixed(1), unit: 'L' },
+                    ].map(s => (
+                      <div key={s.label} className="rounded-lg p-3" style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}>
+                        <div className="text-xs text-[var(--color-text-tertiary)] mb-1">{s.label}</div>
+                        <div className="font-mono text-lg font-bold text-[var(--color-text-primary)]">
+                          {s.value}<span className="text-xs font-normal text-[var(--color-text-tertiary)] ml-1">{s.unit}</span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              <Card title="Fuel Log (Last 30 Days)">
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-sm text-[var(--color-text-tertiary)]">Log your daily nutrition to track patterns over time.</p>
+                  <Button size="sm" onClick={() => setShowAddEntry(v => !v)}>
+                    {showAddEntry ? 'Cancel' : '+ Log Entry'}
+                  </Button>
                 </div>
+
+                {showAddEntry && (
+                  <div className="mb-5 p-4 rounded-lg flex flex-col gap-3" style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      <Input
+                        label="Date"
+                        type="date"
+                        value={newEntry.logged_at}
+                        onChange={e => setNewEntry(n => ({ ...n, logged_at: e.target.value }))}
+                      />
+                      <Input
+                        label="Calories (kcal)"
+                        type="number" min={0} max={10000}
+                        value={newEntry.calories}
+                        onChange={e => setNewEntry(n => ({ ...n, calories: e.target.value }))}
+                        placeholder="e.g. 350"
+                      />
+                      <Input
+                        label="Carbs (g)"
+                        type="number" min={0} step={0.5}
+                        value={newEntry.carbs_g}
+                        onChange={e => setNewEntry(n => ({ ...n, carbs_g: e.target.value }))}
+                        placeholder="e.g. 60"
+                      />
+                      <Input
+                        label="Protein (g)"
+                        type="number" min={0} step={0.5}
+                        value={newEntry.protein_g}
+                        onChange={e => setNewEntry(n => ({ ...n, protein_g: e.target.value }))}
+                        placeholder="e.g. 20"
+                      />
+                      <Input
+                        label="Hydration (ml)"
+                        type="number" min={0}
+                        value={newEntry.hydration_ml}
+                        onChange={e => setNewEntry(n => ({ ...n, hydration_ml: e.target.value }))}
+                        placeholder="e.g. 600"
+                      />
+                    </div>
+                    <Textarea
+                      label="Notes (optional)"
+                      rows={2}
+                      value={newEntry.notes}
+                      onChange={e => setNewEntry(n => ({ ...n, notes: e.target.value }))}
+                      placeholder="e.g. Post-run smoothie, gel mid-race..."
+                    />
+                    <div className="flex justify-end">
+                      <Button size="sm" onClick={addFuelEntry} loading={addingEntry}
+                        disabled={!newEntry.logged_at}>
+                        Save Entry
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {logLoading ? (
+                  <div className="flex justify-center py-8"><Spinner /></div>
+                ) : fuelLog.length === 0 ? (
+                  <p className="text-sm text-[var(--color-text-tertiary)] text-center py-8">No entries yet. Log your first entry above.</p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {fuelLog.map(entry => (
+                      <div key={entry.id} className="flex items-start justify-between gap-3 py-3 border-b border-[var(--color-border)] last:border-0">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs text-[var(--color-text-tertiary)] mb-1">{formatDate(entry.logged_at)}</div>
+                          <div className="flex flex-wrap gap-2">
+                            {entry.calories != null && (
+                              <Badge label={`${entry.calories} kcal`} color="amber" />
+                            )}
+                            {entry.carbs_g != null && (
+                              <Badge label={`${entry.carbs_g}g carbs`} color="blue" />
+                            )}
+                            {entry.protein_g != null && (
+                              <Badge label={`${entry.protein_g}g protein`} color="purple" />
+                            )}
+                            {entry.hydration_ml != null && (
+                              <Badge label={`${entry.hydration_ml}ml`} color="green" />
+                            )}
+                          </div>
+                          {entry.notes && (
+                            <p className="text-xs text-[var(--color-text-tertiary)] mt-1 truncate">{entry.notes}</p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => deleteEntry(entry.id)}
+                          className="text-xs transition-colors shrink-0"
+                          style={{ color: 'var(--color-text-tertiary)' }}
+                          onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-danger)')}
+                          onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-text-tertiary)')}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </Card>
-            )}
+            </div>
+          )}
 
-            <Card title="Fuel Log (Last 30 Days)">
-              <div className="flex justify-between items-center mb-4">
-                <p className="text-sm text-[var(--muted)]">Log your daily nutrition to track patterns over time.</p>
-                <Button size="sm" onClick={() => setShowAddEntry(v => !v)}>
-                  {showAddEntry ? 'Cancel' : '+ Log Entry'}
-                </Button>
-              </div>
+          {/* ── Fueling Calculator ────────────────────────────── */}
+          {tab === 'calculator' && (
+            <div className="flex flex-col gap-4">
+              {/* Weather */}
+              <Card title="Current Conditions">
+                {weatherLoading ? (
+                  <div className="flex justify-center py-4"><Spinner /></div>
+                ) : weather ? (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-mono text-2xl font-bold text-[var(--color-text-primary)]">
+                        {weather.temp_c}°C
+                      </div>
+                      <div className="text-sm text-[var(--color-text-tertiary)]">{weather.description}</div>
+                      {weather.location_name && (
+                        <div className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{weather.location_name}</div>
+                      )}
+                    </div>
+                    <div className="text-right text-sm text-[var(--color-text-tertiary)]">
+                      <div>Wind: {weather.windspeed_kmh} km/h</div>
+                      {weather.temp_c > 25 && (
+                        <span className="mt-1"><Badge label="Hot — hydrate extra" color="amber" /></span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-[var(--color-text-tertiary)]">
+                    No location data yet. Weather is pulled from your team's practice location once your coach adds a GPS-tagged event.
+                  </p>
+                )}
+              </Card>
 
-              {showAddEntry && (
-                <div className="mb-5 p-4 bg-[var(--surface2)] rounded-lg border border-[var(--border)] flex flex-col gap-3">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <Card title="Post-Run Fueling Calculator">
+                <div className="flex flex-col gap-4">
+                  <p className="text-sm text-[var(--color-text-tertiary)]">
+                    Enter your workout duration to get personalised calorie, carb, protein, and hydration targets.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Input
-                      label="Date"
-                      type="date"
-                      value={newEntry.logged_at}
-                      onChange={e => setNewEntry(n => ({ ...n, logged_at: e.target.value }))}
-                    />
-                    <Input
-                      label="Calories (kcal)"
-                      type="number" min={0} max={10000}
-                      value={newEntry.calories}
-                      onChange={e => setNewEntry(n => ({ ...n, calories: e.target.value }))}
-                      placeholder="e.g. 350"
-                    />
-                    <Input
-                      label="Carbs (g)"
-                      type="number" min={0} step={0.5}
-                      value={newEntry.carbs_g}
-                      onChange={e => setNewEntry(n => ({ ...n, carbs_g: e.target.value }))}
+                      label="Workout duration (minutes)"
+                      type="number" min={1} max={600}
+                      value={durationMin}
+                      onChange={e => setDurationMin(e.target.value)}
                       placeholder="e.g. 60"
                     />
                     <Input
-                      label="Protein (g)"
-                      type="number" min={0} step={0.5}
-                      value={newEntry.protein_g}
-                      onChange={e => setNewEntry(n => ({ ...n, protein_g: e.target.value }))}
-                      placeholder="e.g. 20"
-                    />
-                    <Input
-                      label="Hydration (ml)"
-                      type="number" min={0}
-                      value={newEntry.hydration_ml}
-                      onChange={e => setNewEntry(n => ({ ...n, hydration_ml: e.target.value }))}
-                      placeholder="e.g. 600"
+                      label="Temperature (°C) — leave blank to use live weather"
+                      type="number" min={-30} max={55}
+                      value={customTempC}
+                      onChange={e => setCustomTempC(e.target.value)}
+                      placeholder={weather ? `${weather.temp_c}°C (live)` : 'optional'}
                     />
                   </div>
-                  <Textarea
-                    label="Notes (optional)"
-                    rows={2}
-                    value={newEntry.notes}
-                    onChange={e => setNewEntry(n => ({ ...n, notes: e.target.value }))}
-                    placeholder="e.g. Post-run smoothie, gel mid-race..."
-                  />
-                  <div className="flex justify-end">
-                    <Button size="sm" onClick={addFuelEntry} loading={addingEntry}
-                      disabled={!newEntry.logged_at}>
-                      Save Entry
-                    </Button>
-                  </div>
-                </div>
-              )}
+                  <Button onClick={runCalculator} loading={calcLoading} disabled={!durationMin}>
+                    Calculate Fueling Targets
+                  </Button>
 
-              {logLoading ? (
-                <div className="flex justify-center py-8"><Spinner /></div>
-              ) : fuelLog.length === 0 ? (
-                <p className="text-sm text-[var(--muted)] text-center py-8">No entries yet. Log your first entry above.</p>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {fuelLog.map(entry => (
-                    <div key={entry.id} className="flex items-start justify-between gap-3 py-3 border-b border-[var(--border)] last:border-0">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs text-[var(--muted)] mb-1">{formatDate(entry.logged_at)}</div>
-                        <div className="flex flex-wrap gap-2">
-                          {entry.calories != null && (
-                            <Badge label={`${entry.calories} kcal`} color="amber" />
-                          )}
-                          {entry.carbs_g != null && (
-                            <Badge label={`${entry.carbs_g}g carbs`} color="blue" />
-                          )}
-                          {entry.protein_g != null && (
-                            <Badge label={`${entry.protein_g}g protein`} color="purple" />
-                          )}
-                          {entry.hydration_ml != null && (
-                            <Badge label={`${entry.hydration_ml}ml`} color="green" />
-                          )}
-                        </div>
-                        {entry.notes && (
-                          <p className="text-xs text-[var(--muted)] mt-1 truncate">{entry.notes}</p>
-                        )}
+                  {recommendation && (
+                    <div className="mt-2 flex flex-col gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {[
+                          { label: 'Hydration needed', value: `${recommendation.hydration_ml} ml`, sub: 'during run', color: 'blue' as const },
+                          { label: 'Calories burned', value: recommendation.cals_burned.toLocaleString(), sub: 'estimate', color: 'amber' as const },
+                          { label: 'Post-run target', value: `${recommendation.post_run.calories} kcal`, sub: 'within 30 min', color: 'green' as const },
+                          { label: 'Carbs / Protein', value: `${recommendation.post_run.carbs_g}g / ${recommendation.post_run.protein_g}g`, sub: 'recovery macro', color: 'purple' as const },
+                        ].map(s => (
+                          <div key={s.label} className="rounded-lg p-3" style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}>
+                            <div className="text-xs text-[var(--color-text-tertiary)] mb-1">{s.label}</div>
+                            <div className="font-mono text-base font-bold text-[var(--color-text-primary)]">{s.value}</div>
+                            <div className="text-xs text-[var(--color-text-tertiary)]">{s.sub}</div>
+                          </div>
+                        ))}
                       </div>
-                      <button
-                        onClick={() => deleteEntry(entry.id)}
-                        className="text-xs text-[var(--muted)] hover:text-red-400 transition-colors shrink-0"
-                      >
-                        ✕
-                      </button>
+                      <div className="text-sm rounded-lg p-3" style={{ color: 'var(--color-text-secondary)', background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}>
+                        {recommendation.post_run.tip}
+                      </div>
+                      {recommendation.heat_multiplier > 1 && (
+                        <Alert type="info" message={`Heat adjustment applied (${recommendation.temp_c}°C) — hydration target increased by ${Math.round((recommendation.heat_multiplier - 1) * 100)}%.`} onClose={() => {}} />
+                      )}
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
-            </Card>
-          </div>
-        )}
-
-        {/* ── Fueling Calculator ────────────────────────────── */}
-        {tab === 'calculator' && (
-          <div className="flex flex-col gap-4">
-            {/* Weather */}
-            <Card title="Current Conditions">
-              {weatherLoading ? (
-                <div className="flex justify-center py-4"><Spinner /></div>
-              ) : weather ? (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-2xl font-display font-bold text-[var(--text)]">
-                      {weather.temp_c}°C
-                    </div>
-                    <div className="text-sm text-[var(--muted)]">{weather.description}</div>
-                    {weather.location_name && (
-                      <div className="text-xs text-[var(--muted)] mt-0.5">{weather.location_name}</div>
-                    )}
-                  </div>
-                  <div className="text-right text-sm text-[var(--muted)]">
-                    <div>Wind: {weather.windspeed_kmh} km/h</div>
-                    {weather.temp_c > 25 && (
-                      <span className="mt-1"><Badge label="Hot — hydrate extra" color="amber" /></span>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-[var(--muted)]">
-                  No location data yet. Weather is pulled from your team's practice location once your coach adds a GPS-tagged event.
-                </p>
-              )}
-            </Card>
-
-            <Card title="Post-Run Fueling Calculator">
-              <div className="flex flex-col gap-4">
-                <p className="text-sm text-[var(--muted)]">
-                  Enter your workout duration to get personalised calorie, carb, protein, and hydration targets.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Workout duration (minutes)"
-                    type="number" min={1} max={600}
-                    value={durationMin}
-                    onChange={e => setDurationMin(e.target.value)}
-                    placeholder="e.g. 60"
-                  />
-                  <Input
-                    label="Temperature (°C) — leave blank to use live weather"
-                    type="number" min={-30} max={55}
-                    value={customTempC}
-                    onChange={e => setCustomTempC(e.target.value)}
-                    placeholder={weather ? `${weather.temp_c}°C (live)` : 'optional'}
-                  />
-                </div>
-                <Button onClick={runCalculator} loading={calcLoading} disabled={!durationMin}>
-                  Calculate Fueling Targets
-                </Button>
-
-                {recommendation && (
-                  <div className="mt-2 flex flex-col gap-3">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {[
-                        { label: 'Hydration needed', value: `${recommendation.hydration_ml} ml`, sub: 'during run', color: 'blue' as const },
-                        { label: 'Calories burned', value: recommendation.cals_burned.toLocaleString(), sub: 'estimate', color: 'amber' as const },
-                        { label: 'Post-run target', value: `${recommendation.post_run.calories} kcal`, sub: 'within 30 min', color: 'green' as const },
-                        { label: 'Carbs / Protein', value: `${recommendation.post_run.carbs_g}g / ${recommendation.post_run.protein_g}g`, sub: 'recovery macro', color: 'purple' as const },
-                      ].map(s => (
-                        <div key={s.label} className="bg-[var(--surface2)] rounded-lg p-3 border border-[var(--border)]">
-                          <div className="text-xs text-[var(--muted)] mb-1">{s.label}</div>
-                          <div className="font-display text-base font-bold text-[var(--text)]">{s.value}</div>
-                          <div className="text-xs text-[var(--muted)]">{s.sub}</div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="text-sm text-[var(--text2)] bg-[var(--surface2)] rounded-lg p-3 border border-[var(--border)]">
-                      {recommendation.post_run.tip}
-                    </div>
-                    {recommendation.heat_multiplier > 1 && (
-                      <Alert type="info" message={`Heat adjustment applied (${recommendation.temp_c}°C) — hydration target increased by ${Math.round((recommendation.heat_multiplier - 1) * 100)}%.`} onClose={() => {}} />
-                    )}
-                  </div>
-                )}
-              </div>
-            </Card>
-          </div>
-        )}
+              </Card>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }

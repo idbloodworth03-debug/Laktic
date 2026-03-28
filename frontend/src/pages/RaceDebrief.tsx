@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { Navbar, Button, Spinner } from '../components/ui';
+import { AppLayout, Button, Spinner } from '../components/ui';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -27,10 +27,12 @@ function ChatBubble({ role, content }: { role: 'user' | 'assistant'; content: st
       <div
         className={[
           'max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
-          isUser
-            ? 'bg-brand-600 text-white rounded-br-sm'
-            : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] rounded-bl-sm',
+          isUser ? 'rounded-br-sm' : 'rounded-bl-sm',
         ].join(' ')}
+        style={isUser
+          ? { background: 'var(--color-accent)', color: '#000' }
+          : { background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }
+        }
       >
         {content}
       </div>
@@ -41,12 +43,12 @@ function ChatBubble({ role, content }: { role: 'user' | 'assistant'; content: st
 function TypingIndicator() {
   return (
     <div className="flex justify-start mb-3">
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1.5 items-center">
+      <div className="rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1.5 items-center" style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
         {[0, 1, 2].map(i => (
           <span
             key={i}
-            className="w-1.5 h-1.5 rounded-full bg-[var(--muted)] animate-bounce"
-            style={{ animationDelay: `${i * 0.15}s` }}
+            className="w-1.5 h-1.5 rounded-full animate-bounce"
+            style={{ background: 'var(--color-text-tertiary)', animationDelay: `${i * 0.15}s` }}
           />
         ))}
       </div>
@@ -88,7 +90,6 @@ export function RaceDebrief() {
     setSending(true);
     setError('');
 
-    // Optimistic update
     setDebrief(prev => prev ? {
       ...prev,
       messages: [...prev.messages, { role: 'user', content: text }]
@@ -102,7 +103,6 @@ export function RaceDebrief() {
       setDebrief(updated);
     } catch (e: any) {
       setError(e.message || 'Failed to send message');
-      // Revert optimistic
       setDebrief(prev => prev ? {
         ...prev,
         messages: prev.messages.slice(0, -1)
@@ -134,7 +134,7 @@ export function RaceDebrief() {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--color-bg-primary)' }}>
       <Spinner />
     </div>
   );
@@ -144,100 +144,107 @@ export function RaceDebrief() {
   const insights = debrief?.insights as Record<string, string> | null;
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar role="athlete" name={profile?.name} onLogout={logout} />
-
-      <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full px-4 py-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="font-display text-xl font-bold">Post-Race Debrief</h1>
-            {isComplete && (
-              <span className="text-xs text-brand-400 font-medium">Completed</span>
-            )}
-          </div>
-          <Link to="/athlete/races">
-            <Button variant="ghost" size="sm">Back to Races</Button>
-          </Link>
-        </div>
-
-        {debrief?.coach_flagged && (
-          <div className="mb-4 text-sm text-amber-400 bg-amber-900/20 border border-amber-900/40 rounded-lg px-3 py-2">
-            Your coach has been notified about something you mentioned. They may reach out.
-          </div>
-        )}
-
-        {error && (
-          <div className="mb-4 text-sm text-red-400 bg-red-900/20 border border-red-900/40 rounded-lg px-3 py-2">{error}</div>
-        )}
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto mb-4 min-h-0">
-          {messages.map((msg, i) => (
-            <ChatBubble key={i} role={msg.role} content={msg.content} />
-          ))}
-          {sending && <TypingIndicator />}
-          <div ref={bottomRef} />
-        </div>
-
-        {/* Summary card when complete */}
-        {isComplete && insights && (
-          <div className="mb-4 bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 flex flex-col gap-2">
-            <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wide">Debrief Summary</p>
-            {insights.went_well && (
-              <div>
-                <span className="text-xs text-[var(--muted)]">Went well: </span>
-                <span className="text-sm">{insights.went_well}</span>
-              </div>
-            )}
-            {insights.improve_next_time && (
-              <div>
-                <span className="text-xs text-[var(--muted)]">Improve: </span>
-                <span className="text-sm">{insights.improve_next_time}</span>
-              </div>
-            )}
-            {insights.pacing_execution && (
-              <div>
-                <span className="text-xs text-[var(--muted)]">Pacing: </span>
-                <span className="text-sm">{insights.pacing_execution}</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Input */}
-        {!isComplete ? (
-          <div className="flex gap-2">
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type your response..."
-              className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-500 transition-colors"
-              disabled={sending}
-            />
-            <Button
-              variant="primary"
-              onClick={sendMessage}
-              disabled={!input.trim() || sending}
-              loading={sending}
-            >
-              Send
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleComplete} disabled={sending}>
-              Finish
-            </Button>
-          </div>
-        ) : (
-          <div className="text-center">
+    <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
+      <div className="min-h-screen bg-[var(--color-bg-primary)] flex flex-col">
+        <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full px-4 py-6">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-xl font-bold text-[var(--color-text-primary)]">Post-Race Debrief</h1>
+              {isComplete && (
+                <span className="text-xs font-medium" style={{ color: 'var(--color-accent)' }}>Completed</span>
+              )}
+            </div>
             <Link to="/athlete/races">
-              <Button variant="primary">Back to Race Calendar</Button>
+              <Button variant="ghost" size="sm">Back to Races</Button>
             </Link>
           </div>
-        )}
+
+          {debrief?.coach_flagged && (
+            <div className="mb-4 text-sm rounded-lg px-3 py-2" style={{ color: 'var(--color-warning)', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+              Your coach has been notified about something you mentioned. They may reach out.
+            </div>
+          )}
+
+          {error && (
+            <div className="mb-4 text-sm rounded-lg px-3 py-2" style={{ color: 'var(--color-danger)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>{error}</div>
+          )}
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto mb-4 min-h-0">
+            {messages.map((msg, i) => (
+              <ChatBubble key={i} role={msg.role} content={msg.content} />
+            ))}
+            {sending && <TypingIndicator />}
+            <div ref={bottomRef} />
+          </div>
+
+          {/* Summary card when complete */}
+          {isComplete && insights && (
+            <div className="mb-4 rounded-xl p-4 flex flex-col gap-2" style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
+              <p className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">Debrief Summary</p>
+              {insights.went_well && (
+                <div>
+                  <span className="text-xs text-[var(--color-text-tertiary)]">Went well: </span>
+                  <span className="text-sm text-[var(--color-text-primary)]">{insights.went_well}</span>
+                </div>
+              )}
+              {insights.improve_next_time && (
+                <div>
+                  <span className="text-xs text-[var(--color-text-tertiary)]">Improve: </span>
+                  <span className="text-sm text-[var(--color-text-primary)]">{insights.improve_next_time}</span>
+                </div>
+              )}
+              {insights.pacing_execution && (
+                <div>
+                  <span className="text-xs text-[var(--color-text-tertiary)]">Pacing: </span>
+                  <span className="text-sm text-[var(--color-text-primary)]">{insights.pacing_execution}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Input */}
+          {!isComplete ? (
+            <div className="flex gap-2">
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type your response..."
+                className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none transition-colors"
+                style={{
+                  background: 'var(--color-bg-secondary)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text-primary)',
+                }}
+                onFocus={e => (e.currentTarget.style.borderColor = 'var(--color-accent)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}
+                disabled={sending}
+              />
+              <Button
+                variant="primary"
+                onClick={sendMessage}
+                disabled={!input.trim() || sending}
+                loading={sending}
+              >
+                Send
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleComplete} disabled={sending}>
+                Finish
+              </Button>
+            </div>
+          ) : (
+            <div className="text-center">
+              <Link to="/athlete/races">
+                <Button variant="primary">Back to Race Calendar</Button>
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }

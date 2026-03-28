@@ -106,14 +106,14 @@ function ContactSalesForm() {
 
   return (
     <div id="contact-sales" className="max-w-lg mx-auto">
-      <h2 className="font-display text-2xl font-bold text-center mb-2">Contact Sales</h2>
-      <p className="text-sm text-[var(--muted)] text-center mb-6">
+      <h2 className="text-2xl font-bold text-center mb-2 text-[var(--color-text-primary)]">Contact Sales</h2>
+      <p className="text-sm text-[var(--color-text-tertiary)] text-center mb-6">
         For 10+ team organizations, athletics departments, and national federations.
       </p>
 
       {alert && <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />}
 
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 flex flex-col gap-4">
+      <div className="rounded-2xl p-6 flex flex-col gap-4" style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
         <div className="grid grid-cols-2 gap-3">
           <Input label="Your Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Jane Smith" />
           <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="jane@university.edu" />
@@ -124,13 +124,16 @@ function ContactSalesForm() {
           <Input label="Total Athletes" type="number" value={form.athlete_count} onChange={e => setForm(f => ({ ...f, athlete_count: e.target.value }))} placeholder="e.g. 240" />
         </div>
         <div>
-          <label className="text-sm font-medium text-[var(--muted)] block mb-1.5">Message (optional)</label>
+          <label className="text-sm font-medium text-[var(--color-text-tertiary)] block mb-1.5">Message (optional)</label>
           <textarea
             value={form.message}
             onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
             placeholder="Tell us about your program..."
             rows={3}
-            className="w-full bg-[var(--surface2)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-brand-500 resize-none transition-colors"
+            className="w-full rounded-lg px-3 py-2 text-sm outline-none resize-none transition-colors"
+            style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+            onFocus={e => (e.currentTarget.style.borderColor = 'var(--color-accent)')}
+            onBlur={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}
           />
         </div>
         <Button variant="primary" size="lg" onClick={submit} loading={submitting} className="w-full">
@@ -143,21 +146,32 @@ function ContactSalesForm() {
 
 export function PricingPage() {
   return (
-    <div className="min-h-screen bg-[var(--bg)]">
-      {/* Navbar */}
-      <nav className="border-b border-[var(--border)] px-6 py-4 flex items-center justify-between max-w-6xl mx-auto">
-        <Link to="/" className="font-display font-black text-xl text-brand-400 tracking-tighter">LAKTIC</Link>
+    <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      {/* Nav */}
+      <nav className="px-6 py-4 flex items-center justify-between max-w-6xl mx-auto" style={{ borderBottom: '1px solid var(--color-border)' }}>
+        <Link to="/" className="font-black text-xl tracking-tighter" style={{ color: 'var(--color-accent)', fontFamily: "'DM Sans', sans-serif" }}>LAKTIC</Link>
         <div className="flex items-center gap-3">
-          <Link to="/login/coach" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">Sign In</Link>
-          <Link to="/register/coach" className="text-sm bg-brand-600 hover:bg-brand-500 text-white px-4 py-1.5 rounded-lg transition-colors font-medium">Start Free Trial</Link>
+          <Link to="/login/coach" className="text-sm transition-colors text-[var(--color-text-tertiary)]"
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-text-primary)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-text-tertiary)')}
+          >Sign In</Link>
+          <Link
+            to="/register/coach"
+            className="text-sm px-4 py-1.5 rounded-lg font-medium transition-colors"
+            style={{ background: 'var(--color-accent)', color: '#000' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-accent-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'var(--color-accent)')}
+          >
+            Start Free Trial
+          </Link>
         </div>
       </nav>
 
       <div className="max-w-5xl mx-auto px-6 py-16">
         {/* Header */}
         <div className="text-center mb-14 fade-up">
-          <h1 className="font-display text-4xl font-black mb-3">Simple, transparent pricing</h1>
-          <p className="text-[var(--muted)] text-lg">Start free for 14 days. No credit card required.</p>
+          <h1 className="text-4xl font-black mb-3 text-[var(--color-text-primary)]">Simple, transparent pricing</h1>
+          <p className="text-[var(--color-text-tertiary)] text-lg">Start free for 14 days. No credit card required.</p>
         </div>
 
         {/* Plan cards */}
@@ -165,34 +179,36 @@ export function PricingPage() {
           {PLANS.map(plan => (
             <div
               key={plan.key}
-              className={[
-                'rounded-2xl border p-6 flex flex-col',
-                plan.highlight
-                  ? 'bg-brand-950/30 border-brand-700/50 shadow-glow-sm relative'
-                  : 'bg-[var(--surface)] border-[var(--border)]',
-              ].join(' ')}
+              className="rounded-2xl p-6 flex flex-col relative"
+              style={plan.highlight
+                ? { background: 'var(--color-accent-dim)', border: '1px solid rgba(0,229,160,0.3)' }
+                : { background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }
+              }
             >
               {plan.highlight && 'badge' in plan && plan.badge && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-1 bg-brand-600 text-white text-xs font-bold rounded-full whitespace-nowrap">
+                <div
+                  className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-1 text-xs font-bold rounded-full whitespace-nowrap"
+                  style={{ background: 'var(--color-accent)', color: '#000' }}
+                >
                   {plan.badge}
                 </div>
               )}
 
               <div className="mb-5">
-                <h3 className="font-display font-bold text-lg mb-1">{plan.name}</h3>
+                <h3 className="font-bold text-lg mb-1 text-[var(--color-text-primary)]">{plan.name}</h3>
                 <div className="flex items-baseline gap-1 mb-1">
-                  <span className="text-3xl font-black font-display text-[var(--text)]">{plan.price}</span>
-                  {plan.period && <span className="text-[var(--muted)] text-sm">{plan.period}</span>}
+                  <span className="text-3xl font-black text-[var(--color-text-primary)]">{plan.price}</span>
+                  {plan.period && <span className="text-[var(--color-text-tertiary)] text-sm">{plan.period}</span>}
                 </div>
-                <p className="text-xs text-[var(--muted)]">{plan.annual}</p>
-                <p className="text-sm text-[var(--muted)] mt-3 leading-relaxed">{plan.description}</p>
+                <p className="text-xs text-[var(--color-text-tertiary)]">{plan.annual}</p>
+                <p className="text-sm text-[var(--color-text-tertiary)] mt-3 leading-relaxed">{plan.description}</p>
               </div>
 
               <ul className="flex flex-col gap-2 mb-6 flex-1">
                 {plan.features.map(f => (
                   <li key={f} className="flex items-start gap-2 text-sm">
-                    <span className="text-brand-500 font-bold mt-0.5 shrink-0">+</span>
-                    <span className="text-[var(--text2)]">{f}</span>
+                    <span className="font-bold mt-0.5 shrink-0" style={{ color: 'var(--color-accent)' }}>+</span>
+                    <span className="text-[var(--color-text-secondary)]">{f}</span>
                   </li>
                 ))}
               </ul>
@@ -200,24 +216,26 @@ export function PricingPage() {
               {plan.ctaLink.startsWith('#') ? (
                 <a
                   href={plan.ctaLink}
-                  className={[
-                    'block text-center py-2.5 rounded-xl font-semibold text-sm transition-colors',
-                    plan.highlight
-                      ? 'bg-brand-600 hover:bg-brand-500 text-white'
-                      : 'bg-[var(--surface2)] hover:bg-[var(--border)] text-[var(--text)]',
-                  ].join(' ')}
+                  className="block text-center py-2.5 rounded-xl font-semibold text-sm transition-colors"
+                  style={plan.highlight
+                    ? { background: 'var(--color-accent)', color: '#000' }
+                    : { background: 'var(--color-bg-tertiary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }
+                  }
+                  onMouseEnter={e => { if (plan.highlight) (e.currentTarget as HTMLElement).style.background = 'var(--color-accent-hover)'; }}
+                  onMouseLeave={e => { if (plan.highlight) (e.currentTarget as HTMLElement).style.background = 'var(--color-accent)'; }}
                 >
                   {plan.cta}
                 </a>
               ) : (
                 <Link
                   to={plan.ctaLink}
-                  className={[
-                    'block text-center py-2.5 rounded-xl font-semibold text-sm transition-colors',
-                    plan.highlight
-                      ? 'bg-brand-600 hover:bg-brand-500 text-white'
-                      : 'bg-[var(--surface2)] hover:bg-[var(--border)] text-[var(--text)]',
-                  ].join(' ')}
+                  className="block text-center py-2.5 rounded-xl font-semibold text-sm transition-colors"
+                  style={plan.highlight
+                    ? { background: 'var(--color-accent)', color: '#000' }
+                    : { background: 'var(--color-bg-tertiary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }
+                  }
+                  onMouseEnter={e => { if (plan.highlight) (e.currentTarget as HTMLElement).style.background = 'var(--color-accent-hover)'; }}
+                  onMouseLeave={e => { if (plan.highlight) (e.currentTarget as HTMLElement).style.background = 'var(--color-accent)'; }}
                 >
                   {plan.cta}
                 </Link>
@@ -227,9 +245,9 @@ export function PricingPage() {
         </div>
 
         {/* Athlete pricing note */}
-        <div className="text-center mb-16 py-6 border border-[var(--border)] rounded-2xl bg-[var(--surface)]">
-          <h3 className="font-display font-bold text-lg mb-1">Athletes are always free</h3>
-          <p className="text-sm text-[var(--muted)]">Athletes get a free account. They're invited by their coach or join through the marketplace.</p>
+        <div className="text-center mb-16 py-6 rounded-2xl" style={{ border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)' }}>
+          <h3 className="font-bold text-lg mb-1 text-[var(--color-text-primary)]">Athletes are always free</h3>
+          <p className="text-sm text-[var(--color-text-tertiary)]">Athletes get a free account. They're invited by their coach or join through the marketplace.</p>
         </div>
 
         {/* Contact Sales section */}
