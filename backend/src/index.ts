@@ -33,6 +33,10 @@ import predictionsRouter from './routes/predictions';
 import debriefsRouter from './routes/debriefs';
 import coachDigestRouter from './routes/coachDigest';
 import recoveryRouter from './routes/recovery';
+import publicProfilesRouter from './routes/publicProfiles';
+import referralsRouter from './routes/referrals';
+import shareEventsRouter from './routes/shareEvents';
+import contactSalesRouter from './routes/contactSales';
 import cron from 'node-cron';
 import { runRaceCountdownCron } from './services/notificationService';
 import { runGameplanCron } from './routes/gameplans';
@@ -96,6 +100,10 @@ app.use('/api/predictions', predictionsRouter);
 app.use('/api/debriefs', debriefsRouter);
 app.use('/api/digest', coachDigestRouter);
 app.use('/api/recovery', recoveryRouter);
+app.use('/api/public', publicProfilesRouter);
+app.use('/api/referrals', referralsRouter);
+app.use('/api/share-events', shareEventsRouter);
+app.use('/api/contact-sales', contactSalesRouter);
 
 app.use('/api', gdprRouter);
 

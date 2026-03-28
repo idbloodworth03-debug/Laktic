@@ -41,6 +41,31 @@ router.post(
   })
 );
 
+// PATCH /api/coach/profile
+router.patch(
+  '/profile',
+  auth,
+  requireCoach,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const allowedFields = ['name', 'school_or_org', 'username', 'license_type'];
+    const update: Record<string, unknown> = {};
+    for (const f of allowedFields) {
+      if (req.body[f] !== undefined) update[f] = req.body[f];
+    }
+    if (Object.keys(update).length === 0) return res.json(req.coach);
+
+    const { data, error } = await supabase
+      .from('coach_profiles')
+      .update(update)
+      .eq('id', req.coach.id)
+      .select()
+      .single();
+
+    if (error) return res.status(400).json({ error: error.message });
+    return res.json(data);
+  })
+);
+
 // GET /api/coach/bot
 router.get(
   '/bot',

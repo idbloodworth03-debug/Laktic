@@ -60,7 +60,13 @@ export const athleteProfileUpdateSchema = z.object({
   weekly_volume_miles: z.number().min(0).max(200).optional(),
   primary_events: z.array(z.string().max(100)).max(20).optional(),
   pr_mile: z.string().max(20).optional(),
-  pr_5k: z.string().max(20).optional()
+  pr_5k: z.string().max(20).optional(),
+  username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/).optional(),
+  public_sections: z.object({
+    races: z.boolean(),
+    stats: z.boolean(),
+    milestones: z.boolean(),
+  }).optional(),
 });
 
 export const chatMessageSchema = z.object({

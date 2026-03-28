@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { apiFetch } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
-import { Navbar, Card, Button, Alert, Badge, Spinner } from '../components/ui';
+import { Navbar, Card, Button, Alert, Badge, Spinner, Input } from '../components/ui';
 import { useNotifications } from '../hooks/useNotifications';
 
 export function CoachSettings() {
@@ -14,6 +14,10 @@ export function CoachSettings() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const { state: notifState, enable: enableNotifs, disable: disableNotifs } = useNotifications();
   const [notifLoading, setNotifLoading] = useState(false);
+
+  // Public profile
+  const [username, setUsername] = useState((profile as any)?.username ?? '');
+  const [savingUsername, setSavingUsername] = useState(false);
 
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
@@ -58,6 +62,55 @@ export function CoachSettings() {
             <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
           </div>
         )}
+
+        <Card title="Public Profile" className="mb-6">
+          <p className="text-sm text-[var(--muted)] mb-4">
+            Set a username to get a public profile at <strong className="text-[var(--text)]">laktic.com/coach/[username]</strong>
+          </p>
+          {(profile as any)?.license_type === 'team' && (
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-xs font-bold text-blue-300 bg-blue-950/40 border border-blue-800/40 px-2 py-0.5 rounded uppercase tracking-wide">School/Club Coach</span>
+              <span className="text-xs text-[var(--muted)]">Team License active</span>
+            </div>
+          )}
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <Input
+                value={username}
+                onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                placeholder="e.g. coachsmith"
+                maxLength={20}
+              />
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              loading={savingUsername}
+              onClick={async () => {
+                if (!username || username.length < 3) {
+                  setAlert({ type: 'error', message: 'Username must be at least 3 characters.' });
+                  return;
+                }
+                setSavingUsername(true);
+                try {
+                  await apiFetch('/api/coach/profile', { method: 'PATCH', body: JSON.stringify({ username }) });
+                  setAlert({ type: 'success', message: 'Username saved!' });
+                } catch (e: any) {
+                  setAlert({ type: 'error', message: e.message || 'Failed to save.' });
+                } finally {
+                  setSavingUsername(false);
+                }
+              }}
+            >
+              Save
+            </Button>
+          </div>
+          {username && (
+            <a href={`/coach/${username}`} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-400 hover:underline mt-2 block">
+              View public profile
+            </a>
+          )}
+        </Card>
 
         <Card title="Push Notifications" className="mb-6">
           {notifState === 'unsupported' ? (

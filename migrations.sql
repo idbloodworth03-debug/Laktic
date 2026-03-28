@@ -523,3 +523,52 @@ CREATE TABLE IF NOT EXISTS public.recovery_profiles (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ALTER TABLE public.recovery_profiles ENABLE ROW LEVEL SECURITY;
+
+-- Migration 021 — Sprint 3 growth features
+-- username, referrals, share_events, share_card_url, license_type
+-- ─────────────────────────────────────────────────────────────────
+
+-- Athlete profile additions
+ALTER TABLE public.athlete_profiles
+  ADD COLUMN IF NOT EXISTS username TEXT UNIQUE,
+  ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE,
+  ADD COLUMN IF NOT EXISTS referral_credit_days INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS public_sections JSONB NOT NULL DEFAULT '{"races":true,"stats":true,"milestones":true}';
+
+-- Coach profile additions
+ALTER TABLE public.coach_profiles
+  ADD COLUMN IF NOT EXISTS username TEXT UNIQUE,
+  ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE,
+  ADD COLUMN IF NOT EXISTS referral_credit_days INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS license_type TEXT NOT NULL DEFAULT 'individual'
+    CHECK (license_type IN ('individual','team','enterprise'));
+
+-- Race results: share card URL
+ALTER TABLE public.race_results
+  ADD COLUMN IF NOT EXISTS share_card_url TEXT;
+
+-- Referrals
+CREATE TABLE IF NOT EXISTS public.referrals (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  referrer_id     UUID        NOT NULL,
+  referrer_type   TEXT        NOT NULL CHECK (referrer_type IN ('athlete','coach')),
+  referred_email  TEXT,
+  referred_user_id UUID,
+  status          TEXT        NOT NULL DEFAULT 'pending'
+                              CHECK (status IN ('pending','signed_up','converted')),
+  reward_granted  BOOLEAN     NOT NULL DEFAULT FALSE,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS referrals_referrer_idx ON public.referrals(referrer_id);
+ALTER TABLE public.referrals ENABLE ROW LEVEL SECURITY;
+
+-- Share events
+CREATE TABLE IF NOT EXISTS public.share_events (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  athlete_id  UUID        NOT NULL REFERENCES public.athlete_profiles(id) ON DELETE CASCADE,
+  event_type  TEXT        NOT NULL,
+  platform    TEXT,
+  shared_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS share_events_athlete_idx ON public.share_events(athlete_id, shared_at DESC);
+ALTER TABLE public.share_events ENABLE ROW LEVEL SECURITY;

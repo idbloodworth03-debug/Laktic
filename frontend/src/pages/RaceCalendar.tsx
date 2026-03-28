@@ -4,6 +4,8 @@ import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
 import { Navbar, Button, Input, Card, Toggle, Alert, Badge } from '../components/ui';
+import { ShareMomentModal } from '../components/ShareMomentModal';
+import type { ShareCardData } from '../components/ShareCardCanvas';
 
 type Race = { name: string; date: string; is_goal_race: boolean; notes: string };
 type RaceResult = {
@@ -289,6 +291,7 @@ export function RaceCalendar() {
   const [savingResult, setSavingResult] = useState(false);
   const [calView, setCalView] = useState<'list' | 'month'>('list');
   const [selectedResult, setSelectedResult] = useState<RaceResult | null>(null);
+  const [shareData, setShareData] = useState<{ data: ShareCardData; raceResultId: string } | null>(null);
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
   useEffect(() => {
@@ -361,6 +364,19 @@ export function RaceCalendar() {
       });
       setResults(prev => [newResult, ...prev]);
       setLoggingResult(null);
+      // Show share moment
+      setShareData({
+        data: {
+          athleteName: profile?.name ?? 'Athlete',
+          raceName: newResult.race_name,
+          distance: newResult.distance,
+          finishTime: newResult.finish_time,
+          date: new Date(newResult.race_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          isPr: newResult.is_pr,
+          eventType: 'race',
+        },
+        raceResultId: newResult.id,
+      });
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -385,6 +401,13 @@ export function RaceCalendar() {
           result={selectedResult}
           athleteName={profile?.name ?? 'Athlete'}
           onClose={() => setSelectedResult(null)}
+        />
+      )}
+      {shareData && (
+        <ShareMomentModal
+          data={shareData.data}
+          raceResultId={shareData.raceResultId}
+          onClose={() => setShareData(null)}
         />
       )}
       <div className="max-w-4xl mx-auto px-6 py-10">

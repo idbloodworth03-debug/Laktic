@@ -37,6 +37,13 @@ export function AthleteSettings() {
   const [disconnecting, setDisconnecting] = useState(false);
   const [alert, setAlert] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
 
+  // Public profile state
+  const [username, setUsername] = useState((profile as any)?.username ?? '');
+  const [publicSections, setPublicSections] = useState<{ races: boolean; stats: boolean; milestones: boolean }>(
+    (profile as any)?.public_sections ?? { races: true, stats: true, milestones: true }
+  );
+  const [savingProfile, setSavingProfile] = useState(false);
+
   useEffect(() => {
     fetchStravaStatus();
     if (searchParams.get('strava') === 'connected') {
@@ -151,6 +158,74 @@ export function AthleteSettings() {
             <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
           </div>
         )}
+
+        <Card title="Public Profile" className="mb-6">
+          <p className="text-sm text-[var(--muted)] mb-4">
+            Set a username to get a public profile at <strong className="text-[var(--text)]">laktic.com/athlete/[username]</strong>
+          </p>
+          <div className="flex flex-col gap-4">
+            <Input
+              label="Username"
+              value={username}
+              onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+              placeholder="e.g. janedoe_runs"
+              maxLength={20}
+            />
+            <div>
+              <p className="text-sm font-medium text-[var(--muted)] mb-2">What's public on your profile</p>
+              <div className="flex flex-col gap-2">
+                {(['races', 'stats', 'milestones'] as const).map(section => (
+                  <label key={section} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={publicSections[section]}
+                      onChange={e => setPublicSections(s => ({ ...s, [section]: e.target.checked }))}
+                      className="accent-brand-500"
+                    />
+                    <span className="text-sm text-[var(--text2)] capitalize">{section}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="primary"
+                size="sm"
+                loading={savingProfile}
+                onClick={async () => {
+                  if (!username || username.length < 3) {
+                    setAlert({ type: 'error', message: 'Username must be at least 3 characters.' });
+                    return;
+                  }
+                  setSavingProfile(true);
+                  try {
+                    await apiFetch('/api/athlete/profile', {
+                      method: 'PATCH',
+                      body: JSON.stringify({ username, public_sections: publicSections }),
+                    });
+                    setAlert({ type: 'success', message: 'Profile updated!' });
+                  } catch (e: any) {
+                    setAlert({ type: 'error', message: e.message || 'Failed to save.' });
+                  } finally {
+                    setSavingProfile(false);
+                  }
+                }}
+              >
+                Save Profile
+              </Button>
+              {username && (
+                <a
+                  href={`/athlete/${username}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-brand-400 hover:underline"
+                >
+                  View public profile
+                </a>
+              )}
+            </div>
+          </div>
+        </Card>
 
         <Card title="Join a Team" className="mb-6">
           {joinSuccess ? (

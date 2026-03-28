@@ -31,6 +31,10 @@ import { TeamRecovery } from './pages/TeamRecovery';
 import { GameplanViewer } from './pages/GameplanViewer';
 import { AthleteGameplans } from './pages/AthleteGameplans';
 import { RaceDebrief } from './pages/RaceDebrief';
+import { AthletePublicProfile } from './pages/AthletePublicProfile';
+import { CoachPublicProfile } from './pages/CoachPublicProfile';
+import { ReferralsPage } from './pages/ReferralsPage';
+import { PricingPage } from './pages/PricingPage';
 
 function RequireCoach({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
@@ -98,6 +102,14 @@ export default function App() {
 
         {/* Community — athletes and coaches */}
         <Route path="/community" element={<Community />} />
+
+        {/* Public routes — no auth */}
+        <Route path="/athlete/:username" element={<AthletePublicProfile />} />
+        <Route path="/coach/:username" element={<CoachPublicProfile />} />
+        <Route path="/pricing" element={<PricingPage />} />
+
+        {/* Referrals — authenticated */}
+        <Route path="/referrals" element={<ReferralsPage />} />
 
         {/* Sprint 2 — AI Features */}
         <Route path="/coach/readiness" element={<RequireCoach><TeamReadiness /></RequireCoach>} />

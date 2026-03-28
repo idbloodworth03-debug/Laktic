@@ -164,6 +164,8 @@ export function Navbar({ role, name, onLogout }: NavbarProps) {
     { label: 'Marketplace',    href: '/marketplace' },
     { label: 'Browse Bots',    href: '/athlete/browse' },
     { label: 'Community',      href: '/community' },
+    { label: 'Gameplans',      href: '/athlete/gameplans' },
+    { label: 'Referrals',      href: '/referrals' },
     { label: 'Settings',       href: '/athlete/settings' },
   ];
 
@@ -174,7 +176,11 @@ export function Navbar({ role, name, onLogout }: NavbarProps) {
     { label: 'Bot Setup',      href: '/coach/bot/edit' },
     { label: 'Knowledge Docs', href: '/coach/knowledge' },
     { label: 'Community',      href: '/community' },
+    { label: 'Team Readiness', href: '/coach/readiness' },
+    { label: 'Team Recovery',  href: '/coach/recovery' },
     { label: 'Marketplace',    href: '/coach/marketplace/apply' },
+    { label: 'Referrals',      href: '/referrals' },
+    { label: 'Settings',       href: '/coach/settings' },
   ];
 
   const links = role === 'athlete' ? athleteLinks : role === 'coach' ? coachLinks : [];
