@@ -15,11 +15,11 @@ type FeedPost = {
   athlete_profiles: { id: string; name: string };
 };
 
-const FEED_TYPE_ICON: Record<string, string> = {
-  activity: '🏃',
-  race_result: '🏅',
-  milestone: '⭐',
-  manual: '💬',
+const FEED_TYPE_LABEL: Record<string, string> = {
+  activity: 'activity',
+  race_result: 'race',
+  milestone: 'milestone',
+  manual: 'post',
 };
 
 function timeAgo(dateStr: string): string {
@@ -164,7 +164,7 @@ export function TeamFeed() {
 }
 
 function FeedCard({ post, onKudo }: { post: FeedPost; onKudo: (id: string) => void }) {
-  const icon = FEED_TYPE_ICON[post.feed_type] ?? '💬';
+  const typeLabel = FEED_TYPE_LABEL[post.feed_type] ?? 'post';
   const athleteName = post.athlete_profiles?.name ?? 'Teammate';
   const initial = athleteName.charAt(0).toUpperCase();
 
@@ -177,7 +177,7 @@ function FeedCard({ post, onKudo }: { post: FeedPost; onKudo: (id: string) => vo
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-sm font-medium text-[var(--text)]">{athleteName}</span>
-            <span className="text-base leading-none">{icon}</span>
+            <span className="text-xs text-[var(--muted)] capitalize">{typeLabel}</span>
             <span className="text-xs text-[var(--muted)] ml-auto shrink-0">{timeAgo(post.created_at)}</span>
           </div>
           <p className="text-sm text-[var(--text2)] leading-relaxed">{post.body}</p>
@@ -192,8 +192,7 @@ function FeedCard({ post, onKudo }: { post: FeedPost; onKudo: (id: string) => vo
               : 'text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)]'
           }`}
         >
-          <span>{post.i_kudoed ? '❤️' : '🤍'}</span>
-          <span>{post.kudo_count > 0 ? post.kudo_count : ''} {post.kudo_count === 1 ? 'kudo' : post.kudo_count > 1 ? 'kudos' : 'Give kudos'}</span>
+          <span>{post.kudo_count > 0 ? post.kudo_count : ''} {post.kudo_count === 1 ? 'kudo' : post.kudo_count > 1 ? 'kudos' : 'Kudo'}</span>
         </button>
       </div>
     </div>

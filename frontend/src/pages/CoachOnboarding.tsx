@@ -341,7 +341,7 @@ export function CoachOnboarding() {
         <Textarea label="Content" value={docForm.content_text} onChange={e => setDocForm(f => ({ ...f, content_text: e.target.value }))} rows={6} placeholder="Paste your coaching material here — sample week breakdowns, injury protocols, taper guidelines, FAQs..." />
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => fileRef.current?.click()}>📄 Upload .txt / .docx</Button>
+            <Button variant="ghost" size="sm" onClick={() => fileRef.current?.click()}>Upload .txt / .docx</Button>
             <input ref={fileRef} type="file" accept=".txt,.docx" onChange={handleFile} className="hidden" />
             <span className="text-xs text-[var(--muted)]">{docForm.content_text.length}/20000 chars</span>
           </div>

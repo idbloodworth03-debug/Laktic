@@ -9,12 +9,8 @@ import { Navbar, Button, Spinner, EmptyState, Badge, Input } from '../components
 const CHANNELS = ['all', 'track', 'xc', 'triathlon', 'road', 'swimming', 'general'] as const;
 type Channel = typeof CHANNELS[number];
 
-const CHANNEL_EMOJI: Record<Channel, string> = {
-  all: '🌐', track: '🏟️', xc: '🌲', triathlon: '🏊', road: '🛣️', swimming: '🌊', general: '💬',
-};
-
-const POST_TYPE_ICON: Record<string, string> = {
-  activity: '🏃', race_result: '🏅', milestone: '⭐', manual: '💬',
+const POST_TYPE_LABEL: Record<string, string> = {
+  activity: 'activity', race_result: 'race', milestone: 'milestone', manual: 'post',
 };
 const POST_TYPE_COLOR: Record<string, 'blue' | 'green' | 'amber' | 'gray'> = {
   activity: 'blue', race_result: 'green', milestone: 'amber', manual: 'gray',
@@ -57,7 +53,7 @@ function PostCard({
   const name: string = post.athlete_profiles?.name ?? 'Athlete';
   const initial = name.charAt(0).toUpperCase();
   const typeColor = POST_TYPE_COLOR[post.feed_type] ?? 'gray';
-  const typeIcon = POST_TYPE_ICON[post.feed_type] ?? '💬';
+  const typeLabel = POST_TYPE_LABEL[post.feed_type] ?? 'post';
 
   return (
     <article className="bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border2)] rounded-2xl overflow-hidden transition-all duration-150 fade-up">
@@ -70,12 +66,9 @@ function PostCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-semibold text-[var(--text)]">{name}</span>
-              <span className="text-base leading-none">{typeIcon}</span>
-              <Badge label={post.feed_type.replace('_', ' ')} color={typeColor} />
+              <Badge label={typeLabel} color={typeColor} />
               {post.sport_channel && (
-                <span className="text-xs text-[var(--muted)]">
-                  {CHANNEL_EMOJI[post.sport_channel as Channel] ?? ''} {post.sport_channel}
-                </span>
+                <span className="text-xs text-[var(--muted)] capitalize">{post.sport_channel}</span>
               )}
               {post.scope === 'public' && (
                 <span className="text-[10px] text-[var(--muted2)] border border-[var(--border)] rounded-full px-1.5 py-0.5">public</span>
@@ -111,7 +104,6 @@ function PostCard({
               : 'text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)]'
           }`}
         >
-          <span>{post.i_kudoed ? '❤️' : '🤍'}</span>
           <span>
             {post.kudo_count > 0
               ? `${post.kudo_count} ${post.kudo_count === 1 ? 'kudo' : 'kudos'}`
@@ -208,7 +200,7 @@ function CreatePostModal({
     }
   };
 
-  const CAPTION_STYLES = ['✦ Short', '⚡ Hype', '✿ Reflective'] as const;
+  const CAPTION_STYLES = ['Short', 'Hype', 'Reflective'] as const;
   const captionValues = captions ? [captions.short, captions.hype, captions.reflective] : [];
 
   return (
@@ -290,7 +282,7 @@ function CreatePostModal({
                 onClick={() => fileInputRef.current?.click()}
                 className="w-full border border-dashed border-[var(--border)] rounded-xl py-3 text-xs text-[var(--muted)] hover:text-brand-400 hover:border-brand-700 transition-colors flex items-center justify-center gap-2"
               >
-                <span>📷</span> Add photo (optional · max 5 MB)
+                Add photo (optional · max 5 MB)
               </button>
             )}
           </div>
@@ -309,7 +301,7 @@ function CreatePostModal({
                       : 'border-[var(--border)] text-[var(--muted)] hover:border-brand-600'
                   }`}
                 >
-                  {CHANNEL_EMOJI[ch]} {ch}
+                  {ch}
                 </button>
               ))}
             </div>
@@ -328,7 +320,7 @@ function CreatePostModal({
                     : 'border-[var(--border)] text-[var(--muted)] hover:border-brand-600'
                 }`}
               >
-                {s === 'public' ? '🌐 Everyone' : '🏟️ Team only'}
+                {s === 'public' ? 'Everyone' : 'Team only'}
               </button>
             ))}
           </div>
@@ -344,7 +336,7 @@ function CreatePostModal({
             >
               {generatingCaptions
                 ? <><span className="w-3 h-3 border border-brand-400 border-t-transparent rounded-full animate-spin inline-block" /> Generating…</>
-                : <>✨ AI Caption</>
+                : <>AI Caption</>
               }
             </button>
             <div className="flex gap-2">
@@ -377,13 +369,10 @@ function CreateChallengeModal({
   const [targetValue, setTargetValue] = useState('');
   const [targetUnit, setTargetUnit] = useState('miles');
   const [metric, setMetric] = useState<'miles' | 'workouts' | 'hours' | 'elevation_ft'>('miles');
-  const [emoji, setEmoji] = useState('🏃');
   const [endsAt, setEndsAt] = useState('');
   const [description, setDescription] = useState('');
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState('');
-
-  const EMOJIS = ['🏃', '🚴', '🏊', '🏋️', '⛰️', '🎽', '🏅'];
 
   const submit = async () => {
     if (!title.trim() || !targetValue || !endsAt) {
@@ -401,7 +390,6 @@ function CreateChallengeModal({
           target_value: parseFloat(targetValue),
           target_unit: targetUnit,
           metric,
-          sport_emoji: emoji,
           ends_at: new Date(endsAt + 'T23:59:59').toISOString(),
         }),
       });
@@ -433,24 +421,6 @@ function CreateChallengeModal({
         </div>
 
         <div className="p-5 space-y-4">
-          {/* Emoji picker */}
-          <div>
-            <label className="text-xs font-medium text-[var(--muted)] block mb-2">Sport emoji</label>
-            <div className="flex gap-2">
-              {EMOJIS.map(e => (
-                <button
-                  key={e}
-                  onClick={() => setEmoji(e)}
-                  className={`w-9 h-9 rounded-xl border text-lg flex items-center justify-center transition-all ${
-                    emoji === e
-                      ? 'border-brand-500 bg-brand-950/40'
-                      : 'border-[var(--border)] hover:border-brand-700'
-                  }`}
-                >{e}</button>
-              ))}
-            </div>
-          </div>
-
           <Input
             label="Challenge title"
             value={title}
@@ -533,7 +503,6 @@ function LeaderboardModal({ data, onClose }: { data: { challenge: any; leaderboa
         <button onClick={onClose} className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] text-lg">×</button>
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-xl">{data.challenge.sport_emoji}</span>
             <h3 className="font-display font-semibold text-base">{data.challenge.title}</h3>
           </div>
           <p className="text-xs text-[var(--muted)]">
@@ -646,9 +615,6 @@ function ChallengesTab({ isCoach }: { isCoach: boolean }) {
               className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 hover:border-[var(--border2)] transition-colors flex flex-col"
             >
               <div className="flex items-start gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-[var(--surface2)] border border-[var(--border)] flex items-center justify-center text-xl shrink-0">
-                  {ch.sport_emoji}
-                </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-display font-semibold text-sm text-[var(--text)] leading-snug truncate">{ch.title}</h3>
                   {ch.description && (
@@ -834,7 +800,7 @@ export function Community() {
                       : 'border-[var(--border)] text-[var(--muted)] hover:border-brand-600 hover:text-[var(--text)]'
                   }`}
                 >
-                  {CHANNEL_EMOJI[ch]} {ch}
+                  {ch}
                 </button>
               ))}
             </div>

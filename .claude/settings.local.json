@@ -15,7 +15,8 @@
       "Bash(ls /c/Users/Nick/Projects/Laktic/*.sql)",
       "Bash(where gh:*)",
       "Bash(chmod +x \"C:\\\\Users\\\\Nick\\\\Projects\\\\Laktic\\\\.git\\\\hooks\\\\post-commit\")",
-      "Bash(/c/Users/Nick/Projects/Laktic/migrations.sql:*)"
+      "Bash(/c/Users/Nick/Projects/Laktic/migrations.sql:*)",
+      "Bash(grep -rP \"[\\\\x{1F300}-\\\\x{1FFFF}]|[\\\\x{2600}-\\\\x{27BF}]\" --include=*.ts --include=*.tsx /c/Users/Nick/Projects/Laktic/frontend/src /c/Users/Nick/Projects/Laktic/backend/src /c/Users/Nick/Projects/Laktic/migrations.sql)"
     ]
   }
 }

@@ -201,7 +201,7 @@ function RaceCardModal({ result, onClose, athleteName }: { result: RaceResult; o
       ctx.fill();
       ctx.fillStyle = '#000';
       ctx.font = 'bold 14px system-ui, sans-serif';
-      ctx.fillText('🏆 PR', 50, 361);
+      ctx.fillText('PR', 50, 361);
     }
 
     // Athlete name
@@ -228,7 +228,7 @@ function RaceCardModal({ result, onClose, athleteName }: { result: RaceResult; o
     setSharing(true);
     setShareError('');
     try {
-      const caption = `${result.is_pr ? '🏆 New PR! ' : ''}Finished ${result.race_name} in ${result.finish_time}${result.pace_per_mile ? ` (${result.pace_per_mile}/mi)` : ''}`;
+      const caption = `${result.is_pr ? 'New PR — ' : ''}Finished ${result.race_name} in ${result.finish_time}${result.pace_per_mile ? ` (${result.pace_per_mile}/mi)` : ''}`;
       await apiFetch('/api/community/posts', {
         method: 'POST',
         body: JSON.stringify({

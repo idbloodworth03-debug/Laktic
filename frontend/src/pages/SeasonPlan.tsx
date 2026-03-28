@@ -549,7 +549,7 @@ export function SeasonPlan() {
             {milestones.map(m => (
               <div key={m.id} className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-amber-950/50 border border-amber-800/50">
                 <div className="flex items-center gap-2">
-                  <span className="text-base">🏆</span>
+                  <span className="text-base"></span>
                   <div>
                     <span className="text-xs font-medium text-amber-300">New milestone!</span>
                     <p className="text-sm text-[var(--text)]">{m.label}</p>

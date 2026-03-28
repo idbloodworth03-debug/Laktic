@@ -79,7 +79,7 @@ export function TeamLeaderboard() {
             </div>
             {entries.map((entry, idx) => {
               const isMe = entry.name === profile?.name;
-              const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : null;
+              const medal = null;
               return (
                 <div
                   key={entry.athlete_id}
@@ -110,7 +110,7 @@ export function TeamLeaderboard() {
                   <div className="col-span-3 text-right">
                     {entry.streak_days > 0 ? (
                       <span className="text-sm font-medium text-amber-400">
-                        {entry.streak_days}🔥
+                        {entry.streak_days}d
                       </span>
                     ) : (
                       <span className="text-sm text-[var(--muted)]">—</span>

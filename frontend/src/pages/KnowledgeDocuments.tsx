@@ -258,7 +258,6 @@ export function KnowledgeDocuments() {
                   onClick={() => fileRef.current?.click()}
                   className="border-2 border-dashed border-[var(--border)] hover:border-brand-500 rounded-xl p-8 text-center cursor-pointer transition-colors"
                 >
-                  <div className="text-3xl mb-2">📄</div>
                   <div className="text-sm font-medium">Click to upload .txt or .docx</div>
                   <div className="text-xs text-[var(--muted)] mt-1">Text is extracted client-side before sending</div>
                 </div>

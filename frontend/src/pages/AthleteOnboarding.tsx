@@ -190,13 +190,13 @@ export function AthleteOnboarding() {
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 flex flex-col gap-5 shadow-card">
         <div className="flex flex-col gap-3">
           {[
-            { icon: '📍', text: 'Auto-sync every run you log' },
-            { icon: '📊', text: 'Bot compares planned vs actual workouts' },
-            { icon: '⚡', text: 'Intensity adjusts based on your fatigue' },
-          ].map(f => (
-            <div key={f.text} className="flex items-center gap-3">
-              <span className="text-xl">{f.icon}</span>
-              <span className="text-sm text-[var(--muted)]">{f.text}</span>
+            'Auto-sync every run you log',
+            'Bot compares planned vs actual workouts',
+            'Intensity adjusts based on your fatigue',
+          ].map(text => (
+            <div key={text} className="flex items-center gap-3">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-500 shrink-0" />
+              <span className="text-sm text-[var(--muted)]">{text}</span>
             </div>
           ))}
         </div>

@@ -128,7 +128,7 @@ function BotChat() {
 
         {messages.length === 0 && !sending && (
           <div className="text-center py-20 text-[var(--muted)]">
-            <div className="text-4xl mb-3">💬</div>
+            <div className="text-4xl mb-3"></div>
             <p className="text-sm">Send a message to your coach bot. Ask about training, request modifications, or discuss your upcoming races.</p>
             <div className="mt-4 flex flex-wrap gap-2 justify-center">
               {['I feel tired this week', 'I tweaked my calf, what should I do?', 'Can I swap Wednesday and Thursday?', 'I have a race coming up sooner than expected'].map(s => (
@@ -235,7 +235,7 @@ function DirectChat() {
 
         {loaded && messages.length === 0 && (
           <div className="text-center py-20 text-[var(--muted)]">
-            <div className="text-4xl mb-3">✉️</div>
+            <div className="text-4xl mb-3"></div>
             <p className="text-sm">Send a message directly to your coach. They'll reply here.</p>
           </div>
         )}

@@ -76,7 +76,7 @@ router.get(
         target_value: ch.target_value,
         target_unit: ch.target_unit,
         metric: ch.metric,
-        sport_emoji: ch.sport_emoji ?? '🏃',
+        sport_emoji: ch.sport_emoji ?? '',
         starts_at: ch.starts_at,
         ends_at: ch.ends_at,
         participant_count: participants.length,
@@ -109,7 +109,7 @@ router.post(
         target_value,
         target_unit,
         metric: metric || 'miles',
-        sport_emoji: sport_emoji || '🏃',
+        sport_emoji: sport_emoji || '',
         ends_at
       })
       .select()

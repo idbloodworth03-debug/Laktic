@@ -8,17 +8,14 @@ import { Button, Input, Card, Spinner } from '../components/ui';
 // ── Landing ──────────────────────────────────────────────────────────────────
 const FEATURES = [
   {
-    icon: '⚡',
     title: 'AI-Powered Plans',
     desc: 'GPT-4o generates a full season plan from your coach\'s philosophy — tailored to your race calendar and fitness.',
   },
   {
-    icon: '🎯',
     title: '14-Day Coaching',
     desc: 'Chat with your bot anytime. It adapts your next two weeks of training without touching the rest of your season.',
   },
   {
-    icon: '📊',
     title: 'Strava Connected',
     desc: 'Every run you log syncs automatically. The AI tracks compliance and adjusts intensity when you\'re ahead or behind.',
   },
@@ -112,7 +109,6 @@ export function Landing() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {FEATURES.map(f => (
             <div key={f.title} className="bg-[var(--surface)]/80 border border-[var(--border)] rounded-2xl p-6 hover:border-[var(--border2)] transition-colors shadow-card">
-              <div className="text-2xl mb-3">{f.icon}</div>
               <h3 className="font-display font-semibold text-sm mb-2">{f.title}</h3>
               <p className="text-xs text-[var(--muted)] leading-relaxed">{f.desc}</p>
             </div>
