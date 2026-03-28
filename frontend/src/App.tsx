@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 
-import { Landing, CoachRegister, AthleteRegister, CoachLogin, AthleteLogin, PasswordResetConfirm } from './pages/AuthPages';
+import { CoachRegister, AthleteRegister, CoachLogin, AthleteLogin, PasswordResetConfirm } from './pages/AuthPages';
+import { LandingPage } from './pages/LandingPage';
 import { ForgotPassword, ResetPassword } from './pages/PasswordReset';
 import { AthleteDashboard } from './pages/AthleteDashboard';
 import { CoachDashboard } from './pages/CoachDashboard';
@@ -63,7 +64,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         {/* Public */}
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/register/coach" element={<CoachRegister />} />
         <Route path="/register/athlete" element={<AthleteRegister />} />
         <Route path="/login/coach" element={<CoachLogin />} />
