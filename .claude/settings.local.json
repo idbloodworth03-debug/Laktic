@@ -30,7 +30,11 @@
       "Bash(find /c/Users/Nick/Projects/Laktic -name supabase.json -o -name *.sql)",
       "Bash(source /c/Users/Nick/Projects/Laktic/backend/.env)",
       "Bash(curl:*)",
-      "Bash(railway variables:*)"
+      "Bash(railway variables:*)",
+      "Bash(git -C /c/Users/Nick/Projects/Laktic status)",
+      "Bash(git -C /c/Users/Nick/Projects/Laktic ls-files --error-unmatch frontend/public/icon.png)",
+      "Bash(git -C /c/Users/Nick/Projects/Laktic show HEAD:frontend/public/icon.png)",
+      "Bash(gh run:*)"
     ]
   }
 }
