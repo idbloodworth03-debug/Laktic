@@ -129,7 +129,7 @@ async function computeInjuryRiskForAthlete(athleteId: string): Promise<{
   let explanation: string | null = null;
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',

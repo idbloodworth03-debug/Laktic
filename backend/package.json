@@ -10,7 +10,6 @@
     "format": "prettier --write src"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.21.0",
     "@sentry/node": "^10.46.0",
     "@supabase/supabase-js": "^2.39.0",
     "cors": "^2.8.5",

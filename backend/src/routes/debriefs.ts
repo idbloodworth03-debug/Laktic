@@ -162,7 +162,7 @@ router.post(
 
     try {
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         messages: openaiMessages
       });
       botReply = completion.choices[0].message.content ?? '';
@@ -257,7 +257,7 @@ router.post(
     let insights: Record<string, unknown> = {};
     try {
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         messages: openaiMessages,
         response_format: { type: 'json_object' }
       });

@@ -1,8 +1,9 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
+import { env } from '../config/env';
 import { getFormattedKnowledge } from './knowledgeService';
 import { getWeekStartDate, addDays } from '../utils/dateUtils';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
 const SYSTEM_PROMPT = `You are an expert distance running coach AI. Generate a complete multi-week periodized training season for this athlete.
 
@@ -19,7 +20,7 @@ Rules:
 function buildUserPrompt(params: any): string {
   const { bot, botWorkouts, athleteProfile, raceCalendar, coachKnowledge, startDate, numWeeks } = params;
   const todayDate = new Date().toISOString().split('T')[0];
-  return `COACH PHILOSOPHY:\n${bot.philosophy}\n\nCOACH KNOWLEDGE:\n${coachKnowledge}\n\nCOACH WEEKLY TEMPLATE:\n${JSON.stringify(botWorkouts)}\n\nATHLETE PROFILE:\nName: ${athleteProfile.name} | Mileage: ${athleteProfile.weekly_volume_miles}/wk | Events: ${(athleteProfile.primary_events || []).join(', ')} | PR Mile: ${athleteProfile.pr_mile || 'N/A'} | PR 5K: ${athleteProfile.pr_5k || 'N/A'}\n\nRACE CALENDAR:\n${JSON.stringify(raceCalendar)}\n\nTODAY: ${todayDate} | GENERATE FROM: ${startDate} | TOTAL WEEKS: ${numWeeks}\n\nGenerate the full season plan now. Return ONLY valid JSON.`;
+  return `COACH PHILOSOPHY:\n${bot.philosophy}\n\nCOACH KNOWLEDGE:\n${coachKnowledge}\n\nCOACH WEEKLY TEMPLATE:\n${JSON.stringify(botWorkouts)}\n\nATHLETE PROFILE:\nName: ${athleteProfile.name} | Mileage: ${athleteProfile.weekly_volume_miles}/wk | Events: ${(athleteProfile.primary_events || []).join(', ')} | PR Mile: ${athleteProfile.pr_mile || 'N/A'} | PR 5K: ${athleteProfile.pr_5k || 'N/A'}\n\nRACE CALENDAR:\n${JSON.stringify(raceCalendar)}\n\nTODAY: ${todayDate} | GENERATE FROM: ${startDate} | TOTAL WEEKS: ${numWeeks}\n\nGenerate the full season plan now. Return ONLY valid JSON array.`;
 }
 
 function fallbackPlan(botWorkouts: any[], startDate: string, numWeeks: number): any[] {
@@ -74,17 +75,29 @@ export async function generate(params: {
   const personalityBlock = bot.personality_prompt
     ? `COACHING PERSONALITY: ${bot.personality_prompt}\n\nYour coaching philosophy and style must reflect the above personality in every response. Never break character.\n\n`
     : '';
-  const fullPrompt = personalityBlock + SYSTEM_PROMPT + '\n\n' + buildUserPrompt({ bot, botWorkouts, athleteProfile, raceCalendar, coachKnowledge, startDate, numWeeks });
+
+  const systemContent = personalityBlock + SYSTEM_PROMPT;
+  const userContent = buildUserPrompt({ bot, botWorkouts, athleteProfile, raceCalendar, coachKnowledge, startDate, numWeeks });
+
   let aiPlan: any[] | null = null;
 
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-      const result = await model.generateContent(fullPrompt);
-      const text = result.response.text();
-      aiPlan = parseAndValidate(text);
-      if (aiPlan) break;
-    } catch (err) { console.error(`[seasonPlan] Gemini error attempt ${attempt + 1}:`, err); }
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: systemContent },
+          { role: 'user', content: userContent },
+        ],
+        response_format: { type: 'json_object' },
+      });
+      const text = completion.choices[0].message.content ?? '';
+      // GPT-4o with json_object wraps arrays — unwrap if needed
+      const parsed = JSON.parse(text);
+      aiPlan = Array.isArray(parsed) ? parsed : (parsed.plan ?? parsed.weeks ?? null);
+      if (aiPlan && parseAndValidate(JSON.stringify(aiPlan))) break;
+      aiPlan = null;
+    } catch (err) { console.error(`[seasonPlan] OpenAI error attempt ${attempt + 1}:`, err); }
   }
 
   const existingWeeks = params.existingWeeks || [];
@@ -93,6 +106,6 @@ export async function generate(params: {
 
   if (aiPlan) return { plan: [...pastWeeks, ...aiPlan], aiUsed: true };
 
-  console.warn('[seasonPlan] Gemini failed, using fallback');
+  console.warn('[seasonPlan] OpenAI failed, using fallback');
   return { plan: [...pastWeeks, ...fallbackPlan(botWorkouts, startDate, numWeeks)], aiUsed: false };
 }

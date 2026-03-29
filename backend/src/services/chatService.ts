@@ -1,7 +1,8 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
+import { env } from '../config/env';
 import { getFormattedKnowledge } from './knowledgeService';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
 const SYSTEM_PROMPT = `You are a coaching bot built on the philosophy and training knowledge of a specific coach. Respond like a real coach — warm, direct, expert, and grounded in the coach's philosophy.
 
@@ -42,9 +43,9 @@ export async function respond(params: {
       ? `COACHING PERSONALITY: ${bot.personality_prompt}\n\nYour coaching philosophy and style must reflect the above personality in every response. Never break character.\n\n`
       : '';
 
-    const fullPrompt = `${personalityBlock}${SYSTEM_PROMPT}
+    const systemContent = `${personalityBlock}${SYSTEM_PROMPT}`;
 
-COACH PHILOSOPHY:
+    const userContent = `COACH PHILOSOPHY:
 ${bot.philosophy}
 
 COACH KNOWLEDGE:
@@ -68,14 +69,20 @@ ATHLETE: ${newMessage}
 
 Respond as the coach bot. Return ONLY valid JSON, no markdown.`;
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const result = await model.generateContent(fullPrompt);
-    const text = result.response.text();
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemContent },
+        { role: 'user', content: userContent },
+      ],
+      response_format: { type: 'json_object' },
+    });
+
+    const text = completion.choices[0].message.content ?? '';
 
     let parsed: { reply: string; plan_updates: any[] | null } | null = null;
     try {
-      const clean = text.replace(/```json|```/g, '').trim();
-      parsed = JSON.parse(clean);
+      parsed = JSON.parse(text);
     } catch {
       return { botReply: text, planUpdates: null };
     }
@@ -95,7 +102,7 @@ Respond as the coach bot. Return ONLY valid JSON, no markdown.`;
 
     return { botReply: parsed.reply + replyNote, planUpdates };
   } catch (err) {
-    console.error('[chat] Gemini error:', err);
+    console.error('[chat] OpenAI error:', err);
     return { botReply: 'Sorry, I ran into a technical issue. Your plan has not been changed.', planUpdates: null };
   }
 }
