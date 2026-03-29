@@ -71,7 +71,10 @@ export async function generate(params: {
     numWeeks = Math.min(Math.max(diffWeeks, 1), 24);
   }
 
-  const fullPrompt = SYSTEM_PROMPT + '\n\n' + buildUserPrompt({ bot, botWorkouts, athleteProfile, raceCalendar, coachKnowledge, startDate, numWeeks });
+  const personalityBlock = bot.personality_prompt
+    ? `COACHING PERSONALITY: ${bot.personality_prompt}\n\nYour coaching philosophy and style must reflect the above personality in every response. Never break character.\n\n`
+    : '';
+  const fullPrompt = personalityBlock + SYSTEM_PROMPT + '\n\n' + buildUserPrompt({ bot, botWorkouts, athleteProfile, raceCalendar, coachKnowledge, startDate, numWeeks });
   let aiPlan: any[] | null = null;
 
   for (let attempt = 0; attempt < 2; attempt++) {

@@ -29,11 +29,31 @@ After the athlete has answered all questions, output ONLY a JSON block (no other
 
 Set coach_flag to true ONLY if athlete mentions pain, injury, cramping, or extreme fatigue.`;
 
+// ── Helper to fetch bot personality for an athlete ────────────────────────────
+
+async function getBotPersonalityPrompt(athleteId: string): Promise<string> {
+  try {
+    const { data: teamMember } = await supabase
+      .from('team_members')
+      .select('team_id, teams!team_id(coach_id, coach_bots!coach_id(personality_prompt))')
+      .eq('athlete_id', athleteId)
+      .is('left_at', null)
+      .limit(1)
+      .single();
+    return (teamMember as any)?.teams?.coach_bots?.personality_prompt ?? '';
+  } catch {
+    return '';
+  }
+}
+
 // ── Helper to build OpenAI message array ──────────────────────────────────────
 
-function buildMessages(debrief: any): OpenAI.Chat.ChatCompletionMessageParam[] {
+function buildMessages(debrief: any, personalityPrompt?: string): OpenAI.Chat.ChatCompletionMessageParam[] {
+  const personalityBlock = personalityPrompt
+    ? `COACHING PERSONALITY: ${personalityPrompt}\n\nYour coaching philosophy and style must reflect the above personality in every response. Never break character.\n\n`
+    : '';
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    { role: 'system', content: DEBRIEF_SYSTEM_PROMPT }
+    { role: 'system', content: personalityBlock + DEBRIEF_SYSTEM_PROMPT }
   ];
   for (const msg of (debrief.messages ?? [])) {
     if (msg.role === 'system') continue; // skip stored system copies
@@ -132,8 +152,9 @@ router.post(
       { role: 'user', content: message }
     ];
 
-    // Build OpenAI messages
-    const openaiMessages = buildMessages({ ...debrief, messages: updatedMessages });
+    // Build OpenAI messages with personality
+    const personalityPrompt = await getBotPersonalityPrompt(athleteId);
+    const openaiMessages = buildMessages({ ...debrief, messages: updatedMessages }, personalityPrompt);
 
     let botReply = '';
     let insights: Record<string, unknown> | null = null;
@@ -220,9 +241,13 @@ router.post(
     if (!debrief) return res.status(404).json({ error: 'Debrief not found' });
     if (debrief.completed_at) return res.status(400).json({ error: 'Debrief already completed' });
 
+    const personalityPrompt = await getBotPersonalityPrompt(athleteId);
+    const personalityBlock = personalityPrompt
+      ? `COACHING PERSONALITY: ${personalityPrompt}\n\nYour coaching philosophy and style must reflect the above personality in every response. Never break character.\n\n`
+      : '';
     const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      { role: 'system', content: DEBRIEF_SYSTEM_PROMPT },
-      ...buildMessages(debrief).slice(1),
+      { role: 'system', content: personalityBlock + DEBRIEF_SYSTEM_PROMPT },
+      ...buildMessages(debrief, personalityPrompt).slice(1),
       {
         role: 'user',
         content: 'Please summarize our conversation so far in the required JSON format even if we have not covered all topics.'

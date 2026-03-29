@@ -116,8 +116,19 @@ export async function runWeeklyDigest(coachId: string): Promise<void> {
     });
   }
 
+  // Fetch coach's bot personality
+  let botPersonalityPrompt = '';
+  try {
+    const { data: botData } = await supabase
+      .from('coach_bots')
+      .select('personality_prompt')
+      .eq('coach_id', coachId)
+      .single();
+    botPersonalityPrompt = botData?.personality_prompt ?? '';
+  } catch { /* non-blocking */ }
+
   // Generate digest with GPT-4o
-  const digestText = await generateDigestText(coachProfile.name, teamData.name, athleteSummaries);
+  const digestText = await generateDigestText(coachProfile.name, teamData.name, athleteSummaries, botPersonalityPrompt);
 
   // Store digest
   const { data: digest } = await supabase
@@ -140,15 +151,19 @@ export async function runWeeklyDigest(coachId: string): Promise<void> {
 async function generateDigestText(
   coachName: string,
   teamName: string,
-  athletes: Array<{ name: string; weekly_miles: number; activity_count: number; injury_risk: string | null; readiness_avg: number | null; flagged_debrief: boolean; race_count: number }>
+  athletes: Array<{ name: string; weekly_miles: number; activity_count: number; injury_risk: string | null; readiness_avg: number | null; flagged_debrief: boolean; race_count: number }>,
+  personalityPrompt?: string
 ): Promise<string> {
+  const personalityBlock = personalityPrompt
+    ? `COACHING PERSONALITY: ${personalityPrompt}\n\nYour writing style must reflect the above personality. Never break character.\n\n`
+    : '';
   try {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         {
           role: 'system',
-          content: `You are an AI coaching assistant writing a concise weekly digest email for a running coach.
+          content: `${personalityBlock}You are an AI coaching assistant writing a concise weekly digest email for a running coach.
 Write in clear, professional prose. Be direct. Highlight standouts (positive and concerning).
 Structure: 1) One-line summary of the week, 2) Athlete highlights (any risks/achievements), 3) Action items.
 Keep it under 300 words. No markdown headers — use plain paragraphs.`

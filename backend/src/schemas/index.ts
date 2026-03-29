@@ -11,7 +11,9 @@ export const botCreateSchema = z.object({
   name: z.string().min(1).max(200),
   philosophy: z.string().max(5000).optional(),
   event_focus: z.string().max(100).nullish(),
-  level_focus: z.string().max(100).nullish()
+  level_focus: z.string().max(100).nullish(),
+  personality: z.string().max(50).optional(),
+  personality_prompt: z.string().max(2000).nullish(),
 });
 
 export const botUpdateSchema = z.object({
@@ -19,7 +21,9 @@ export const botUpdateSchema = z.object({
   philosophy: z.string().max(5000).optional(),
   event_focus: z.string().max(100).nullish(),
   level_focus: z.string().max(100).nullish(),
-  is_published: z.boolean().optional()
+  is_published: z.boolean().optional(),
+  personality: z.string().max(50).optional(),
+  personality_prompt: z.string().max(2000).nullish(),
 });
 
 export const workoutSchema = z.object({

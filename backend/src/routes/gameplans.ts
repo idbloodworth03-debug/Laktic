@@ -65,12 +65,30 @@ async function generateGameplanForAthlete(
     .limit(1)
     .single();
 
-  // Fetch athlete profile
+  // Fetch athlete profile + their bot's personality
   const { data: athlete } = await supabase
     .from('athlete_profiles')
     .select('name, weekly_volume_miles, primary_events, pr_mile, pr_5k')
     .eq('id', athleteId)
     .single();
+
+  // Fetch athlete's team bot personality (optional — non-blocking)
+  let personalityBlock = '';
+  try {
+    const { data: teamMember } = await supabase
+      .from('team_members')
+      .select('team_id, teams!team_id(coach_id, coach_bots!coach_id(personality_prompt))')
+      .eq('athlete_id', athleteId)
+      .is('left_at', null)
+      .limit(1)
+      .single();
+    const personalityPrompt = (teamMember as any)?.teams?.coach_bots?.personality_prompt;
+    if (personalityPrompt) {
+      personalityBlock = `COACHING PERSONALITY: ${personalityPrompt}\n\nYour coaching philosophy and style must reflect the above personality in every response. Never break character.\n\n`;
+    }
+  } catch {
+    // No team — proceed without personality
+  }
 
   // Weather (optional)
   let weatherInfo = 'Weather data unavailable';
@@ -107,12 +125,15 @@ async function generateGameplanForAthlete(
     weather_on_race_day: weatherInfo
   };
 
+  const gameplanSystemPrompt = `${personalityBlock}You are an elite running coach AI. Generate a detailed race gameplan based on the athlete data provided. Respond ONLY with valid JSON in this exact structure:`;
+  console.log('[gameplans] system prompt preview:', gameplanSystemPrompt.slice(0, 200));
+
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o',
     messages: [
       {
         role: 'system',
-        content: `You are an elite running coach AI. Generate a detailed race gameplan based on the athlete data provided. Respond ONLY with valid JSON in this exact structure:
+        content: `${gameplanSystemPrompt}
 {
   "pacing_strategy": { "first_mile": "...", "middle_miles": "...", "final_mile": "...", "explanation": "..." },
   "warmup_routine": [{ "step": "...", "duration": "...", "intensity": "..." }],

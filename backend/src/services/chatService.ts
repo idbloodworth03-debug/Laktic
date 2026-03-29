@@ -38,7 +38,11 @@ export async function respond(params: {
   try {
     const coachKnowledge = await getFormattedKnowledge(bot.id);
 
-    const fullPrompt = `${SYSTEM_PROMPT}
+    const personalityBlock = bot.personality_prompt
+      ? `COACHING PERSONALITY: ${bot.personality_prompt}\n\nYour coaching philosophy and style must reflect the above personality in every response. Never break character.\n\n`
+      : '';
+
+    const fullPrompt = `${personalityBlock}${SYSTEM_PROMPT}
 
 COACH PHILOSOPHY:
 ${bot.philosophy}

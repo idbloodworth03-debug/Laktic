@@ -100,13 +100,13 @@ router.post(
   requireCoach,
   validate(botCreateSchema),
   asyncHandler(async (req: AuthRequest, res) => {
-    const { name, philosophy, event_focus, level_focus } = req.body;
+    const { name, philosophy, event_focus, level_focus, personality, personality_prompt } = req.body;
     const existing = await supabase.from('coach_bots').select('id').eq('coach_id', req.coach.id).single();
     if (existing.data) return res.status(400).json({ error: 'Bot already exists' });
 
     const { data, error } = await supabase
       .from('coach_bots')
-      .insert({ coach_id: req.coach.id, name, philosophy, event_focus, level_focus })
+      .insert({ coach_id: req.coach.id, name, philosophy, event_focus, level_focus, personality: personality ?? 'custom', personality_prompt: personality_prompt ?? null })
       .select()
       .single();
 

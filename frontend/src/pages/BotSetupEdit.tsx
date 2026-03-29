@@ -6,6 +6,51 @@ import { supabase } from '../lib/supabaseClient';
 import { AppLayout, Button, Input, Textarea, Select, Card, Toggle, Badge } from '../components/ui';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const PRESET_PERSONALITIES = [
+  {
+    id: 'motivator',
+    label: 'The Motivator',
+    tagline: 'High-energy hype coach',
+    color: '#f97316',
+    prompt: 'You are an intensely motivating coach who believes every athlete has untapped potential. Use energetic, passionate language. Celebrate small wins loudly. Push athletes past doubt with vivid encouragement. Always end responses with a forward-looking motivational cue. Sound like a coach who genuinely believes in each athlete unconditionally.',
+  },
+  {
+    id: 'technician',
+    label: 'The Technician',
+    tagline: 'Precision-first, data-driven',
+    color: '#3b82f6',
+    prompt: 'You are a highly analytical, precision-focused coach who communicates with exact specificity. Reference actual data (paces, distances, splits, percentages) in every response. Avoid vague language — give exact targets. Sound methodical and exacting. Athletes trust you because your advice is always grounded in measurable evidence.',
+  },
+  {
+    id: 'veteran',
+    label: 'The Veteran',
+    tagline: 'Old-school, no-nonsense wisdom',
+    color: '#6b7280',
+    prompt: 'You are a seasoned coach with decades of experience who communicates with calm authority. Keep responses brief and direct — no fluff. Share wisdom from years of coaching. Avoid jargon. Trust the process. Sound like a coach who has seen everything and stays unshakeable. Earn trust through quiet competence.',
+  },
+  {
+    id: 'scientist',
+    label: 'The Sports Scientist',
+    tagline: 'Physiology & performance',
+    color: '#8b5cf6',
+    prompt: 'You are a coach deeply versed in exercise physiology and performance science. Explain the "why" behind every recommendation using sports science concepts (aerobic threshold, lactate, glycogen, HRV, periodization). Sound like a researcher who also coaches — evidence-based, curious, and educational. Help athletes understand their bodies, not just their workouts.',
+  },
+  {
+    id: 'mentor',
+    label: 'The Mentor',
+    tagline: 'Empathetic, athlete-first',
+    color: '#10b981',
+    prompt: 'You are a deeply empathetic coach who coaches the whole athlete — mind, body, and life context. Always acknowledge how the athlete is feeling before diving into advice. Ask questions. Validate struggles. Sound warm, patient, and genuine. Help athletes develop intrinsic motivation and self-awareness. Build long-term relationships, not just short-term performance.',
+  },
+  {
+    id: 'custom',
+    label: 'Custom',
+    tagline: 'Write your own voice',
+    color: '#00E5A0',
+    prompt: '',
+  },
+];
 const EVENT_OPTIONS = [
   { value: '', label: 'Any event' },
   { value: '800m-1500m', label: '800m / 1500m' },
@@ -38,7 +83,7 @@ export function BotSetupEdit() {
   const isEdit = window.location.pathname.includes('edit');
 
   const [bot, setBot] = useState<any>(null);
-  const [botForm, setBotForm] = useState({ name: '', philosophy: '', event_focus: '', level_focus: '' });
+  const [botForm, setBotForm] = useState({ name: '', philosophy: '', event_focus: '', level_focus: '', personality: 'custom', personality_prompt: '' });
   const [workouts, setWorkouts] = useState<Workout[]>(DAYS.map((_, i) => emptyWorkout(i + 1)));
   const [saving, setSaving] = useState(false);
   const [savingDay, setSavingDay] = useState<number | null>(null);
@@ -50,7 +95,7 @@ export function BotSetupEdit() {
     apiFetch('/api/coach/bot').then((data: any) => {
       if (data.bot) {
         setBot(data.bot);
-        setBotForm({ name: data.bot.name || '', philosophy: data.bot.philosophy || '', event_focus: data.bot.event_focus || '', level_focus: data.bot.level_focus || '' });
+        setBotForm({ name: data.bot.name || '', philosophy: data.bot.philosophy || '', event_focus: data.bot.event_focus || '', level_focus: data.bot.level_focus || '', personality: data.bot.personality || 'custom', personality_prompt: data.bot.personality_prompt || '' });
         const filled = data.workouts || [];
         setWorkouts(DAYS.map((_, i) => {
           const existing = filled.find((w: any) => w.day_of_week === i + 1);
@@ -67,6 +112,7 @@ export function BotSetupEdit() {
         ...botForm,
         event_focus: botForm.event_focus || null,
         level_focus: botForm.level_focus || null,
+        personality_prompt: botForm.personality_prompt || null,
       };
       if (!bot) {
         const created = await apiFetch('/api/coach/bot', { method: 'POST', body: JSON.stringify(payload) });
@@ -120,8 +166,31 @@ export function BotSetupEdit() {
 
           {/* Bot info */}
           <Card className="mb-6">
-            <h3 className="font-semibold mb-4 text-[var(--color-text-primary)]">Bot Identity</h3>
+            <div className="flex items-center gap-3 mb-4">
+              <h3 className="font-semibold text-[var(--color-text-primary)]">Bot Identity</h3>
+              {botForm.personality && botForm.personality !== 'custom' && (() => {
+                const preset = PRESET_PERSONALITIES.find(p => p.id === botForm.personality);
+                return preset ? (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: `${preset.color}22`, color: preset.color, border: `1px solid ${preset.color}44` }}>
+                    {preset.label}
+                  </span>
+                ) : null;
+              })()}
+            </div>
             <div className="flex flex-col gap-4">
+              <PersonalitySelector
+                value={botForm.personality}
+                onSelect={(id, prompt) => setBotForm(f => ({ ...f, personality: id, personality_prompt: prompt }))}
+              />
+              {botForm.personality === 'custom' && (
+                <Textarea
+                  label="Personality prompt (custom)"
+                  value={botForm.personality_prompt}
+                  onChange={e => setBotForm(f => ({ ...f, personality_prompt: e.target.value }))}
+                  rows={3}
+                  placeholder="Describe how this bot should sound and behave. e.g. 'Speak with calm authority, use military-style brevity, never sugarcoat.'"
+                />
+              )}
               <Input label="Bot name" value={botForm.name} onChange={e => setBotForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Coach Smith's Distance Training" />
               <Textarea label="Coaching philosophy" value={botForm.philosophy} onChange={e => setBotForm(f => ({ ...f, philosophy: e.target.value }))} rows={6} placeholder="Describe your coaching philosophy in detail. The AI will coach athletes in your voice using this text. Include your training principles, workout philosophy, how you approach periodization, what you believe about recovery, how you motivate athletes..." />
               <div className="grid grid-cols-2 gap-4">
@@ -163,6 +232,36 @@ export function BotSetupEdit() {
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+function PersonalitySelector({ value, onSelect }: { value: string; onSelect: (id: string, prompt: string) => void }) {
+  return (
+    <div>
+      <label className="text-sm font-medium block mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+        Coaching personality
+      </label>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {PRESET_PERSONALITIES.map(p => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => onSelect(p.id, p.prompt)}
+            className="text-left rounded-xl p-3 border transition-all"
+            style={{
+              borderColor: value === p.id ? p.color : 'var(--color-border)',
+              background: value === p.id ? `${p.color}18` : 'var(--color-bg-secondary)',
+              boxShadow: value === p.id ? `0 0 0 1px ${p.color}40` : 'none',
+            }}
+          >
+            <div className="text-xs font-semibold mb-0.5" style={{ color: value === p.id ? p.color : 'var(--color-text-primary)' }}>
+              {p.label}
+            </div>
+            <div className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{p.tagline}</div>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
