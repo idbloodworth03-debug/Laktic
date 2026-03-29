@@ -61,10 +61,10 @@ export const athleteProfileSchema = z.object({
 
 export const athleteProfileUpdateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
-  weekly_volume_miles: z.number().min(0).max(200).optional(),
-  primary_events: z.array(z.string().max(100)).max(20).optional(),
-  pr_mile: z.string().max(20).optional(),
-  pr_5k: z.string().max(20).optional(),
+  weekly_volume_miles: z.number().min(0).max(200).nullish(),
+  primary_events: z.array(z.string().max(100)).max(20).nullish(),
+  pr_mile: z.string().max(20).nullish(),
+  pr_5k: z.string().max(20).nullish(),
   username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/).optional(),
   public_sections: z.object({
     races: z.boolean(),
@@ -72,14 +72,14 @@ export const athleteProfileUpdateSchema = z.object({
     milestones: z.boolean(),
   }).optional(),
   onboarding_completed: z.boolean().optional(),
-  fitness_level: z.string().max(50).optional(),
-  primary_goal: z.string().max(100).optional(),
-  training_days_per_week: z.number().int().min(1).max(7).optional(),
-  biggest_challenge: z.string().max(100).optional(),
-  injury_notes: z.string().max(1000).optional(),
-  has_target_race: z.boolean().optional(),
-  target_race_name: z.string().max(200).optional(),
-  target_race_date: z.string().optional(),
+  fitness_level: z.string().max(50).nullish(),
+  primary_goal: z.string().max(100).nullish(),
+  training_days_per_week: z.number().int().min(1).max(7).nullish(),
+  biggest_challenge: z.string().max(100).nullish(),
+  injury_notes: z.string().max(1000).nullish(),
+  has_target_race: z.boolean().nullish(),
+  target_race_name: z.string().max(200).nullish(),
+  target_race_date: z.string().nullish(),
 });
 
 export const chatMessageSchema = z.object({
