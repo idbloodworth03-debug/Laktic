@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { Alert, Button, Input, Textarea, Select, Toggle } from '../components/ui';
+import { PersonalitySelector } from '../components/PersonalitySelector';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Workout = {
@@ -134,7 +135,7 @@ export function CoachOnboarding() {
   const [info, setInfo] = useState('');
 
   // Step 1 — Bot Identity
-  const [botForm, setBotForm] = useState({ name: '', philosophy: '', event_focus: '', level_focus: '' });
+  const [botForm, setBotForm] = useState({ name: '', philosophy: '', event_focus: '', level_focus: '', personality: 'custom', personality_prompt: '' });
   const [botSaving, setBotSaving] = useState(false);
   const [botId, setBotId] = useState<string | null>(null);
 
@@ -164,6 +165,7 @@ export function CoachOnboarding() {
         ...botForm,
         event_focus: botForm.event_focus || null,
         level_focus: botForm.level_focus || null,
+        personality_prompt: botForm.personality_prompt || null,
       };
       const created = await apiFetch('/api/coach/bot', { method: 'POST', body: JSON.stringify(payload) });
       setBotId(created.id);
@@ -285,6 +287,19 @@ export function CoachOnboarding() {
       <p className="text-sm text-[var(--muted)] mb-6">Your bot coaches every athlete in your voice. The more detail you add, the better it performs.</p>
       {renderMessages()}
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 flex flex-col gap-4 shadow-card">
+        <PersonalitySelector
+          value={botForm.personality}
+          onSelect={(id, prompt) => setBotForm(f => ({ ...f, personality: id, personality_prompt: prompt }))}
+        />
+        {botForm.personality === 'custom' && (
+          <Textarea
+            label="Personality prompt (custom)"
+            value={botForm.personality_prompt}
+            onChange={e => setBotForm(f => ({ ...f, personality_prompt: e.target.value }))}
+            rows={3}
+            placeholder="Describe how this bot should sound and behave. e.g. 'Speak with calm authority, use military-style brevity, never sugarcoat.'"
+          />
+        )}
         <Input
           label="Bot name"
           value={botForm.name}
