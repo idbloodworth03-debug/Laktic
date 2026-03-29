@@ -20,7 +20,23 @@ Rules:
 function buildUserPrompt(params: any): string {
   const { bot, botWorkouts, athleteProfile, raceCalendar, coachKnowledge, startDate, numWeeks } = params;
   const todayDate = new Date().toISOString().split('T')[0];
-  return `COACH PHILOSOPHY:\n${bot.philosophy}\n\nCOACH KNOWLEDGE:\n${coachKnowledge}\n\nCOACH WEEKLY TEMPLATE:\n${JSON.stringify(botWorkouts)}\n\nATHLETE PROFILE:\nName: ${athleteProfile.name} | Mileage: ${athleteProfile.weekly_volume_miles}/wk | Events: ${(athleteProfile.primary_events || []).join(', ')} | PR Mile: ${athleteProfile.pr_mile || 'N/A'} | PR 5K: ${athleteProfile.pr_5k || 'N/A'}\n\nRACE CALENDAR:\n${JSON.stringify(raceCalendar)}\n\nTODAY: ${todayDate} | GENERATE FROM: ${startDate} | TOTAL WEEKS: ${numWeeks}\n\nGenerate the full season plan now. Return ONLY valid JSON array.`;
+
+  const ap = athleteProfile;
+  const profileLines = [
+    `Name: ${ap.name}`,
+    `Events: ${(ap.primary_events || []).join(', ') || 'Not specified'}`,
+    `Fitness Level: ${ap.fitness_level || 'Not specified'}`,
+    `Primary Goal: ${ap.primary_goal || 'Not specified'}`,
+    `Training Days/Week: ${ap.training_days_per_week ?? ap.weekly_volume_miles ? `${ap.training_days_per_week} days` : 'Not specified'}`,
+    `Biggest Challenge: ${ap.biggest_challenge || 'Not specified'}`,
+    ap.injury_notes ? `Injuries/Limitations: ${ap.injury_notes}` : null,
+    ap.has_target_race && ap.target_race_name ? `Target Race: ${ap.target_race_name}${ap.target_race_date ? ` on ${ap.target_race_date}` : ''}` : null,
+    ap.pr_mile ? `PR Mile: ${ap.pr_mile}` : null,
+    ap.pr_5k ? `PR 5K: ${ap.pr_5k}` : null,
+    ap.weekly_volume_miles ? `Current Weekly Mileage: ${ap.weekly_volume_miles} mi/wk` : null,
+  ].filter(Boolean).join('\n');
+
+  return `COACH PHILOSOPHY:\n${bot.philosophy}\n\nCOACH KNOWLEDGE:\n${coachKnowledge}\n\nCOACH WEEKLY TEMPLATE:\n${JSON.stringify(botWorkouts)}\n\nATHLETE PROFILE:\n${profileLines}\n\nIMPORTANT: Tailor the plan specifically to this athlete's fitness level, available training days, goal, and any injuries. A beginner training 3 days/week with knee issues needs a fundamentally different plan than an elite athlete training 6 days/week.\n\nRACE CALENDAR:\n${JSON.stringify(raceCalendar)}\n\nTODAY: ${todayDate} | GENERATE FROM: ${startDate} | TOTAL WEEKS: ${numWeeks}\n\nGenerate the full season plan now. Return ONLY valid JSON array.`;
 }
 
 function fallbackPlan(botWorkouts: any[], startDate: string, numWeeks: number): any[] {

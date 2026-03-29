@@ -2,13 +2,24 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
-import { Button, Input } from '../components/ui';
+import { Button, Input, Textarea } from '../components/ui';
 
 const EVENT_OPTIONS = ['800m', '1500m', 'Mile', '3000m', '5K', '10K', 'Half Marathon', 'Marathon', 'Steeplechase', 'Cross Country'];
 
+const FITNESS_LEVELS = [
+  { id: 'beginner', label: 'Beginner', desc: 'Just getting started or returning after a long break' },
+  { id: 'intermediate', label: 'Intermediate', desc: 'Training consistently, looking to improve' },
+  { id: 'competitive', label: 'Competitive', desc: 'Racing regularly, chasing personal bests' },
+  { id: 'elite', label: 'Elite', desc: 'High performance, serious about podiums' },
+];
+
+const GOAL_OPTIONS = ['Get Faster', 'Build Endurance', 'Lose Weight', 'Stay Healthy', 'Compete Seriously'];
+
+const CHALLENGE_OPTIONS = ['Consistency', 'Recovery', 'Speed', 'Endurance', 'Motivation'];
+
 const STEPS = [
   { n: 1, label: 'Connect Strava' },
-  { n: 2, label: 'Preferences' },
+  { n: 2, label: 'Sport Profile' },
   { n: 3, label: 'Join Team' },
 ];
 
@@ -77,6 +88,141 @@ function Shell({ step, children, onBack, onNext, nextLabel = 'Continue →', nex
   );
 }
 
+// ── Chip selector (multi or single) ──────────────────────────────────────────
+function ChipGroup({ options, selected, onToggle, multi = false }: {
+  options: string[]; selected: string | string[];
+  onToggle: (val: string) => void; multi?: boolean;
+}) {
+  const isSelected = (v: string) => multi
+    ? (selected as string[]).includes(v)
+    : selected === v;
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map(opt => (
+        <button
+          key={opt}
+          type="button"
+          onClick={() => onToggle(opt)}
+          className="px-3 py-1.5 rounded-full text-sm font-medium border transition-all"
+          style={{
+            borderColor: isSelected(opt) ? 'var(--color-accent)' : 'var(--border)',
+            background: isSelected(opt) ? 'rgba(0,229,160,0.12)' : 'transparent',
+            color: isSelected(opt) ? 'var(--color-accent)' : 'var(--muted)',
+          }}
+        >
+          {opt}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Day pill selector ─────────────────────────────────────────────────────────
+function DayPills({ value, onChange }: { value: number | null; onChange: (v: number) => void }) {
+  return (
+    <div className="flex gap-2">
+      {[2, 3, 4, 5, 6].map(n => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onChange(n)}
+          className="w-11 h-11 rounded-xl text-sm font-bold border transition-all"
+          style={{
+            borderColor: value === n ? 'var(--color-accent)' : 'var(--border)',
+            background: value === n ? 'rgba(0,229,160,0.12)' : 'var(--surface)',
+            color: value === n ? 'var(--color-accent)' : 'var(--muted)',
+            boxShadow: value === n ? '0 0 0 1px rgba(0,229,160,0.3)' : 'none',
+          }}
+        >
+          {n}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Fitness level card grid ───────────────────────────────────────────────────
+function FitnessCards({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {FITNESS_LEVELS.map(level => {
+        const active = value === level.id;
+        return (
+          <button
+            key={level.id}
+            type="button"
+            onClick={() => onChange(level.id)}
+            className="text-left p-4 rounded-xl border transition-all"
+            style={{
+              borderColor: active ? 'var(--color-accent)' : 'var(--border)',
+              background: active ? 'rgba(0,229,160,0.08)' : 'var(--surface)',
+              boxShadow: active ? '0 0 0 1px rgba(0,229,160,0.25)' : 'none',
+            }}
+          >
+            <div className="text-sm font-semibold mb-1" style={{ color: active ? 'var(--color-accent)' : 'var(--color-text-primary, #fff)' }}>
+              {level.label}
+            </div>
+            <div className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+              {level.desc}
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Target race option cards ──────────────────────────────────────────────────
+function RaceOptionCards({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const opts = [
+    { id: 'yes', label: 'Yes — I have a specific race', desc: 'Tell us the details for a fully personalized plan' },
+    { id: 'no', label: 'No — just building fitness', desc: 'We\'ll build a progressive base fitness plan' },
+    { id: 'notsure', label: 'Not sure yet', desc: 'Start with a general plan and add a race later' },
+  ];
+  return (
+    <div className="flex flex-col gap-2">
+      {opts.map(opt => {
+        const active = value === opt.id;
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => onChange(opt.id)}
+            className="text-left px-4 py-3 rounded-xl border transition-all flex items-center gap-3"
+            style={{
+              borderColor: active ? 'var(--color-accent)' : 'var(--border)',
+              background: active ? 'rgba(0,229,160,0.08)' : 'var(--surface)',
+              boxShadow: active ? '0 0 0 1px rgba(0,229,160,0.25)' : 'none',
+            }}
+          >
+            <div
+              className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0"
+              style={{ borderColor: active ? 'var(--color-accent)' : 'var(--border)' }}
+            >
+              {active && <div className="w-2 h-2 rounded-full" style={{ background: 'var(--color-accent)' }} />}
+            </div>
+            <div>
+              <div className="text-sm font-medium" style={{ color: active ? 'var(--color-accent)' : 'var(--color-text-primary, #fff)' }}>{opt.label}</div>
+              <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{opt.desc}</div>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Section label ─────────────────────────────────────────────────────────────
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--muted)' }}>
+      {children}
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 export function AthleteOnboarding() {
   const nav = useNavigate();
   const { profile, session, setAuth } = useAuthStore();
@@ -87,9 +233,16 @@ export function AthleteOnboarding() {
   const [connectingStrava, setConnectingStrava] = useState(false);
   const [stravaConnected, setStravaConnected] = useState(false);
 
-  // Step 2 — Sport preferences
+  // Step 2 — Sport Profile
   const [events, setEvents] = useState<string[]>(profile?.primary_events || []);
-  const [weeklyMiles, setWeeklyMiles] = useState(String(profile?.weekly_volume_miles ?? 20));
+  const [fitnessLevel, setFitnessLevel] = useState('');
+  const [primaryGoal, setPrimaryGoal] = useState('');
+  const [trainingDays, setTrainingDays] = useState<number | null>(null);
+  const [biggestChallenge, setBiggestChallenge] = useState('');
+  const [injuryNotes, setInjuryNotes] = useState('');
+  const [targetRaceOption, setTargetRaceOption] = useState('');
+  const [targetRaceName, setTargetRaceName] = useState('');
+  const [targetRaceDate, setTargetRaceDate] = useState('');
   const [savingPrefs, setSavingPrefs] = useState(false);
 
   // Step 3 — Join team
@@ -125,20 +278,27 @@ export function AthleteOnboarding() {
     }
   };
 
-  // ── Step 2: Save preferences ───────────────────────────────────────────────
-  const savePreferences = async () => {
+  // ── Step 2: Save profile ───────────────────────────────────────────────────
+  const saveProfile = async () => {
     setSavingPrefs(true); setError('');
     try {
       const updated = await apiFetch('/api/athlete/profile', {
         method: 'PATCH',
         body: JSON.stringify({
           primary_events: events,
-          weekly_volume_miles: parseFloat(weeklyMiles) || 20,
+          fitness_level: fitnessLevel || null,
+          primary_goal: primaryGoal || null,
+          training_days_per_week: trainingDays ?? null,
+          biggest_challenge: biggestChallenge || null,
+          injury_notes: injuryNotes.trim() || null,
+          has_target_race: targetRaceOption === 'yes',
+          target_race_name: targetRaceOption === 'yes' ? (targetRaceName.trim() || null) : null,
+          target_race_date: targetRaceOption === 'yes' ? (targetRaceDate || null) : null,
         }),
       });
       setAuth(session, 'athlete', { ...profile, ...updated });
       next();
-    } catch (e: any) { setError(e.message || 'Failed to save preferences'); }
+    } catch (e: any) { setError(e.message || 'Failed to save profile'); }
     finally { setSavingPrefs(false); }
   };
 
@@ -167,11 +327,7 @@ export function AthleteOnboarding() {
   // ── Renders ────────────────────────────────────────────────────────────────
 
   if (step === 1) return (
-    <Shell
-      step={1}
-      onNext={next}
-      onSkip={next}
-    >
+    <Shell step={1} onNext={next} onSkip={next}>
       <h2 className="font-display text-xl font-bold mb-1">Connect Strava</h2>
       <p className="text-sm text-[var(--muted)] mb-6">
         Connecting Strava lets your coaching bot see your actual runs and automatically adapt your plan based on how training is going.
@@ -205,13 +361,7 @@ export function AthleteOnboarding() {
             ))}
           </div>
 
-          <Button
-            variant="primary"
-            size="lg"
-            loading={connectingStrava}
-            onClick={connectStrava}
-            className="w-full"
-          >
+          <Button variant="primary" size="lg" loading={connectingStrava} onClick={connectStrava} className="w-full">
             Connect Strava Account
           </Button>
 
@@ -227,41 +377,94 @@ export function AthleteOnboarding() {
     <Shell
       step={2}
       onBack={back}
-      onNext={savePreferences}
+      onNext={saveProfile}
       nextLoading={savingPrefs}
+      onSkip={next}
     >
       <h2 className="font-display text-xl font-bold mb-1">Your Sport Profile</h2>
       <p className="text-sm text-[var(--muted)] mb-6">
-        Confirm your events and weekly mileage. Your coaching bot uses these to calibrate every workout.
+        Help your coaching bot understand who you are. The more you share, the more personalized your plan.
       </p>
       {renderError()}
 
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 flex flex-col gap-5 shadow-card">
+      <div className="flex flex-col gap-6">
+
+        {/* Primary Events */}
         <div>
-          <label className="text-sm font-medium text-[var(--muted)] block mb-2">Primary events</label>
-          <div className="flex flex-wrap gap-2">
-            {EVENT_OPTIONS.map(e => (
-              <button
-                key={e}
-                onClick={() => setEvents(prev => prev.includes(e) ? prev.filter(x => x !== e) : [...prev, e])}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                  events.includes(e)
-                    ? 'bg-brand-600 border-brand-500 text-white'
-                    : 'border-[var(--border)] text-[var(--muted)] hover:border-brand-500'
-                }`}
-              >
-                {e}
-              </button>
-            ))}
-          </div>
+          <SectionLabel>Primary events</SectionLabel>
+          <ChipGroup
+            options={EVENT_OPTIONS}
+            selected={events}
+            multi
+            onToggle={e => setEvents(prev => prev.includes(e) ? prev.filter(x => x !== e) : [...prev, e])}
+          />
         </div>
-        <Input
-          label="Weekly training mileage"
-          type="number"
-          value={weeklyMiles}
-          onChange={e => setWeeklyMiles(e.target.value)}
-          placeholder="20"
-        />
+
+        {/* Fitness Level */}
+        <div>
+          <SectionLabel>Current fitness level</SectionLabel>
+          <FitnessCards value={fitnessLevel} onChange={setFitnessLevel} />
+        </div>
+
+        {/* Primary Goal */}
+        <div>
+          <SectionLabel>Primary goal</SectionLabel>
+          <ChipGroup
+            options={GOAL_OPTIONS}
+            selected={primaryGoal}
+            onToggle={v => setPrimaryGoal(prev => prev === v ? '' : v)}
+          />
+        </div>
+
+        {/* Training Days */}
+        <div>
+          <SectionLabel>Days per week available to train</SectionLabel>
+          <DayPills value={trainingDays} onChange={setTrainingDays} />
+        </div>
+
+        {/* Biggest Challenge */}
+        <div>
+          <SectionLabel>Biggest challenge right now</SectionLabel>
+          <ChipGroup
+            options={CHALLENGE_OPTIONS}
+            selected={biggestChallenge}
+            onToggle={v => setBiggestChallenge(prev => prev === v ? '' : v)}
+          />
+        </div>
+
+        {/* Injury Notes */}
+        <div>
+          <SectionLabel>Injuries or physical limitations? <span className="normal-case font-normal">(optional)</span></SectionLabel>
+          <Textarea
+            value={injuryNotes}
+            onChange={e => setInjuryNotes(e.target.value)}
+            rows={2}
+            placeholder="e.g. left knee tendinitis, lower back tightness — leave blank if none"
+          />
+        </div>
+
+        {/* Target Race */}
+        <div>
+          <SectionLabel>Target race or event coming up?</SectionLabel>
+          <RaceOptionCards value={targetRaceOption} onChange={setTargetRaceOption} />
+          {targetRaceOption === 'yes' && (
+            <div className="mt-3 flex flex-col gap-3 pl-1">
+              <Input
+                label="Race name"
+                value={targetRaceName}
+                onChange={e => setTargetRaceName(e.target.value)}
+                placeholder="e.g. Boston Marathon 2026"
+              />
+              <Input
+                label="Race date"
+                type="date"
+                value={targetRaceDate}
+                onChange={e => setTargetRaceDate(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+
       </div>
     </Shell>
   );

@@ -72,6 +72,14 @@ export const athleteProfileUpdateSchema = z.object({
     milestones: z.boolean(),
   }).optional(),
   onboarding_completed: z.boolean().optional(),
+  fitness_level: z.string().max(50).optional(),
+  primary_goal: z.string().max(100).optional(),
+  training_days_per_week: z.number().int().min(1).max(7).optional(),
+  biggest_challenge: z.string().max(100).optional(),
+  injury_notes: z.string().max(1000).optional(),
+  has_target_race: z.boolean().optional(),
+  target_race_name: z.string().max(200).optional(),
+  target_race_date: z.string().optional(),
 });
 
 export const chatMessageSchema = z.object({
