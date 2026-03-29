@@ -24,6 +24,12 @@ type NutritionItem = {
   why?: string;
 };
 
+type WeatherConditions = {
+  temp_f?: number;
+  wind_mph?: number;
+  description?: string;
+};
+
 type Gameplan = {
   id: string;
   race_name: string;
@@ -32,6 +38,7 @@ type Gameplan = {
   pacing_strategy: PacingStrategy;
   warmup_routine: WarmupStep[];
   nutrition_timing: NutritionItem[];
+  weather_conditions?: WeatherConditions;
   weather_adjustments?: string;
   mental_cues?: string[];
   coach_note?: string;
@@ -113,6 +120,37 @@ export function GameplanViewer() {
                   </Button>
                 )}
               </div>
+
+              {/* Weather Banner */}
+              {gameplan.weather_conditions?.temp_f !== undefined && (
+                <div
+                  className="flex items-center gap-4 px-5 py-3 rounded-xl text-sm"
+                  style={{ background: 'var(--color-bg-secondary, rgba(255,255,255,0.04))', border: '1px solid var(--color-border)' }}
+                >
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span style={{ fontSize: '1.2rem' }}>
+                      {(gameplan.weather_conditions.description ?? '').includes('rain') ? '🌧' :
+                       (gameplan.weather_conditions.description ?? '').includes('hot') ? '☀️' :
+                       (gameplan.weather_conditions.description ?? '').includes('cold') ? '🥶' :
+                       (gameplan.weather_conditions.description ?? '').includes('wind') ? '💨' : '🌤'}
+                    </span>
+                    <span className="font-bold text-[var(--color-text-primary)]">
+                      {gameplan.weather_conditions.temp_f}°F
+                    </span>
+                  </div>
+                  {gameplan.weather_conditions.wind_mph !== undefined && (
+                    <span style={{ color: 'var(--color-text-tertiary)' }}>
+                      Wind {gameplan.weather_conditions.wind_mph} mph
+                    </span>
+                  )}
+                  {gameplan.weather_conditions.description && (
+                    <span className="capitalize" style={{ color: 'var(--color-text-tertiary)' }}>
+                      · {gameplan.weather_conditions.description}
+                    </span>
+                  )}
+                  <span className="ml-auto text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Race day forecast</span>
+                </div>
+              )}
 
               {/* Pacing Strategy */}
               {gameplan.pacing_strategy && (

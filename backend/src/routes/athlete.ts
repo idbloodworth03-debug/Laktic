@@ -47,14 +47,33 @@ async function getActiveSeasonForTeam(
 }
 
 // ── Helper: resolve coach_id for the active team ──────────────────────────────
-async function getActiveTeamCoachId(activeTeamId: string | null): Promise<string | null> {
-  if (!activeTeamId) return null;
-  const { data: team } = await supabase
-    .from('teams')
-    .select('coach_id')
-    .eq('id', activeTeamId)
-    .single();
-  return team?.coach_id ?? null;
+// Falls back to most recently joined team_members row if active_team_id is unset or stale.
+async function getActiveTeamCoachId(activeTeamId: string | null, athleteId?: string): Promise<string | null> {
+  // Primary path: use the explicitly set active team
+  if (activeTeamId) {
+    const { data: team } = await supabase
+      .from('teams')
+      .select('coach_id')
+      .eq('id', activeTeamId)
+      .single();
+    if (team?.coach_id) return team.coach_id;
+  }
+
+  // Fallback: find the most recently joined active team membership
+  if (athleteId) {
+    const { data: membership } = await supabase
+      .from('team_members')
+      .select('teams!team_id(coach_id)')
+      .eq('athlete_id', athleteId)
+      .is('left_at', null)
+      .order('joined_at', { ascending: false })
+      .limit(1)
+      .single();
+    const coachId = (membership as any)?.teams?.coach_id;
+    if (coachId) return coachId;
+  }
+
+  return null;
 }
 
 // POST /api/athlete/profile
@@ -514,7 +533,7 @@ router.get(
   auth,
   requireAthlete,
   asyncHandler(async (req: AuthRequest, res) => {
-    const coachId = await getActiveTeamCoachId(req.athlete.active_team_id ?? null);
+    const coachId = await getActiveTeamCoachId(req.athlete.active_team_id ?? null, req.athlete.id);
     if (!coachId) return res.json([]);
 
     const { data: messages } = await supabase
@@ -537,7 +556,7 @@ router.post(
   asyncHandler(async (req: AuthRequest, res) => {
     const { message } = req.body;
 
-    const coachId = await getActiveTeamCoachId(req.athlete.active_team_id ?? null);
+    const coachId = await getActiveTeamCoachId(req.athlete.active_team_id ?? null, req.athlete.id);
     if (!coachId) return res.status(404).json({ error: 'No active team or coach found' });
 
     const { data, error } = await supabase

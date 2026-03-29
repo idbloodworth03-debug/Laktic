@@ -90,25 +90,47 @@ async function generateGameplanForAthlete(
     // No team — proceed without personality
   }
 
-  // Weather (optional)
-  let weatherInfo = 'Weather data unavailable';
+  // Weather (optional) — fetch real forecast, convert to imperial for US athletes
+  let weatherInfo = 'unavailable — use seasonal defaults';
+  let weatherStructured: { temp_f: number; wind_mph: number; precip_mm: number; description: string } | null = null;
+
   if (lat !== undefined && lon !== undefined) {
     try {
-      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,windspeed_10m_max,precipitation_sum&timezone=auto&forecast_days=7`;
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,windspeed_10m_max,precipitation_sum&timezone=auto&forecast_days=14`;
       const weatherRes = await fetch(weatherUrl);
       if (weatherRes.ok) {
         const weatherData: any = await weatherRes.json();
         const idx = (weatherData.daily?.time ?? []).indexOf(raceDate);
         if (idx !== -1) {
-          const tempMax = weatherData.daily.temperature_2m_max[idx];
-          const windspeed = weatherData.daily.windspeed_10m_max[idx];
-          const precip = weatherData.daily.precipitation_sum[idx];
-          weatherInfo = `High: ${tempMax}°C, Wind: ${windspeed} km/h, Precipitation: ${precip}mm`;
+          const tempC = weatherData.daily.temperature_2m_max[idx] as number;
+          const windKph = weatherData.daily.windspeed_10m_max[idx] as number;
+          const precipMm = weatherData.daily.precipitation_sum[idx] as number;
+          const tempF = Math.round(tempC * 9 / 5 + 32);
+          const windMph = Math.round(windKph * 0.621371);
+          let description = 'clear';
+          if (precipMm > 10) description = 'rainy';
+          else if (precipMm > 2) description = 'light rain possible';
+          else if (tempF > 80) description = 'hot and humid';
+          else if (tempF > 70) description = 'warm';
+          else if (tempF < 35) description = 'cold';
+          else if (windMph > 20) description = 'windy';
+          weatherStructured = { temp_f: tempF, wind_mph: windMph, precip_mm: precipMm, description };
+          weatherInfo = `${tempF}°F, Wind ${windMph}mph, Precipitation ${precipMm}mm — ${description}`;
         }
       }
     } catch {
       // Weather fetch failed — proceed without it
     }
+  } else {
+    // No coords — estimate based on month
+    const month = new Date(raceDate).getMonth();
+    const isSummer = month >= 5 && month <= 8;
+    const isWinter = month === 11 || month <= 1;
+    weatherInfo = isSummer
+      ? 'Summer conditions likely — could be warm/humid (70–90°F range). No specific forecast available.'
+      : isWinter
+        ? 'Winter conditions likely — could be cold (30–50°F range). No specific forecast available.'
+        : 'Mild seasonal conditions expected. No specific forecast available.';
   }
 
   const prompt = {
@@ -122,11 +144,24 @@ async function generateGameplanForAthlete(
     race: { name: raceName, date: raceDate, distance: distance ?? 'unknown' },
     recent_activities_last_28_days: actSummary.slice(0, 20),
     injury_risk: riskScore ?? null,
-    weather_on_race_day: weatherInfo
+    weather_on_race_day: weatherInfo,
+    weather_structured: weatherStructured,
   };
 
-  const gameplanSystemPrompt = `${personalityBlock}You are an elite running coach AI. Generate a detailed race gameplan based on the athlete data provided. Respond ONLY with valid JSON in this exact structure:`;
-  console.log('[gameplans] system prompt preview:', gameplanSystemPrompt.slice(0, 200));
+  const gameplanSystemPrompt = `${personalityBlock}You are an elite running coach AI. Generate a detailed, highly personalized race gameplan.
+
+NUTRITION RULES — Be specific with real foods. Never say "carbohydrates and protein" or "energy snack" or "stay hydrated":
+- Name actual foods: "Bagel with peanut butter and a banana", "Half a Clif bar or 3 Medjool dates", "8oz water with a pinch of salt and squeeze of lemon"
+- Scale to race distance: 5K athlete needs minimal fuel; marathon runner needs a full pre-race meal plan + mid-race gels
+- Include specific timing (e.g., "3 hours before", "30 minutes before", "at mile 13")
+
+WEATHER RULES — The athlete's weather_on_race_day field has the actual forecast (or seasonal estimate). Never tell the athlete to "check the weather":
+- If temp > 75°F: recommend starting 10-20 sec/mile slower than goal pace, carrying extra water, adjusting expectations
+- If wind > 15mph: recommend positioning behind other runners, adjusting perceived effort
+- If rain: recommend anti-chafe precautions, waterproof socks, adjusted footing
+- Give SPECIFIC pace/effort adjustments using the actual temperature number, not vague "it might be warm"
+
+Respond ONLY with valid JSON in this exact structure:`;
 
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o',
@@ -138,6 +173,7 @@ async function generateGameplanForAthlete(
   "pacing_strategy": { "first_mile": "...", "middle_miles": "...", "final_mile": "...", "explanation": "..." },
   "warmup_routine": [{ "step": "...", "duration": "...", "intensity": "..." }],
   "nutrition_timing": [{ "time_before_race": "...", "what": "...", "why": "..." }],
+  "weather_conditions": { "temp_f": 0, "wind_mph": 0, "description": "..." },
   "weather_adjustments": "...",
   "mental_cues": ["...", "..."],
   "coach_note": "..."
