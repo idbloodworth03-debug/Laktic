@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { nanoid } from 'nanoid';
 import { supabase } from '../db/supabase';
-import { auth, requireAthlete, AuthRequest } from '../middleware/auth';
+import { auth, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
 import { validate } from '../middleware/validate';
 import { z } from 'zod';
@@ -79,15 +79,35 @@ async function checkAndGrantReward(referralId: string, referredAthleteId: string
     .eq('id', referral.referrer_id);
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+async function resolveProfile(userId: string): Promise<{ profileId: string; profileType: 'athlete' | 'coach' } | null> {
+  const { data: coach } = await supabase
+    .from('coach_profiles')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (coach) return { profileId: coach.id, profileType: 'coach' };
+
+  const { data: athlete } = await supabase
+    .from('athlete_profiles')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (athlete) return { profileId: athlete.id, profileType: 'athlete' };
+
+  return null;
+}
+
 // ── Routes ────────────────────────────────────────────────────────────────────
 
 // GET /api/referrals/my — own referral dashboard data
 router.get('/my', auth, asyncHandler(async (req: AuthRequest, res) => {
-  const isCoach = !!req.coach;
-  const profileId = isCoach ? req.coach!.id : req.athlete?.id;
-  if (!profileId) return res.status(403).json({ error: 'Profile not found' });
+  const resolved = await resolveProfile(req.user!.id);
+  if (!resolved) return res.status(403).json({ error: 'Profile not found' });
+  const { profileId, profileType } = resolved;
+  const isCoach = profileType === 'coach';
 
-  const profileType = isCoach ? 'coach' : 'athlete';
   const code = await ensureReferralCode(profileId, profileType);
 
   const { data: referrals } = await supabase
@@ -223,11 +243,11 @@ router.post('/check-reward/:athleteId', asyncHandler(async (req, res) => {
 
 // POST /api/referrals/generate-code — generate/retrieve referral code
 router.post('/generate-code', auth, asyncHandler(async (req: AuthRequest, res) => {
-  const isCoach = !!req.coach;
-  const profileId = isCoach ? req.coach!.id : req.athlete?.id;
-  if (!profileId) return res.status(403).json({ error: 'Profile not found' });
+  const resolved = await resolveProfile(req.user!.id);
+  if (!resolved) return res.status(403).json({ error: 'Profile not found' });
+  const { profileId, profileType } = resolved;
 
-  const code = await ensureReferralCode(profileId, isCoach ? 'coach' : 'athlete');
+  const code = await ensureReferralCode(profileId, profileType);
   return res.json({ referral_code: code, referral_link: `${env.FRONTEND_URL}/join?ref=${code}` });
 }));
 
