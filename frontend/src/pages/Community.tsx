@@ -3,21 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { AppLayout, Button, Spinner, EmptyState, Badge, Input } from '../components/ui';
+import { AppLayout, Button, Spinner, Input } from '../components/ui';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const CHANNELS = ['all', 'track', 'xc', 'triathlon', 'road', 'swimming', 'general'] as const;
 type Channel = typeof CHANNELS[number];
 
-const POST_TYPE_LABEL: Record<string, string> = {
-  activity: 'activity', race_result: 'race', milestone: 'milestone', manual: 'post',
-};
-const POST_TYPE_COLOR: Record<string, 'blue' | 'green' | 'amber' | 'gray'> = {
-  activity: 'blue', race_result: 'green', milestone: 'amber', manual: 'gray',
-};
-
 const METRIC_LABELS: Record<string, string> = {
   miles: 'miles', workouts: 'workouts', hours: 'hours', elevation_ft: 'ft elevation',
+};
+
+const POST_TYPE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  activity:    { label: 'Activity',    color: '#60A5FA', bg: 'rgba(96,165,250,0.12)' },
+  race_result: { label: 'Race Result', color: '#FCD34D', bg: 'rgba(252,211,77,0.12)' },
+  milestone:   { label: 'Milestone',   color: '#C084FC', bg: 'rgba(192,132,252,0.12)' },
+  manual:      { label: 'Post',        color: '#9CA3AF', bg: 'rgba(156,163,175,0.10)' },
 };
 
 function timeAgo(dateStr: string): string {
@@ -30,7 +30,7 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-// ── Upload image to Supabase Storage ──────────────────────────────────────────
+// ── Supabase image upload ──────────────────────────────────────────────────────
 async function uploadCommunityImage(file: File): Promise<string | null> {
   const ext = file.name.split('.').pop() ?? 'jpg';
   const path = `community/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -42,117 +42,208 @@ async function uploadCommunityImage(file: File): Promise<string | null> {
   return data.publicUrl;
 }
 
+// ── Icons ─────────────────────────────────────────────────────────────────────
+function HeartIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24"
+      fill={filled ? 'currentColor' : 'none'}
+      stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+    >
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
+  );
+}
+
+function CommentIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+    >
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+    >
+      <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+    </svg>
+  );
+}
+
+// ── Avatar ────────────────────────────────────────────────────────────────────
+function Avatar({ name, size = 40 }: { name: string; size?: number }) {
+  const initial = (name || 'A').charAt(0).toUpperCase();
+  return (
+    <div
+      className="shrink-0 flex items-center justify-center font-bold select-none"
+      style={{
+        width: size, height: size, borderRadius: '50%',
+        background: 'rgba(0,229,160,0.15)',
+        border: '1px solid rgba(0,229,160,0.25)',
+        color: '#00E5A0',
+        fontSize: size <= 32 ? 11 : size <= 40 ? 14 : 16,
+      }}
+    >
+      {initial}
+    </div>
+  );
+}
+
 // ── Post Card ─────────────────────────────────────────────────────────────────
-function PostCard({ post, onKudo }: { post: any; onKudo: (id: string) => void }) {
+function PostCard({ post, onKudo, canKudo }: { post: any; onKudo: (id: string) => void; canKudo: boolean }) {
   const name: string = post.athlete_profiles?.name ?? 'Athlete';
-  const initial = name.charAt(0).toUpperCase();
-  const typeColor = POST_TYPE_COLOR[post.feed_type] ?? 'gray';
-  const typeLabel = POST_TYPE_LABEL[post.feed_type] ?? 'post';
+  const cfg = POST_TYPE_CONFIG[post.feed_type] ?? POST_TYPE_CONFIG.manual;
+  const [hovered, setHovered] = useState(false);
 
   return (
     <article
-      className="transition-all duration-150 fade-up"
+      className="transition-all duration-150"
       style={{
-        background: 'var(--color-bg-secondary)',
-        border: '1px solid var(--color-border)',
+        background: '#111111',
+        border: `1px solid ${hovered ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.06)'}`,
         borderRadius: 16,
         overflow: 'hidden',
       }}
-      onMouseEnter={e => ((e.currentTarget as HTMLElement).style.borderColor = 'var(--color-border-light)')}
-      onMouseLeave={e => ((e.currentTarget as HTMLElement).style.borderColor = 'var(--color-border)')}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
-      <div className="p-4">
+      <div className="p-5">
         {/* Header */}
         <div className="flex items-start gap-3 mb-3">
-          {/* Avatar */}
-          <div
-            className="shrink-0 flex items-center justify-center text-sm font-bold"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: '50%',
-              background: 'var(--color-accent-dim)',
-              border: '1px solid rgba(0,229,160,0.2)',
-              color: 'var(--color-accent)',
-            }}
-          >
-            {initial}
-          </div>
-
-          {/* Meta */}
+          <Avatar name={name} size={40} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>{name}</span>
-              <Badge label={typeLabel} color={typeColor} />
+              <span className="font-bold text-sm" style={{ color: '#FFFFFF' }}>{name}</span>
               {post.sport_channel && (
-                <span className="text-xs capitalize" style={{ color: 'var(--color-text-secondary)' }}>{post.sport_channel}</span>
-              )}
-              {post.scope === 'public' && (
                 <span
-                  className="text-[10px]"
-                  style={{
-                    border: '1px solid var(--color-border)',
-                    borderRadius: 9999,
-                    padding: '1px 6px',
-                    color: 'var(--color-text-tertiary)',
-                  }}
+                  className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(0,229,160,0.12)', color: '#00E5A0' }}
                 >
-                  public
+                  {post.sport_channel}
                 </span>
               )}
             </div>
-            <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>{timeAgo(post.created_at)}</div>
+            <div className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>{timeAgo(post.created_at)}</div>
           </div>
-
-          {/* Timestamp right-aligned */}
-          <span className="text-xs shrink-0 hidden sm:block" style={{ color: 'var(--color-text-tertiary)' }}>
-            {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          {/* Post type badge — top right */}
+          <span
+            className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
+            style={{ background: cfg.bg, color: cfg.color }}
+          >
+            {cfg.label}
           </span>
         </div>
 
         {/* Body */}
-        <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--color-text-secondary)' }}>{post.body}</p>
+        <p className="leading-relaxed mb-3" style={{ color: 'rgba(255,255,255,0.82)', fontSize: 15 }}>
+          {post.body}
+        </p>
 
         {/* Image */}
         {post.image_url && (
-          <div
-            className="mb-3 overflow-hidden"
-            style={{ borderRadius: 12, border: '1px solid var(--color-border)' }}
-          >
+          <div className="mb-3 overflow-hidden" style={{ borderRadius: 12, maxHeight: 400 }}>
             <img
               src={post.image_url}
-              alt="Post image"
-              className="w-full max-h-80 object-cover"
+              alt="Post"
+              className="w-full object-cover"
+              style={{ maxHeight: 400 }}
               loading="lazy"
             />
           </div>
         )}
       </div>
 
-      {/* Reaction bar */}
+      {/* Action bar */}
       <div
-        className="px-4 py-2.5 flex items-center gap-1"
-        style={{ borderTop: '1px solid rgba(42,42,42,0.5)' }}
+        className="px-5 py-3 flex items-center gap-0.5"
+        style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
       >
-        <button
-          onClick={() => onKudo(post.id)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150"
-          style={post.i_kudoed ? {
-            background: 'var(--color-accent-dim)',
-            border: '1px solid rgba(0,229,160,0.3)',
-            color: 'var(--color-accent)',
-          } : {
-            background: 'transparent',
-            border: '1px solid transparent',
-            color: 'var(--color-text-secondary)',
-          }}
+        {/* Kudo */}
+        <ActionBtn
+          active={post.i_kudoed}
+          onClick={() => canKudo && onKudo(post.id)}
+          disabled={!canKudo}
         >
-          {post.kudo_count > 0
-            ? `${post.kudo_count} ${post.kudo_count === 1 ? 'kudo' : 'kudos'}`
-            : 'Kudo'}
-        </button>
+          <HeartIcon filled={post.i_kudoed} />
+          {post.kudo_count > 0 && <span>{post.kudo_count}</span>}
+        </ActionBtn>
+
+        {/* Comment */}
+        <ActionBtn>
+          <CommentIcon />
+        </ActionBtn>
+
+        {/* Share — pushed right */}
+        <div className="ml-auto">
+          <ActionBtn>
+            <ShareIcon />
+          </ActionBtn>
+        </div>
       </div>
     </article>
+  );
+}
+
+function ActionBtn({
+  children, onClick, active, disabled,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  active?: boolean;
+  disabled?: boolean;
+}) {
+  const [hov, setHov] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150"
+      style={{
+        color: active ? '#00E5A0' : hov ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.38)',
+        background: active ? 'rgba(0,229,160,0.10)' : 'transparent',
+        border: 'none',
+        cursor: disabled ? 'default' : 'pointer',
+      }}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ── Composer Bar ──────────────────────────────────────────────────────────────
+function ComposerBar({ name, onClick }: { name: string; onClick: () => void }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <div
+      className="flex items-center gap-3 px-4 py-3 mb-4 cursor-pointer transition-all duration-150"
+      style={{
+        background: '#111111',
+        border: `1px solid ${hov ? 'rgba(0,229,160,0.30)' : 'rgba(255,255,255,0.06)'}`,
+        borderRadius: 16,
+      }}
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+    >
+      <Avatar name={name || 'A'} size={36} />
+      <span className="text-sm flex-1" style={{ color: 'rgba(255,255,255,0.28)' }}>
+        What's on your mind?
+      </span>
+      <span
+        className="text-xs font-semibold px-3 py-1.5 rounded-full shrink-0"
+        style={{ background: 'rgba(0,229,160,0.12)', color: '#00E5A0', border: '1px solid rgba(0,229,160,0.20)' }}
+      >
+        Post
+      </span>
+    </div>
   );
 }
 
@@ -205,8 +296,7 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
 
   const submit = async () => {
     if (!body.trim()) return;
-    setPosting(true);
-    setError('');
+    setPosting(true); setError('');
     try {
       let imageUrl: string | undefined;
       if (imageFile) {
@@ -218,8 +308,7 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
       const post = await apiFetch('/api/community/posts', {
         method: 'POST',
         body: JSON.stringify({
-          body: body.trim(),
-          scope,
+          body: body.trim(), scope,
           sport_channel: channel || undefined,
           ...(imageUrl && { image_url: imageUrl }),
         }),
@@ -229,88 +318,66 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
     } catch (e: any) {
       setError(e.message || 'Failed to post');
     } finally {
-      setPosting(false);
-      setUploading(false);
+      setPosting(false); setUploading(false);
     }
   };
 
   const CAPTION_STYLES = ['Short', 'Hype', 'Reflective'] as const;
   const captionValues = captions ? [captions.short, captions.hype, captions.reflective] : [];
 
-  const pillBase: React.CSSProperties = {
-    borderRadius: 9999,
-    fontSize: 12,
-    fontWeight: 500,
-    border: '1px solid var(--color-border)',
-    padding: '4px 12px',
-    cursor: 'pointer',
-    transition: 'all 0.15s',
-  };
-  const pillActive: React.CSSProperties = {
-    ...pillBase,
-    background: 'var(--color-accent)',
-    borderColor: 'var(--color-accent)',
-    color: '#000',
-  };
-  const pillInactive: React.CSSProperties = {
-    ...pillBase,
-    background: 'transparent',
-    color: 'var(--color-text-secondary)',
-  };
+  const pill = (active: boolean): React.CSSProperties => ({
+    borderRadius: 9999, fontSize: 12, fontWeight: 500,
+    padding: '4px 12px', cursor: 'pointer', transition: 'all 0.15s', border: 'none',
+    ...(active
+      ? { background: '#00E5A0', color: '#000' }
+      : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }
+    ),
+  });
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-lg fade-up overflow-hidden"
+        className="relative w-full max-w-lg overflow-hidden"
         style={{
-          background: 'var(--color-bg-secondary)',
-          border: '1px solid var(--color-border-light)',
+          background: '#161616',
+          border: '1px solid rgba(255,255,255,0.10)',
           borderRadius: 20,
-          boxShadow: '0 25px 60px rgba(0,0,0,0.7)',
+          boxShadow: '0 32px 80px rgba(0,0,0,0.85)',
         }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div
-          className="flex items-center justify-between px-5 py-4"
-          style={{ borderBottom: '1px solid var(--color-border)' }}
-        >
-          <h2 className="font-semibold text-base" style={{ color: 'var(--color-text-primary)' }}>Share with the Community</h2>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <h2 className="font-semibold text-base" style={{ color: '#FFFFFF' }}>Share with the Community</h2>
           <button
             onClick={onClose}
             className="w-7 h-7 flex items-center justify-center text-lg transition-all duration-150"
-            style={{ borderRadius: '50%', color: 'var(--color-text-secondary)' }}
-          >
-            ×
-          </button>
+            style={{ borderRadius: '50%', color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer' }}
+          >×</button>
         </div>
 
         <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
-          {/* AI Caption chips */}
+          {/* AI caption chips */}
           {captions && (
             <div className="space-y-2">
-              <p className="text-xs font-medium" style={{ color: 'var(--color-text-tertiary)' }}>AI suggestions — tap to use:</p>
+              <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.35)' }}>AI suggestions — tap to use:</p>
               <div className="flex flex-col gap-1.5">
                 {captionValues.map((cap, i) => (
                   <button
                     key={i}
                     onClick={() => setBody(cap)}
                     className="text-left text-xs px-3 py-2.5 rounded-xl transition-all leading-relaxed"
-                    style={body === cap ? {
-                      border: '1px solid var(--color-accent)',
-                      background: 'var(--color-accent-dim)',
-                      color: 'var(--color-accent)',
-                    } : {
-                      border: '1px solid var(--color-border)',
-                      background: 'transparent',
-                      color: 'var(--color-text-secondary)',
+                    style={{
+                      border: body === cap ? '1px solid #00E5A0' : '1px solid rgba(255,255,255,0.08)',
+                      background: body === cap ? 'rgba(0,229,160,0.08)' : 'transparent',
+                      color: body === cap ? '#00E5A0' : 'rgba(255,255,255,0.6)',
+                      cursor: 'pointer',
                     }}
                   >
-                    <span className="block mb-0.5 text-[10px] font-semibold uppercase tracking-wide opacity-60">{CAPTION_STYLES[i]}</span>
+                    <span className="block mb-0.5 text-[10px] font-semibold uppercase tracking-wide opacity-60">
+                      {CAPTION_STYLES[i]}
+                    </span>
                     {cap}
                   </button>
                 ))}
@@ -318,28 +385,27 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
             </div>
           )}
 
-          {/* Text input */}
+          {/* Textarea */}
           <div>
             <textarea
               value={body}
               onChange={e => setBody(e.target.value)}
-              placeholder="Share a run, a win, or some motivation…"
-              rows={3}
+              placeholder="Share your training, race results, or a win…"
+              rows={4}
               maxLength={500}
               autoFocus
               className="w-full text-sm resize-none outline-none transition-all duration-150"
               style={{
-                background: 'var(--color-bg-tertiary)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 12,
-                padding: '12px 14px',
-                color: 'var(--color-text-primary)',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 12, padding: '12px 14px',
+                color: '#FFFFFF',
               }}
-              onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'var(--color-accent)'; }}
-              onBlur={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'var(--color-border)'; }}
+              onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = '#00E5A0'; }}
+              onBlur={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(255,255,255,0.08)'; }}
             />
             <div className="flex items-center justify-between mt-1">
-              <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{body.length}/500</span>
+              <span className="text-xs" style={{ color: 'rgba(255,255,255,0.28)' }}>{body.length}/500</span>
               {captionError && <span className="text-xs text-red-400">{captionError}</span>}
             </div>
           </div>
@@ -348,51 +414,40 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
           <div>
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImagePick} />
             {imagePreview ? (
-              <div className="relative overflow-hidden" style={{ borderRadius: 12, border: '1px solid var(--color-border)' }}>
+              <div className="relative overflow-hidden" style={{ borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)' }}>
                 <img src={imagePreview} alt="Preview" className="w-full max-h-48 object-cover" />
                 <button
                   onClick={removeImage}
-                  className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center text-white text-sm transition-all"
-                  style={{ background: 'rgba(0,0,0,0.6)', borderRadius: '50%' }}
-                >
-                  ×
-                </button>
+                  className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center text-white text-sm"
+                  style={{ background: 'rgba(0,0,0,0.7)', borderRadius: '50%', border: 'none', cursor: 'pointer' }}
+                >×</button>
               </div>
             ) : (
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="w-full py-3 text-xs flex items-center justify-center gap-2 transition-all duration-150"
-                style={{
-                  border: '1px dashed var(--color-border)',
-                  borderRadius: 12,
-                  color: 'var(--color-text-tertiary)',
-                  background: 'transparent',
-                }}
+                style={{ border: '1px dashed rgba(255,255,255,0.12)', borderRadius: 12, color: 'rgba(255,255,255,0.35)', background: 'transparent', cursor: 'pointer' }}
                 onMouseEnter={e => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-accent)';
-                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-accent)';
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = '#00E5A0';
+                  (e.currentTarget as HTMLButtonElement).style.color = '#00E5A0';
                 }}
                 onMouseLeave={e => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-border)';
-                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-tertiary)';
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.12)';
+                  (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.35)';
                 }}
               >
-                Add photo (optional · max 5 MB)
+                📷 Add photo (optional · max 5 MB)
               </button>
             )}
           </div>
 
           {/* Channel selector */}
           <div>
-            <label className="text-xs font-medium block mb-2" style={{ color: 'var(--color-text-secondary)' }}>Sport channel</label>
+            <label className="text-xs font-medium block mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>Sport channel</label>
             <div className="flex flex-wrap gap-1.5">
               {(['track', 'xc', 'triathlon', 'road', 'swimming', 'general'] as const).map(ch => (
-                <button
-                  key={ch}
-                  onClick={() => setChannel(prev => prev === ch ? '' : ch)}
-                  style={channel === ch ? pillActive : pillInactive}
-                  className="capitalize"
-                >
+                <button key={ch} onClick={() => setChannel(prev => prev === ch ? '' : ch)}
+                  className="capitalize" style={pill(channel === ch)}>
                   {ch}
                 </button>
               ))}
@@ -401,13 +456,9 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
 
           {/* Scope */}
           <div className="flex items-center gap-3">
-            <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Visible to:</span>
+            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>Visible to:</span>
             {(['public', 'team'] as const).map(s => (
-              <button
-                key={s}
-                onClick={() => setScope(s)}
-                style={scope === s ? pillActive : pillInactive}
-              >
+              <button key={s} onClick={() => setScope(s)} style={pill(scope === s)}>
                 {s === 'public' ? 'Everyone' : 'Team only'}
               </button>
             ))}
@@ -415,17 +466,18 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
 
           {error && <p className="text-xs text-red-400">{error}</p>}
 
-          {/* Footer actions */}
+          {/* Footer */}
           <div className="flex items-center justify-between gap-3 pt-1">
             <button
               onClick={generateCaptions}
               disabled={generatingCaptions}
               className="flex items-center gap-1.5 text-xs transition-colors disabled:opacity-40"
-              style={{ color: 'var(--color-accent)', background: 'none', border: 'none', cursor: 'pointer' }}
+              style={{ color: '#00E5A0', background: 'none', border: 'none', cursor: 'pointer' }}
             >
               {generatingCaptions
                 ? <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin inline-block" /> Generating…</>
-                : 'AI Caption'}
+                : '✦ AI Caption'
+              }
             </button>
             <div className="flex gap-2">
               <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
@@ -440,7 +492,7 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
   );
 }
 
-// ── Create Challenge Modal (coach only) ───────────────────────────────────────
+// ── Create Challenge Modal ────────────────────────────────────────────────────
 function CreateChallengeModal({ onClose, onCreated }: { onClose: () => void; onCreated: (challenge: any) => void }) {
   const [title, setTitle] = useState('');
   const [targetValue, setTargetValue] = useState('');
@@ -452,12 +504,8 @@ function CreateChallengeModal({ onClose, onCreated }: { onClose: () => void; onC
   const [error, setError] = useState('');
 
   const submit = async () => {
-    if (!title.trim() || !targetValue || !endsAt) {
-      setError('Title, target, and end date are required.');
-      return;
-    }
-    setPosting(true);
-    setError('');
+    if (!title.trim() || !targetValue || !endsAt) { setError('Title, target, and end date are required.'); return; }
+    setPosting(true); setError('');
     try {
       const ch = await apiFetch('/api/challenges', {
         method: 'POST',
@@ -470,84 +518,56 @@ function CreateChallengeModal({ onClose, onCreated }: { onClose: () => void; onC
           ends_at: new Date(endsAt + 'T23:59:59').toISOString(),
         }),
       });
-      onCreated(ch);
-      onClose();
-    } catch (e: any) {
-      setError(e.message || 'Failed to create challenge');
-    } finally {
-      setPosting(false);
-    }
+      onCreated(ch); onClose();
+    } catch (e: any) { setError(e.message || 'Failed to create challenge'); }
+    finally { setPosting(false); }
   };
 
-  const handleMetricChange = (m: typeof metric) => {
-    setMetric(m);
-    setTargetUnit(METRIC_LABELS[m]);
-  };
+  const handleMetricChange = (m: typeof metric) => { setMetric(m); setTargetUnit(METRIC_LABELS[m]); };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-lg fade-up"
-        style={{
-          background: 'var(--color-bg-secondary)',
-          border: '1px solid var(--color-border-light)',
-          borderRadius: 20,
-          boxShadow: '0 25px 60px rgba(0,0,0,0.7)',
-        }}
+        className="relative w-full max-w-lg"
+        style={{ background: '#161616', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 20, boxShadow: '0 32px 80px rgba(0,0,0,0.85)' }}
         onClick={e => e.stopPropagation()}
       >
-        <div
-          className="flex items-center justify-between px-5 py-4"
-          style={{ borderBottom: '1px solid var(--color-border)' }}
-        >
-          <h2 className="font-semibold text-base" style={{ color: 'var(--color-text-primary)' }}>Create a Challenge</h2>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center text-lg" style={{ color: 'var(--color-text-secondary)' }}>×</button>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <h2 className="font-semibold text-base" style={{ color: '#FFFFFF' }}>Create a Challenge</h2>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center text-lg"
+            style={{ color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.06)', borderRadius: '50%', border: 'none', cursor: 'pointer' }}>×</button>
         </div>
 
         <div className="p-5 space-y-4">
           <Input label="Challenge title" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. October Miles Challenge" />
 
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--color-text-tertiary)' }}>Description (optional)</label>
+            <label className="text-[11px] font-semibold uppercase tracking-wider block mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Description (optional)</label>
             <textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="What's this challenge about?"
               rows={2}
               className="w-full text-sm resize-none outline-none transition-all duration-150"
-              style={{
-                background: 'var(--color-bg-tertiary)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 8,
-                padding: '8px 12px',
-                color: 'var(--color-text-primary)',
-              }}
-              onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'var(--color-accent)'; }}
-              onBlur={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'var(--color-border)'; }}
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '8px 12px', color: '#FFFFFF' }}
+              onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = '#00E5A0'; }}
+              onBlur={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(255,255,255,0.08)'; }}
             />
           </div>
 
-          {/* Metric */}
           <div>
-            <label className="text-xs font-medium block mb-2" style={{ color: 'var(--color-text-secondary)' }}>Track by</label>
+            <label className="text-xs font-medium block mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>Track by</label>
             <div className="grid grid-cols-4 gap-1.5">
               {(['miles', 'workouts', 'hours', 'elevation_ft'] as const).map(m => (
                 <button
                   key={m}
                   onClick={() => handleMetricChange(m)}
                   className="py-2 px-2 text-xs font-medium text-center capitalize transition-all duration-150"
-                  style={metric === m ? {
-                    background: 'var(--color-accent)',
-                    border: '1px solid var(--color-accent)',
-                    borderRadius: 12,
-                    color: '#000',
-                  } : {
-                    background: 'transparent',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: 12,
-                    color: 'var(--color-text-secondary)',
-                  }}
+                  style={metric === m
+                    ? { background: '#00E5A0', border: '1px solid #00E5A0', borderRadius: 12, color: '#000', cursor: 'pointer' }
+                    : { background: 'transparent', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 12, color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }
+                  }
                 >
                   {m.replace('_ft', ' ft')}
                 </button>
@@ -578,70 +598,47 @@ function CreateChallengeModal({ onClose, onCreated }: { onClose: () => void; onC
 function LeaderboardModal({ data, onClose }: { data: { challenge: any; leaderboard: any[] }; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
       <div
         className="relative w-full max-w-md p-6 max-h-[80vh] flex flex-col"
-        style={{
-          background: 'var(--color-bg-secondary)',
-          border: '1px solid var(--color-border-light)',
-          borderRadius: 20,
-          boxShadow: '0 25px 60px rgba(0,0,0,0.7)',
-        }}
+        style={{ background: '#161616', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 20, boxShadow: '0 32px 80px rgba(0,0,0,0.85)' }}
         onClick={e => e.stopPropagation()}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center text-lg"
-          style={{ color: 'var(--color-text-secondary)' }}
-        >
-          ×
-        </button>
+        <button onClick={onClose} className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center text-lg"
+          style={{ color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.06)', borderRadius: '50%', border: 'none', cursor: 'pointer' }}>×</button>
         <div className="mb-4">
-          <h3 className="font-semibold text-base" style={{ color: 'var(--color-text-primary)' }}>{data.challenge.title}</h3>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+          <h3 className="font-semibold text-base" style={{ color: '#FFFFFF' }}>{data.challenge.title}</h3>
+          <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>
             Target: {data.challenge.target_value} {data.challenge.target_unit}
           </p>
         </div>
         <div className="flex-1 overflow-y-auto space-y-2">
           {data.leaderboard.length === 0 ? (
-            <p className="text-sm text-center py-8" style={{ color: 'var(--color-text-secondary)' }}>No participants yet.</p>
+            <p className="text-sm text-center py-8" style={{ color: 'rgba(255,255,255,0.4)' }}>No participants yet.</p>
           ) : data.leaderboard.map((entry: any) => (
-            <div
-              key={entry.athlete_id}
-              className="flex items-center gap-3 py-2.5"
-              style={{ borderBottom: '1px solid rgba(42,42,42,0.4)' }}
-            >
-              <span
-                className="w-7 h-7 flex items-center justify-center text-sm font-bold shrink-0"
+            <div key={entry.athlete_id} className="flex items-center gap-3 py-2.5"
+              style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <span className="w-7 h-7 flex items-center justify-center text-sm font-bold shrink-0"
                 style={{
                   borderRadius: '50%',
-                  background: entry.rank === 1 ? 'rgba(245,158,11,0.2)'
-                    : entry.rank === 2 ? 'rgba(160,160,160,0.15)'
-                    : entry.rank === 3 ? 'rgba(180,83,9,0.2)'
-                    : 'var(--color-bg-tertiary)',
-                  color: entry.rank === 1 ? '#FCD34D'
-                    : entry.rank === 2 ? '#D1D5DB'
-                    : entry.rank === 3 ? '#D97706'
-                    : 'var(--color-text-secondary)',
-                }}
-              >
+                  background: entry.rank === 1 ? 'rgba(245,158,11,0.2)' : entry.rank === 2 ? 'rgba(160,160,160,0.15)' : entry.rank === 3 ? 'rgba(180,83,9,0.2)' : 'rgba(255,255,255,0.06)',
+                  color: entry.rank === 1 ? '#FCD34D' : entry.rank === 2 ? '#D1D5DB' : entry.rank === 3 ? '#D97706' : 'rgba(255,255,255,0.4)',
+                }}>
                 {entry.rank}
               </span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium truncate" style={{ color: 'var(--color-text-primary)' }}>{entry.name}</span>
-                  <span className="text-xs shrink-0 ml-2" style={{ color: 'var(--color-text-secondary)' }}>
+                  <span className="text-sm font-medium truncate" style={{ color: '#FFFFFF' }}>{entry.name}</span>
+                  <span className="text-xs shrink-0 ml-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
                     {Math.round(entry.progress * 10) / 10} {data.challenge.target_unit}
                   </span>
                 </div>
-                <div className="w-full h-1.5 rounded-full" style={{ background: 'var(--color-bg-tertiary)' }}>
-                  <div
-                    className="h-1.5 rounded-full transition-all"
-                    style={{ width: `${Math.min(100, entry.pct_complete)}%`, background: 'var(--color-accent)' }}
-                  />
+                <div className="w-full h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                  <div className="h-1.5 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, entry.pct_complete)}%`, background: '#00E5A0' }} />
                 </div>
               </div>
-              <span className="text-xs font-medium shrink-0 w-10 text-right" style={{ color: 'var(--color-accent)' }}>{entry.pct_complete}%</span>
+              <span className="text-xs font-medium shrink-0 w-10 text-right" style={{ color: '#00E5A0' }}>{entry.pct_complete}%</span>
             </div>
           ))}
         </div>
@@ -650,21 +647,17 @@ function LeaderboardModal({ data, onClose }: { data: { challenge: any; leaderboa
   );
 }
 
-// ── Challenges Tab ────────────────────────────────────────────────────────────
-function ChallengesTab({ isCoach }: { isCoach: boolean }) {
+// ── Challenges Sidebar ────────────────────────────────────────────────────────
+function ChallengesSidebar({ isCoach }: { isCoach: boolean }) {
   const [challenges, setChallenges] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [leaderboard, setLeaderboard] = useState<{ challenge: any; leaderboard: any[] } | null>(null);
   const [joining, setJoining] = useState<string | null>(null);
+  const [leaderboard, setLeaderboard] = useState<{ challenge: any; leaderboard: any[] } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
   const load = () => {
-    apiFetch('/api/challenges')
-      .then(setChallenges)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    apiFetch('/api/challenges').then(setChallenges).catch(() => {}).finally(() => setLoading(false));
   };
-
   useEffect(() => { load(); }, []);
 
   const join = async (id: string) => {
@@ -672,7 +665,7 @@ function ChallengesTab({ isCoach }: { isCoach: boolean }) {
     try {
       await apiFetch(`/api/challenges/${id}/join`, { method: 'POST' });
       setChallenges(prev => prev.map(c => c.id === id ? { ...c, joined: true } : c));
-    } catch (e: any) { console.error(e); }
+    } catch {}
     finally { setJoining(null); }
   };
 
@@ -680,10 +673,8 @@ function ChallengesTab({ isCoach }: { isCoach: boolean }) {
     try {
       const data = await apiFetch(`/api/challenges/${id}/leaderboard`);
       setLeaderboard(data);
-    } catch (e: any) { console.error(e); }
+    } catch {}
   };
-
-  if (loading) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
 
   return (
     <>
@@ -695,101 +686,129 @@ function ChallengesTab({ isCoach }: { isCoach: boolean }) {
         />
       )}
 
-      <div className="flex items-center justify-between mb-5">
-        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          {challenges.length} active challenge{challenges.length !== 1 ? 's' : ''}
-        </p>
-        {isCoach && (
-          <Button size="sm" variant="secondary" onClick={() => setShowCreate(true)}>
-            + Create Challenge
-          </Button>
-        )}
-      </div>
-
-      {challenges.length === 0 ? (
-        <EmptyState
-          title="No active challenges"
-          message={isCoach
-            ? 'Create a challenge for your athletes — miles, workouts, or elevation.'
-            : 'Challenges will appear here when coaches create them.'}
-          action={isCoach ? (
-            <Button size="sm" onClick={() => setShowCreate(true)}>Create Challenge</Button>
-          ) : undefined}
-        />
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {challenges.map(ch => (
-            <div
-              key={ch.id}
-              className="flex flex-col transition-all duration-150"
-              style={{
-                background: 'var(--color-bg-secondary)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 16,
-                padding: 16,
-              }}
-              onMouseEnter={e => ((e.currentTarget as HTMLElement).style.borderColor = 'var(--color-border-light)')}
-              onMouseLeave={e => ((e.currentTarget as HTMLElement).style.borderColor = 'var(--color-border)')}
+      <div
+        style={{
+          background: '#111111',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 16, padding: 20, marginBottom: 16,
+        }}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-sm" style={{ color: '#FFFFFF' }}>Active Challenges</h3>
+          {isCoach && (
+            <button
+              className="text-xs font-medium transition-all duration-150"
+              style={{ color: '#00E5A0', background: 'none', border: 'none', cursor: 'pointer' }}
+              onClick={() => setShowCreate(true)}
             >
-              <div className="flex items-start gap-3 mb-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-sm leading-snug truncate" style={{ color: 'var(--color-text-primary)' }}>{ch.title}</h3>
-                  {ch.description && (
-                    <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--color-text-secondary)' }}>{ch.description}</p>
+              + Create
+            </button>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-6"><Spinner /></div>
+        ) : challenges.length === 0 ? (
+          <p className="text-xs text-center py-4" style={{ color: 'rgba(255,255,255,0.30)' }}>
+            {isCoach ? 'Create a challenge for your team.' : 'No active challenges yet.'}
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {challenges.slice(0, 4).map(ch => (
+              <div
+                key={ch.id}
+                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: 14 }}
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold leading-snug truncate" style={{ color: '#FFFFFF' }}>{ch.title}</p>
+                    <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                      {ch.days_remaining}d left · {ch.participant_count} athlete{ch.participant_count !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  {ch.joined ? (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
+                      style={{ background: 'rgba(0,229,160,0.12)', color: '#00E5A0' }}>Joined</span>
+                  ) : (
+                    <button
+                      onClick={() => join(ch.id)}
+                      disabled={joining === ch.id}
+                      className="text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 transition-all duration-150"
+                      style={{ background: '#00E5A0', color: '#000', border: 'none', cursor: 'pointer' }}
+                    >
+                      {joining === ch.id ? '…' : 'Join'}
+                    </button>
                   )}
                 </div>
-              </div>
 
-              <div className="flex items-center gap-3 text-xs mb-3" style={{ color: 'var(--color-text-secondary)' }}>
-                <span className="flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: 'var(--color-accent)' }} />
-                  {ch.participant_count} athlete{ch.participant_count !== 1 ? 's' : ''}
-                </span>
-                <span>·</span>
-                <span>{ch.days_remaining}d left</span>
-                <span>·</span>
-                <span className="font-medium" style={{ color: 'var(--color-text-primary)' }}>{ch.target_value} {ch.target_unit}</span>
-              </div>
-
-              {ch.joined && (
-                <div className="mb-3">
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span style={{ color: 'var(--color-text-secondary)' }}>Your progress</span>
-                    <span className="font-semibold" style={{ color: 'var(--color-accent)' }}>
-                      {Math.round(ch.my_progress * 10) / 10} / {ch.target_value} {ch.target_unit}
-                    </span>
+                {/* Progress bar */}
+                {ch.joined && (
+                  <div className="mb-2">
+                    <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                      <div className="h-1.5 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(100, ch.pct_complete)}%`, background: '#00E5A0' }} />
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                        {Math.round(ch.my_progress * 10) / 10} / {ch.target_value} {ch.target_unit}
+                      </span>
+                      <span className="text-[10px] font-semibold" style={{ color: '#00E5A0' }}>{ch.pct_complete}%</span>
+                    </div>
                   </div>
-                  <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--color-bg-tertiary)' }}>
-                    <div
-                      className="h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, ch.pct_complete)}%`, background: 'var(--color-accent)' }}
-                    />
-                  </div>
-                  <div className="text-right text-[10px] mt-0.5 font-medium" style={{ color: 'var(--color-accent)' }}>{ch.pct_complete}%</div>
-                </div>
-              )}
-
-              <div className="flex gap-2 mt-auto">
-                {!ch.joined ? (
-                  <Button size="sm" loading={joining === ch.id} onClick={() => join(ch.id)}>Join</Button>
-                ) : (
-                  <span className="text-xs font-semibold flex items-center gap-1" style={{ color: '#4ADE80' }}>
-                    <span
-                      className="w-3.5 h-3.5 flex items-center justify-center text-[9px]"
-                      style={{ borderRadius: '50%', background: 'rgba(74,222,128,0.2)', border: '1px solid rgba(74,222,128,0.5)' }}
-                    >
-                      ✓
-                    </span>
-                    Joined
-                  </span>
                 )}
-                <Button size="sm" variant="ghost" onClick={() => openLeaderboard(ch.id)}>Leaderboard</Button>
+
+                <button
+                  onClick={() => openLeaderboard(ch.id)}
+                  style={{ color: 'rgba(255,255,255,0.35)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, padding: 0 }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.65)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.35)'; }}
+                >
+                  View leaderboard →
+                </button>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+
+            {challenges.length > 4 && (
+              <p className="text-xs text-center pt-1" style={{ color: '#00E5A0', cursor: 'default' }}>
+                +{challenges.length - 4} more challenges
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </>
+  );
+}
+
+// ── Top Athletes Sidebar ──────────────────────────────────────────────────────
+function TopAthletesSidebar() {
+  const [athletes, setAthletes] = useState<any[]>([]);
+
+  useEffect(() => {
+    apiFetch('/api/community/top-athletes').then(setAthletes).catch(() => {});
+  }, []);
+
+  if (athletes.length === 0) return null;
+
+  return (
+    <div style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: 20 }}>
+      <h3 className="font-semibold text-sm mb-4" style={{ color: '#FFFFFF' }}>Top Athletes This Week</h3>
+      <div className="space-y-3">
+        {athletes.slice(0, 5).map((athlete: any, i: number) => (
+          <div key={athlete.id} className="flex items-center gap-3">
+            <span className="w-5 text-xs font-bold text-center shrink-0"
+              style={{ color: i === 0 ? '#FCD34D' : i === 1 ? '#D1D5DB' : i === 2 ? '#D97706' : 'rgba(255,255,255,0.3)' }}>
+              {i + 1}
+            </span>
+            <Avatar name={athlete.name} size={30} />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold truncate" style={{ color: '#FFFFFF' }}>{athlete.name}</p>
+              <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{athlete.weekly_miles} mi this week</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -800,7 +819,6 @@ export function Community() {
   const isCoach = role === 'coach';
   const isAthlete = role === 'athlete';
 
-  const [activeTab, setActiveTab] = useState<'feed' | 'challenges'>('feed');
   const [channel, setChannel] = useState<Channel>('all');
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -819,13 +837,12 @@ export function Community() {
       setPosts(prev => reset ? data.posts : [...prev, ...data.posts]);
       setHasMore(data.hasMore);
       setPage(pg);
-    } catch (e: any) { console.error(e); }
+    } catch {}
     finally { setLoading(false); setLoadingMore(false); }
   };
 
   useEffect(() => { loadPage(1, channel, true); }, [channel]);
 
-  // Infinite scroll
   useEffect(() => {
     if (!sentinelRef.current) return;
     const observer = new IntersectionObserver(entries => {
@@ -857,111 +874,104 @@ export function Community() {
   return (
     <AppLayout role={role ?? 'athlete'} name={profile?.name} onLogout={logout}>
       <div style={{ minHeight: '100vh', background: 'var(--color-bg-primary)' }}>
-        {showCreate && isAthlete && (
+        {showCreate && (
           <CreatePostModal
             onClose={() => setShowCreate(false)}
             onPost={post => setPosts(prev => [post, ...prev])}
           />
         )}
 
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6 fade-up">
-            <div>
-              <h1 className="font-bold text-3xl" style={{ color: 'var(--color-text-primary)' }}>Community</h1>
-              <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>Where wins get celebrated.</p>
-            </div>
-            {isAthlete && (
-              <Button onClick={() => setShowCreate(true)}>
-                + Create Post
-              </Button>
-            )}
+          <div className="mb-6">
+            <h1 className="font-bold text-3xl" style={{ color: '#FFFFFF' }}>Community</h1>
+            <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>Where wins get celebrated.</p>
           </div>
 
-          {/* Tab bar */}
-          <div
-            className="flex items-center mb-6 fade-up-1"
-            style={{ borderBottom: '1px solid var(--color-border)' }}
-          >
-            {(['feed', 'challenges'] as const).map(t => (
+          {/* Channel pills — horizontally scrollable */}
+          <div className="flex gap-2 mb-6 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
+            {CHANNELS.map(ch => (
               <button
-                key={t}
-                onClick={() => setActiveTab(t)}
-                className="px-5 py-2.5 text-sm font-medium transition-all capitalize"
-                style={{
-                  borderBottom: activeTab === t ? '2px solid var(--color-accent)' : '2px solid transparent',
-                  marginBottom: -1,
-                  color: activeTab === t ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
-                  background: 'transparent',
-                }}
+                key={ch}
+                onClick={() => setChannel(ch)}
+                className="shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold capitalize transition-all duration-150"
+                style={channel === ch
+                  ? { background: '#00E5A0', color: '#000', border: '1px solid #00E5A0', cursor: 'pointer' }
+                  : { background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }
+                }
               >
-                {t}
+                {ch}
               </button>
             ))}
           </div>
 
-          {/* Challenges Tab */}
-          {activeTab === 'challenges' && (
-            <div className="fade-up-1">
-              <ChallengesTab isCoach={isCoach} />
-            </div>
-          )}
-
-          {/* Feed Tab */}
-          {activeTab === 'feed' && (
-            <>
-              {/* Channel pill bar — horizontal scrollable */}
-              <div className="flex gap-2 mb-6 overflow-x-auto pb-1 -mx-1 px-1 fade-up-1" style={{ scrollbarWidth: 'none' }}>
-                {CHANNELS.map(ch => (
-                  <button
-                    key={ch}
-                    onClick={() => setChannel(ch)}
-                    className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all duration-150"
-                    style={channel === ch ? {
-                      background: 'var(--color-accent)',
-                      border: '1px solid var(--color-accent)',
-                      color: '#000',
-                    } : {
-                      background: 'transparent',
-                      border: '1px solid var(--color-border)',
-                      color: 'var(--color-text-secondary)',
-                    }}
-                  >
-                    {ch}
-                  </button>
-                ))}
-              </div>
+          {/* Two-column grid */}
+          <div className="flex flex-col lg:flex-row gap-6 items-start">
+            {/* LEFT — Feed (65%) */}
+            <div className="flex-1 min-w-0">
+              {/* Composer bar (athletes only) */}
+              {isAthlete && (
+                <ComposerBar name={profile?.name ?? 'A'} onClick={() => setShowCreate(true)} />
+              )}
 
               {loading ? (
                 <div className="flex justify-center py-20"><Spinner size="lg" /></div>
               ) : posts.length === 0 ? (
-                <EmptyState
-                  title="Nothing here yet"
-                  message={isAthlete
-                    ? 'Be the first to share something in this channel.'
-                    : 'Athletes will post here once they join the community.'}
-                  action={isAthlete ? (
-                    <Button size="sm" onClick={() => setShowCreate(true)}>Share something</Button>
-                  ) : undefined}
-                />
+                <div
+                  style={{
+                    background: '#111111',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    borderRadius: 16,
+                    padding: '56px 24px',
+                    textAlign: 'center',
+                  }}
+                >
+                  <div className="text-4xl mb-4">🏃</div>
+                  <p className="font-semibold text-base mb-1" style={{ color: '#FFFFFF' }}>Be the first to post</p>
+                  <p className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.38)' }}>
+                    Share your training, races, and wins with the community.
+                  </p>
+                  {isAthlete && (
+                    <button
+                      onClick={() => setShowCreate(true)}
+                      className="px-7 py-2.5 text-sm font-bold rounded-full transition-all duration-150"
+                      style={{ background: '#00E5A0', color: '#000', border: 'none', cursor: 'pointer' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.85'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+                    >
+                      + Create Post
+                    </button>
+                  )}
+                </div>
               ) : (
-                <div className="space-y-4 fade-up-2">
+                <div className="space-y-4">
                   {posts.map(post => (
-                    <PostCard key={post.id} post={post} onKudo={isAthlete ? toggleKudo : () => {}} />
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      onKudo={toggleKudo}
+                      canKudo={isAthlete}
+                    />
                   ))}
                   {loadingMore && (
                     <div className="flex justify-center py-4"><Spinner /></div>
                   )}
                   <div ref={sentinelRef} className="h-4" />
                   {!hasMore && posts.length > 10 && (
-                    <p className="text-center text-xs py-4" style={{ color: 'var(--color-text-tertiary)' }}>
+                    <p className="text-center text-xs py-4" style={{ color: 'rgba(255,255,255,0.22)' }}>
                       You've seen it all
                     </p>
                   )}
                 </div>
               )}
-            </>
-          )}
+            </div>
+
+            {/* RIGHT — Sidebar (35%) */}
+            <div className="shrink-0 w-full lg:w-80 xl:w-96">
+              <ChallengesSidebar isCoach={isCoach} />
+              <TopAthletesSidebar />
+            </div>
+          </div>
         </div>
       </div>
     </AppLayout>
