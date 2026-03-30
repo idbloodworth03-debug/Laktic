@@ -139,7 +139,7 @@ function PostMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => vo
 }
 
 // ── Comment Thread ────────────────────────────────────────────────────────────
-function CommentThread({ postId }: { postId: string }) {
+function CommentThread({ postId, onCommentAdded }: { postId: string; onCommentAdded?: () => void }) {
   const [comments, setComments] = useState<any[]>([]);
   const [loading, setLoading]   = useState(true);
   const [text, setText]         = useState('');
@@ -160,6 +160,7 @@ function CommentThread({ postId }: { postId: string }) {
         method: 'POST', body: JSON.stringify({ content: trimmed }),
       });
       setComments(prev => [...prev, c]);
+      onCommentAdded?.();
       setText('');
     } catch {}
     finally { setSubmitting(false); }
@@ -246,7 +247,7 @@ function PostCard({
   const cfg = POST_TYPE_CONFIG[post.feed_type] ?? POST_TYPE_CONFIG.manual;
 
   const [showComments, setShowComments] = useState(false);
-  const [commentCount, setCommentCount] = useState<number | null>(null);
+  const [commentCount, setCommentCount] = useState<number>(post.comment_count ?? 0);
   const [editMode, setEditMode]         = useState(false);
   const [editBody, setEditBody]         = useState(post.body);
   const [saving, setSaving]             = useState(false);
@@ -389,12 +390,12 @@ function PostCard({
       <div className="px-4 pb-1 flex items-center gap-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
         <ActionBtn active={post.i_kudoed} onClick={() => onKudo(post.id)}>
           <HeartIcon filled={post.i_kudoed} />
-          {post.kudo_count > 0 && <span>{post.kudo_count}</span>}
+          <span>{post.kudo_count > 0 ? post.kudo_count : ''}</span>
         </ActionBtn>
 
         <ActionBtn onClick={() => { setShowComments(s => !s); }} active={showComments}>
           <CommentIcon />
-          {commentCount != null && commentCount > 0 && <span>{commentCount}</span>}
+          <span>{commentCount > 0 ? commentCount : ''}</span>
         </ActionBtn>
 
         <div className="ml-auto">
@@ -410,6 +411,7 @@ function PostCard({
         <CommentThread
           postId={post.id}
           key={post.id}
+          onCommentAdded={() => setCommentCount(c => c + 1)}
         />
       )}
     </article>
@@ -870,6 +872,8 @@ export function Community() {
   const [hasMore, setHasMore]       = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [pendingPosts, setPendingPosts] = useState<any[]>([]);
+  const knownPostIdsRef = useRef<Set<string>>(new Set());
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
@@ -878,6 +882,8 @@ export function Community() {
     if (reset) { setLoading(true); setPosts([]); } else setLoadingMore(true);
     try {
       const data = await apiFetch(`/api/community/feed?page=${pg}`);
+      if (reset) knownPostIdsRef.current.clear();
+      (data.posts ?? []).forEach((p: any) => knownPostIdsRef.current.add(p.id));
       setPosts(prev => reset ? data.posts : [...prev, ...data.posts]);
       setHasMore(data.hasMore);
       setPage(pg);
@@ -886,6 +892,44 @@ export function Community() {
   };
 
   useEffect(() => { loadPage(1, true); }, []);
+
+  // 15-second poll: detect new posts + silently refresh counts
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const data = await apiFetch('/api/community/feed?page=1');
+        const fresh: any[] = data.posts ?? [];
+
+        // Find posts not yet shown
+        const newOnes = fresh.filter(p => !knownPostIdsRef.current.has(p.id));
+        if (newOnes.length > 0) {
+          setPendingPosts(prev => {
+            const pendingIds = new Set(prev.map((p: any) => p.id));
+            const brandNew = newOnes.filter(p => !pendingIds.has(p.id));
+            return brandNew.length > 0 ? [...brandNew, ...prev] : prev;
+          });
+        }
+
+        // Silently update kudo/comment counts on visible posts
+        setPosts(prev => prev.map(existing => {
+          const update = fresh.find(fp => fp.id === existing.id);
+          if (!update) return existing;
+          return { ...existing, kudo_count: update.kudo_count, comment_count: update.comment_count };
+        }));
+      } catch {}
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadPending = () => {
+    const sorted = [...pendingPosts].sort(
+      (a, b) => (b.kudo_count + b.comment_count) - (a.kudo_count + a.comment_count)
+    );
+    sorted.forEach(p => knownPostIdsRef.current.add(p.id));
+    setPosts(prev => [...sorted, ...prev]);
+    setPendingPosts([]);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     if (!sentinelRef.current) return;
@@ -938,6 +982,20 @@ export function Community() {
             <div className="flex-1 min-w-0">
               <div style={{ maxWidth: 680 }}>
                 <ComposerBar name={profile?.name ?? 'A'} onClick={() => setShowCreate(true)} />
+
+                {/* New posts banner */}
+                {pendingPosts.length > 0 && (
+                  <div className="flex justify-center mb-4">
+                    <button
+                      type="button"
+                      onClick={loadPending}
+                      className="flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold shadow-lg transition-all duration-150 hover:opacity-90 active:scale-95"
+                      style={{ background: '#00E5A0', color: '#000', border: 'none', cursor: 'pointer' }}
+                    >
+                      ↑ {pendingPosts.length} new {pendingPosts.length === 1 ? 'post' : 'posts'}
+                    </button>
+                  </div>
+                )}
 
                 {loading ? (
                   <div className="flex justify-center py-20"><Spinner size="lg" /></div>

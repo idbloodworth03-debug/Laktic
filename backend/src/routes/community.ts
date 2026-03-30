@@ -4,6 +4,7 @@ import { auth, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
 import { validate } from '../middleware/validate';
 import { z } from 'zod';
+import { filterText, containsSevereProfanity } from '../utils/contentFilter';
 
 const router = Router();
 
@@ -116,6 +117,8 @@ router.post(
   asyncHandler(async (req: AuthRequest, res) => {
     const { body: postBody, scope, image_url } = req.body;
     console.log(`[community/posts] POST uid=${req.user!.id} scope=${scope}`);
+    if (containsSevereProfanity(postBody)) return res.status(400).json({ error: 'Your message contains inappropriate content' });
+    const cleanBody = filterText(postBody);
 
     const { data: athleteProfile } = await supabase
       .from('athlete_profiles').select('id, active_team_id')
@@ -132,7 +135,7 @@ router.post(
 
       const { data, error } = await supabase.from('team_feed').insert({
         team_id: teamId, athlete_id: athleteProfile.id, coach_id: null,
-        feed_type: 'manual', body: postBody, scope,
+        feed_type: 'manual', body: cleanBody, scope,
         ...(image_url && { image_url }),
       }).select(`
         id, feed_type, body, scope, image_url, created_at, team_id, athlete_id, coach_id,
@@ -154,7 +157,7 @@ router.post(
 
     const { data, error } = await supabase.from('team_feed').insert({
       team_id: teamId, athlete_id: null, coach_id: coachProfile.id,
-      feed_type: 'manual', body: postBody, scope,
+      feed_type: 'manual', body: cleanBody, scope,
       ...(image_url && { image_url }),
     }).select(`
       id, feed_type, body, scope, image_url, created_at, team_id, athlete_id, coach_id,
@@ -223,12 +226,14 @@ router.post(
     const { id: postId } = req.params;
     const { content } = req.body;
     if (!content?.trim()) return res.status(400).json({ error: 'Content required' });
+    if (containsSevereProfanity(content)) return res.status(400).json({ error: 'Your message contains inappropriate content' });
+    const cleanContent = filterText(content.trim());
 
     const { data: ap } = await supabase.from('athlete_profiles').select('id, name').eq('user_id', req.user!.id).maybeSingle();
     if (ap) {
       const { data, error } = await supabase.from('post_comments').insert({
         post_id: postId, author_id: ap.id, author_type: 'athlete',
-        author_name: ap.name, content: content.trim(),
+        author_name: ap.name, content: cleanContent,
       }).select().single();
       if (error) return res.status(400).json({ error: error.message });
       return res.json(data);
@@ -238,7 +243,7 @@ router.post(
     if (cp) {
       const { data, error } = await supabase.from('post_comments').insert({
         post_id: postId, author_id: cp.id, author_type: 'coach',
-        author_name: cp.name, content: content.trim(),
+        author_name: cp.name, content: cleanContent,
       }).select().single();
       if (error) return res.status(400).json({ error: error.message });
       return res.json(data);
@@ -280,6 +285,7 @@ router.patch(
     const { id: postId } = req.params;
     const { body: newBody } = req.body;
     if (!newBody?.trim()) return res.status(400).json({ error: 'Content required' });
+    if (containsSevereProfanity(newBody)) return res.status(400).json({ error: 'Your message contains inappropriate content' });
 
     const { data: ap } = await supabase.from('athlete_profiles').select('id').eq('user_id', req.user!.id).maybeSingle();
     const { data: cp } = !ap
@@ -293,7 +299,7 @@ router.patch(
     if (!isAuthor) return res.status(403).json({ error: 'Not your post' });
 
     const { data, error } = await supabase.from('team_feed')
-      .update({ body: newBody.trim() }).eq('id', postId).select('id, body').single();
+      .update({ body: filterText(newBody.trim()) }).eq('id', postId).select('id, body').single();
     if (error) return res.status(400).json({ error: error.message });
     return res.json(data);
   })

@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { env } from '../config/env';
 import { auth, requireAthlete, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
+import { filterText, containsSevereProfanity } from '../utils/contentFilter';
 import { validate } from '../middleware/validate';
 import { z } from 'zod';
 
@@ -33,7 +34,9 @@ router.post(
   validate(captionSchema),
   asyncHandler(async (req: AuthRequest, res) => {
     const { milestone_label, activity_summary } = req.body;
-    const context = milestone_label || activity_summary || 'a great workout';
+    const rawContext = milestone_label || activity_summary || '';
+    if (rawContext && containsSevereProfanity(rawContext)) return res.status(400).json({ error: 'Your message contains inappropriate content' });
+    const context = rawContext ? filterText(rawContext) : 'a great workout';
     const cacheKey = context.toLowerCase().trim();
 
     // Check cache

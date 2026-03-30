@@ -5,6 +5,7 @@ import { generate } from '../services/seasonPlanService';
 import { respond } from '../services/chatService';
 import { getWeekStartDate } from '../utils/dateUtils';
 import { asyncHandler } from '../utils/asyncHandler';
+import { filterText, containsSevereProfanity } from '../utils/contentFilter';
 import { validate } from '../middleware/validate';
 import { aiLimiter } from '../middleware/rateLimit';
 import { athleteProfileSchema, athleteProfileUpdateSchema, chatMessageSchema, racesSchema, directMessageSchema } from '../schemas';
@@ -436,7 +437,9 @@ router.post(
   aiLimiter,
   validate(chatMessageSchema),
   asyncHandler(async (req: AuthRequest, res) => {
-    const { message } = req.body;
+    const { message: rawMessage } = req.body;
+    if (containsSevereProfanity(rawMessage)) return res.status(400).json({ error: 'Your message contains inappropriate content' });
+    const message = filterText(rawMessage);
 
     const season = await getActiveSeasonForTeam(
       req.athlete.id,

@@ -114,6 +114,17 @@ export function AthleteDashboard() {
     ]).finally(() => setLoading(false));
   }, []);
 
+  // 30-second community preview refresh
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const d = await apiFetch('/api/community/feed?page=1&sort=relevance');
+        setFeed((d?.posts ?? []).slice(0, 3));
+      } catch {}
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const submitReadiness = async () => {
     if (readinessRating === null) return;
     setSavingReadiness(true);

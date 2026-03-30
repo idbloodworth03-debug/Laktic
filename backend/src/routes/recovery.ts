@@ -3,6 +3,7 @@ import { supabase } from '../db/supabase';
 import { auth, requireAthlete, requireCoach, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
 import { validate } from '../middleware/validate';
+import { filterText, containsSevereProfanity } from '../utils/contentFilter';
 import { z } from 'zod';
 import OpenAI from 'openai';
 import { env } from '../config/env';
@@ -102,7 +103,9 @@ router.post(
   validate(logReadinessSchema),
   asyncHandler(async (req: AuthRequest, res) => {
     const athleteId = req.athlete.id;
-    const { sleep_hours, sleep_quality, mood, soreness, energy, hrv_ms, resting_hr, notes, date } = req.body;
+    const { sleep_hours, sleep_quality, mood, soreness, energy, hrv_ms, resting_hr, notes: rawNotes, date } = req.body;
+    if (rawNotes && containsSevereProfanity(rawNotes)) return res.status(400).json({ error: 'Your message contains inappropriate content' });
+    const notes = rawNotes ? filterText(rawNotes) : rawNotes;
 
     const today = date ?? new Date().toISOString().slice(0, 10);
 
