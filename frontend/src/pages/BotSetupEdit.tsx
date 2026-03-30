@@ -64,18 +64,13 @@ export function BotSetupEdit() {
   }, []);
 
   const saveDraft = async () => {
-    // Validate required fields before hitting the API
+    // Hard-block: require name and personality before hitting the API
     if (!botForm.name.trim()) {
       setError('Please add a bot name before saving.');
       return;
     }
     if (botForm.personality === 'custom' && !botForm.personality_prompt.trim()) {
       setError('Please select a coaching personality or write a custom personality prompt before saving.');
-      return;
-    }
-    const filledWorkouts = workouts.filter(w => !!w.title).length;
-    if (filledWorkouts === 0 && knowledgeCount === 0) {
-      setError('Please add at least one workout or upload a coaching document before saving — an empty bot will generate useless plans for athletes.');
       return;
     }
 
@@ -94,6 +89,11 @@ export function BotSetupEdit() {
         await apiFetch('/api/coach/bot', { method: 'PATCH', body: JSON.stringify(payload) });
       }
       setSaved(true); setTimeout(() => setSaved(false), 2000);
+      // Warn (don't block) if bot has no content yet — publish will still require 5+ workouts + 1 doc
+      const filledWorkouts = workouts.filter(w => !!w.title).length;
+      if (filledWorkouts === 0 && knowledgeCount === 0) {
+        setError('Saved! But your bot has no workouts or knowledge documents yet — add content below and upload coaching docs before publishing.');
+      }
     } catch (e: any) { setError(e.message); }
     finally { setSaving(false); }
   };
