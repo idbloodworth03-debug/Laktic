@@ -128,7 +128,10 @@ export function AthleteDashboard() {
           notes: readinessNotes.trim() || undefined,
         }),
       });
-      setReadiness({ ...data, logged: true });
+      // Guard: only update state if the response has the expected shape
+      if (data && typeof data.score === 'number') {
+        setReadiness({ ...data, logged: true });
+      }
       setReadinessSuccess(true);
       setTimeout(() => {
         setShowReadinessModal(false);
@@ -191,7 +194,9 @@ export function AthleteDashboard() {
                   {readiness?.logged ? (
                     <>
                       <p className="text-sm font-medium text-[var(--color-text-primary)] mb-1">
-                        {readiness.recommended_intensity === 'rest' ? 'Rest day' : `${readiness.recommended_intensity.charAt(0).toUpperCase() + readiness.recommended_intensity.slice(1)} effort`}
+                        {(!readiness.recommended_intensity || readiness.recommended_intensity === 'rest')
+                          ? 'Rest day'
+                          : `${readiness.recommended_intensity.charAt(0).toUpperCase()}${readiness.recommended_intensity.slice(1)} effort`}
                       </p>
                       <p className="text-xs text-[var(--color-text-tertiary)] leading-relaxed">{readiness.explanation}</p>
                     </>

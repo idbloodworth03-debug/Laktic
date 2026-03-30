@@ -129,6 +129,7 @@ router.post(
     const factors: ReadinessFactors = { sleep_hours, sleep_quality, mood, soreness, energy, hrv_ms, resting_hr, acwr };
     const { score, penalties } = computeReadinessScore(factors);
     const label = getReadinessLabel(score);
+    const recommended_intensity = score >= 80 ? 'hard' : score >= 60 ? 'moderate' : score >= 40 ? 'easy' : 'rest';
 
     // GPT one-liner
     let explanation: string | null = null;
@@ -161,6 +162,7 @@ router.post(
         date: today,
         score,
         label,
+        recommended_intensity,
         sleep_hours: sleep_hours ?? null,
         sleep_quality: sleep_quality ?? null,
         mood: mood ?? null,
