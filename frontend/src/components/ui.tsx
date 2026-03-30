@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, FileText, MessageSquare, TrendingUp, User,
   ChevronLeft, ChevronRight, Settings, LogOut, Activity,
   Calendar, ShoppingBag, Award, BarChart2, BookOpen, Shield, RefreshCw,
-  Menu, X,
+  Menu, X, Utensils, Globe, Store,
 } from 'lucide-react';
 
 // ── Button ─────────────────────────────────────────────────────────────────────
@@ -303,47 +303,72 @@ export function DocumentCard({ id, title, document_type, created_at, onEdit, onD
 }
 
 // ── Navigation definitions ─────────────────────────────────────────────────────
-const ATHLETE_NAV = [
+type NavItem = { label: string; href: string; icon: React.ElementType };
+
+// Primary: shown in mobile bottom bar + top of sidebar
+const ATHLETE_PRIMARY: NavItem[] = [
   { label: 'Dashboard',  href: '/athlete/dashboard', icon: LayoutDashboard },
-  { label: 'Community',  href: '/community',          icon: Users },
+  { label: 'Community',  href: '/community',          icon: Globe },
   { label: 'My Plan',    href: '/athlete/plan',       icon: FileText },
   { label: 'Chat',       href: '/athlete/chat',       icon: MessageSquare },
   { label: 'Progress',   href: '/athlete/progress',   icon: TrendingUp },
+];
+
+// More: shown below a divider in sidebar + in mobile "More" drawer
+const ATHLETE_MORE: NavItem[] = [
   { label: 'Activities', href: '/athlete/activities', icon: Activity },
   { label: 'Calendar',   href: '/athlete/calendar',   icon: Calendar },
   { label: 'Analytics',  href: '/athlete/analytics',  icon: BarChart2 },
   { label: 'Gameplans',  href: '/athlete/gameplans',  icon: BookOpen },
+  { label: 'Nutrition',  href: '/athlete/nutrition',  icon: Utensils },
   { label: 'Races',      href: '/athlete/races',      icon: Award },
-  { label: 'Plans',      href: '/marketplace/plans',  icon: ShoppingBag },
+  { label: 'Plans',      href: '/athlete/plans',      icon: ShoppingBag },
   { label: 'Pro',        href: '/athlete/pro',        icon: Shield },
   { label: 'Referrals',  href: '/referrals',          icon: User },
-  { label: 'Settings',   href: '/athlete/settings',   icon: Settings },
 ];
 
-const COACH_NAV = [
-  { label: 'Dashboard',  href: '/coach/dashboard',        icon: LayoutDashboard },
-  { label: 'My Team',    href: '/coach/progress',          icon: Users },
-  { label: 'Community',  href: '/community',               icon: MessageSquare },
-  { label: 'Analytics',  href: '/coach/readiness',         icon: TrendingUp },
-  { label: 'Calendar',   href: '/coach/calendar',          icon: Calendar },
-  { label: 'Recovery',   href: '/coach/recovery',          icon: RefreshCw },
-  { label: 'Plans',      href: '/coach/plans',             icon: ShoppingBag },
-  { label: 'Cert',       href: '/coach/certification',     icon: Award },
-  { label: 'Bot Setup',  href: '/coach/bot/edit',          icon: Settings },
-  { label: 'Referrals',  href: '/referrals',               icon: User },
-  { label: 'Settings',   href: '/coach/settings',          icon: Settings },
+const COACH_PRIMARY: NavItem[] = [
+  { label: 'Dashboard',  href: '/coach/dashboard',  icon: LayoutDashboard },
+  { label: 'My Team',    href: '/coach/progress',   icon: Users },
+  { label: 'Community',  href: '/community',        icon: Globe },
+  { label: 'Calendar',   href: '/coach/calendar',   icon: Calendar },
+  { label: 'Recovery',   href: '/coach/recovery',   icon: RefreshCw },
 ];
 
-// Primary tabs shown in mobile bottom bar (max 5)
-const PRIMARY_ATHLETE = ATHLETE_NAV.slice(0, 5);
-const PRIMARY_COACH   = COACH_NAV.slice(0, 5);
+const COACH_MORE: NavItem[] = [
+  { label: 'Analytics',     href: '/coach/readiness',     icon: TrendingUp },
+  { label: 'Plans',         href: '/coach/plans',         icon: ShoppingBag },
+  { label: 'Marketplace',   href: '/marketplace/plans',   icon: Store },
+  { label: 'Bot Setup',     href: '/coach/bot/edit',      icon: Settings },
+  { label: 'Certification', href: '/coach/certification', icon: Award },
+  { label: 'Referrals',     href: '/referrals',           icon: User },
+];
+
+// Flat combined arrays for mobile bottom bar "More" drawer
+const ATHLETE_NAV: NavItem[] = [...ATHLETE_PRIMARY, ...ATHLETE_MORE];
+const COACH_NAV: NavItem[]   = [...COACH_PRIMARY, ...COACH_MORE];
+const PRIMARY_ATHLETE = ATHLETE_PRIMARY;
+const PRIMARY_COACH   = COACH_PRIMARY;
 
 // ── SidebarContent (shared rendering) ─────────────────────────────────────────
 interface SidebarContentProps { role?: string; name?: string; onLogout?: () => void; collapsed: boolean; onToggle: () => void; }
 function SidebarContent({ role, name, onLogout, collapsed, onToggle }: SidebarContentProps) {
   const current = typeof window !== 'undefined' ? window.location.pathname : '';
-  const nav = role === 'athlete' ? ATHLETE_NAV : role === 'coach' ? COACH_NAV : [];
+  const primary = role === 'athlete' ? ATHLETE_PRIMARY : role === 'coach' ? COACH_PRIMARY : [];
+  const more    = role === 'athlete' ? ATHLETE_MORE    : role === 'coach' ? COACH_MORE    : [];
   const settingsHref = role === 'coach' ? '/coach/settings' : '/athlete/settings';
+
+  const renderItem = ({ label, href, icon: Icon }: NavItem) => {
+    const active = current === href || (href !== '/' && current.startsWith(href));
+    return (
+      <a key={href} href={href} title={collapsed ? label : undefined}
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-btn mb-0.5 transition-all duration-150 ${active ? 'bg-[var(--color-accent-dim)] text-[var(--color-accent)]' : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'}`}
+      >
+        <Icon size={15} className="shrink-0" />
+        {!collapsed && <span className="text-[13px] font-medium truncate">{label}</span>}
+      </a>
+    );
+  };
 
   return (
     <>
@@ -357,17 +382,16 @@ function SidebarContent({ role, name, onLogout, collapsed, onToggle }: SidebarCo
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-3 px-2">
-        {nav.map(({ label, href, icon: Icon }) => {
-          const active = current === href || (href !== '/' && current.startsWith(href));
-          return (
-            <a key={href} href={href} title={collapsed ? label : undefined}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-btn mb-0.5 transition-all duration-150 ${active ? 'bg-[var(--color-accent-dim)] text-[var(--color-accent)]' : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'}`}
-            >
-              <Icon size={15} className="shrink-0" />
-              {!collapsed && <span className="text-[13px] font-medium truncate">{label}</span>}
-            </a>
-          );
-        })}
+        {primary.map(renderItem)}
+        {more.length > 0 && (
+          <>
+            {!collapsed
+              ? <p className="text-[10px] font-semibold uppercase tracking-wider px-3 mt-3 mb-1" style={{ color: 'var(--color-text-tertiary)', opacity: 0.45 }}>More</p>
+              : <div className="h-px mx-3 my-2" style={{ background: 'var(--color-border)' }} />
+            }
+            {more.map(renderItem)}
+          </>
+        )}
       </nav>
 
       {/* Profile + logout */}
