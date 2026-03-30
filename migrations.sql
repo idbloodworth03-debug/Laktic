@@ -1981,3 +1981,17 @@ EXCEPTION WHEN others THEN RAISE NOTICE '[policy] fk__coach_delete_own: %', SQLE
 -- ════════════════════════════════════════════════════════════════════
 -- END Migration 026
 -- ════════════════════════════════════════════════════════════════════
+
+
+-- ════════════════════════════════════════════════════════════════════
+-- Migration 027 — Drop NOT NULL on team_feed.team_id
+-- Migration 025 updated RLS to allow team_id IS NULL for public posts
+-- but never dropped the column-level NOT NULL constraint. Athletes and
+-- coaches without a team get a DB error when posting publicly.
+-- ════════════════════════════════════════════════════════════════════
+
+ALTER TABLE public.team_feed ALTER COLUMN team_id DROP NOT NULL;
+
+-- ════════════════════════════════════════════════════════════════════
+-- END Migration 027
+-- ════════════════════════════════════════════════════════════════════
