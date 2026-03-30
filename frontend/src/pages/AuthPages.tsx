@@ -379,14 +379,19 @@ export function CoachRegister() {
     }
     setError(''); setLoading(true);
     try {
-      const { data, error: signErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
+      const { data, error: signErr } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: { data: { name: form.name, role: 'coach', school_or_org: form.school_or_org } },
+      });
       if (signErr) { setError(mapSignUpError(signErr)); return; }
-      // Email confirmation is enabled in Supabase — user created but not yet signed in
+      // Email confirmation enabled — redirect to confirmation pending page
       if (data.user && !data.session) {
-        setError('Account created! Check your inbox and confirm your email, then sign in.');
+        nav('/signup/confirm', { state: { email: form.email, role: 'coach', name: form.name, school_or_org: form.school_or_org } });
         return;
       }
       if (!data.session) { setError('Sign up failed. Please try again or contact support@laktic.com'); return; }
+      // Email confirmation OFF — session available immediately, create profile now
       const profile = await apiFetch('/api/coach/profile', {
         method: 'POST',
         body: JSON.stringify({ name: form.name, school_or_org: form.school_or_org }),
@@ -467,24 +472,31 @@ export function AthleteRegister() {
       return;
     }
     setError(''); setLoading(true);
+    const athleteMeta = {
+      name: form.name,
+      role: 'athlete' as const,
+      weekly_volume_miles: parseFloat(form.weekly_volume_miles) || undefined,
+      primary_events: events.length ? events : undefined,
+      pr_mile: form.pr_mile || undefined,
+      pr_5k: form.pr_5k || undefined,
+    };
     try {
-      const { data, error: signErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
+      const { data, error: signErr } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: { data: athleteMeta },
+      });
       if (signErr) { setError(mapSignUpError(signErr)); return; }
-      // Email confirmation is enabled in Supabase — user created but not yet signed in
+      // Email confirmation enabled — redirect to confirmation pending page
       if (data.user && !data.session) {
-        setError('Account created! Check your inbox and confirm your email, then sign in.');
+        nav('/signup/confirm', { state: { email: form.email, ...athleteMeta } });
         return;
       }
       if (!data.session) { setError('Sign up failed. Please try again or contact support@laktic.com'); return; }
+      // Email confirmation OFF — session available immediately, create profile now
       const profile = await apiFetch('/api/athlete/profile', {
         method: 'POST',
-        body: JSON.stringify({
-          name: form.name,
-          weekly_volume_miles: parseFloat(form.weekly_volume_miles) || undefined,
-          primary_events: events.length ? events : undefined,
-          pr_mile: form.pr_mile || undefined,
-          pr_5k: form.pr_5k || undefined,
-        }),
+        body: JSON.stringify(athleteMeta),
       });
       setAuth(data.session, 'athlete', profile);
       nav('/athlete/onboarding');

@@ -43,6 +43,8 @@ import { RecruitingSettings, RecruiterSignup, RecruiterDashboard } from './pages
 import { AdminDashboard } from './pages/AdminDashboard';
 import { AthletePro } from './pages/AthletePro';
 import { Privacy } from './pages/Privacy';
+import { AuthCallback } from './pages/AuthCallback';
+import { EmailConfirmationPending } from './pages/EmailConfirmationPending';
 
 function RequireCoach({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
@@ -113,6 +115,10 @@ export default function App() {
 
         {/* Community — athletes and coaches */}
         <Route path="/community" element={<Community />} />
+
+        {/* Auth flow */}
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/signup/confirm" element={<EmailConfirmationPending />} />
 
         {/* Public routes — no auth */}
         <Route path="/athlete/:username" element={<AthletePublicProfile />} />
