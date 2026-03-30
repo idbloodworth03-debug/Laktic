@@ -1841,3 +1841,54 @@ EXCEPTION WHEN others THEN RAISE NOTICE '[policy] se__athlete_all_own: %', SQLER
 -- ════════════════════════════════════════════════════════════════════
 -- END Migration 024
 -- ════════════════════════════════════════════════════════════════════
+
+
+-- ════════════════════════════════════════════════════════════════════
+-- Migration 025 — Fix team_feed RLS: allow public posts with null team_id
+-- Athletes and coaches without a team can post to scope='public'.
+-- ════════════════════════════════════════════════════════════════════
+
+-- Update athlete insert policy: allow team_id=NULL for public scope
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "tf__athlete_insert_own" ON public.team_feed;
+  CREATE POLICY "tf__athlete_insert_own" ON public.team_feed
+    FOR INSERT WITH CHECK (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+      AND (
+        -- Public posts: no team required
+        (scope = 'public' AND team_id IS NULL)
+        -- Public or team posts with a valid team membership
+        OR team_id IN (
+          SELECT team_id FROM public.team_members
+          WHERE athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+            AND left_at IS NULL
+        )
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] tf__athlete_insert_own: %', SQLERRM; END $$;
+
+-- Update coach insert policy: allow team_id=NULL for public scope
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "tf__coach_insert_own" ON public.team_feed;
+  CREATE POLICY "tf__coach_insert_own" ON public.team_feed
+    FOR INSERT WITH CHECK (
+      coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+      AND (
+        -- Public posts: no team required
+        (scope = 'public' AND team_id IS NULL)
+        -- Public or team posts with a valid team
+        OR team_id IN (
+          SELECT id FROM public.teams
+          WHERE coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+        )
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] tf__coach_insert_own: %', SQLERRM; END $$;
+
+-- Update select policy: public posts with null team_id are visible to all authenticated users
+-- (existing scope='public' check already handles this since it doesn't filter on team_id)
+-- No change needed to tf__select_team_or_public — scope='public' already covers null team_id.
+
+-- ════════════════════════════════════════════════════════════════════
+-- END Migration 025
+-- ════════════════════════════════════════════════════════════════════
