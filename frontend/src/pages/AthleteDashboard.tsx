@@ -37,10 +37,11 @@ interface RaceEntry {
 
 interface CommunityPost {
   id: string;
-  author_name: string;
-  content: string;
+  body: string;
   created_at: string;
-  likes_count: number;
+  kudo_count: number;
+  athlete_profiles: { name: string } | null;
+  coach_profiles: { name: string } | null;
 }
 
 interface SeasonSummary {
@@ -101,7 +102,7 @@ export function AthleteDashboard() {
         const upcoming = (d ?? []).filter((r: any) => new Date(r.race_date) > new Date()).slice(0, 3);
         setRaces(upcoming);
       }).catch(() => {}),
-      apiFetch('/api/community/posts?limit=8').then(d => setFeed(d?.posts ?? d ?? [])).catch(() => {}),
+      apiFetch('/api/community/feed?page=1').then(d => setFeed((d?.posts ?? []).slice(0, 5))).catch(() => {}),
     ]).finally(() => setLoading(false));
   }, []);
 
@@ -241,17 +242,19 @@ export function AthleteDashboard() {
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] flex items-center justify-center shrink-0">
-                          <span className="text-[10px] font-semibold text-[var(--color-text-secondary)]">{post.author_name?.charAt(0)}</span>
+                          <span className="text-[10px] font-semibold text-[var(--color-text-secondary)]">
+                            {(post.athlete_profiles?.name ?? post.coach_profiles?.name ?? '?').charAt(0)}
+                          </span>
                         </div>
-                        <div>
-                          <p className="text-[13px] font-medium text-[var(--color-text-primary)] leading-tight">{post.author_name}</p>
-                        </div>
+                        <p className="text-[13px] font-medium text-[var(--color-text-primary)] leading-tight">
+                          {post.athlete_profiles?.name ?? post.coach_profiles?.name ?? 'Unknown'}
+                        </p>
                       </div>
                       <span className="text-[11px] text-[var(--color-text-tertiary)] shrink-0">{formatTime(post.created_at)}</span>
                     </div>
-                    <p className="text-[13px] text-[var(--color-text-secondary)] leading-relaxed">{post.content}</p>
-                    {post.likes_count > 0 && (
-                      <p className="text-[11px] text-[var(--color-text-tertiary)] mt-2">{post.likes_count} likes</p>
+                    <p className="text-[13px] text-[var(--color-text-secondary)] leading-relaxed">{post.body}</p>
+                    {post.kudo_count > 0 && (
+                      <p className="text-[11px] text-[var(--color-text-tertiary)] mt-2">{post.kudo_count} kudos</p>
                     )}
                   </div>
                 ))}
