@@ -38,7 +38,9 @@
       "Bash(git -C /c/Users/Nick/Projects/Laktic add migrations/007_athlete_onboarding_completed.sql backend/src/schemas/index.ts backend/src/routes/strava.ts frontend/src/pages/AthleteOnboarding.tsx)",
       "Bash(git -C:*)",
       "Bash(git -C /c/Users/Nick/Projects/Laktic push origin master)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(find /c/Users/Nick/Projects/Laktic/frontend/src/pages -iname *privacy* -o -iname *policy*)",
+      "Bash(echo \"EXIT:$?\")"
     ]
   }
 }
