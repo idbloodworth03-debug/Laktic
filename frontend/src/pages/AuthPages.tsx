@@ -207,7 +207,7 @@ const PANEL_BULLETS = [
 interface SplitAuthProps {
   title: string;
   subtitle: string;
-  error: string;
+  error: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -318,12 +318,50 @@ function SplitAuth({ title, subtitle, error, children }: SplitAuthProps) {
   );
 }
 
+// ── Signup error helpers ─────────────────────────────────────────────────────
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function mapSignUpError(err: { message?: string; code?: string } | null): React.ReactNode {
+  if (!err) return null;
+  const code = err.code ?? '';
+  const msg = (err.message ?? '').toLowerCase();
+
+  if (
+    code === 'user_already_exists' ||
+    msg.includes('already registered') ||
+    msg.includes('already in use') ||
+    msg.includes('user already exists')
+  ) {
+    return (
+      <>
+        An account with this email already exists.{' '}
+        <Link to="/login" style={{ color: 'var(--color-accent)' }}>Sign in instead?</Link>
+      </>
+    );
+  }
+  if (code === 'over_email_send_rate_limit' || msg.includes('rate limit')) {
+    return 'Too many attempts. Please wait a few minutes and try again.';
+  }
+  if (code === 'weak_password' || msg.includes('weak_password') || msg.includes('weak password')) {
+    return 'Password must be at least 8 characters.';
+  }
+  if (
+    code === 'invalid_email' ||
+    msg.includes('invalid_email') ||
+    msg.includes('invalid email') ||
+    msg.includes('unable to validate email')
+  ) {
+    return 'Please enter a valid email address.';
+  }
+  return 'Something went wrong. Please try again or contact support@laktic.com';
+}
+
 // ── Coach Register ───────────────────────────────────────────────────────────
 export function CoachRegister() {
   const nav = useNavigate();
   const setAuth = useAuthStore(s => s.setAuth);
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', school_or_org: '' });
-  const [error, setError] = useState('');
+  const [error, setError] = useState<React.ReactNode>('');
   const [loading, setLoading] = useState(false);
 
   const pwTooShort = form.password.length > 0 && form.password.length < 8;
@@ -332,30 +370,25 @@ export function CoachRegister() {
   const canSubmit = !loading && !!form.name && !!form.email && form.password.length >= 8 && form.password === form.confirmPassword;
 
   const handle = async () => {
-    if (form.password.length < 8) { setError('Password must be at least 8 characters'); return; }
+    if (!EMAIL_REGEX.test(form.email)) { setError('Please enter a valid email address.'); return; }
+    if (form.password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match');
+      setError('Passwords do not match.');
       document.getElementById('coach-confirm-pw')?.focus();
       return;
     }
     setError(''); setLoading(true);
     try {
       const { data, error: signErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
-      if (signErr) {
-        const msg = signErr.message ?? '';
-        if (msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('over_email_send_rate_limit')) {
-          throw new Error('Too many accounts created recently. Please wait a few minutes and try again, or contact support@laktic.com');
-        }
-        throw new Error(msg || 'Sign up failed');
-      }
-      if (!data.session) throw new Error('Sign up failed');
+      if (signErr) { setError(mapSignUpError(signErr)); return; }
+      if (!data.session) { setError(mapSignUpError(null)); return; }
       const profile = await apiFetch('/api/coach/profile', {
         method: 'POST',
         body: JSON.stringify({ name: form.name, school_or_org: form.school_or_org }),
       });
       setAuth(data.session, 'coach', profile);
       nav('/coach/onboarding');
-    } catch (e: any) { setError(e.message); }
+    } catch { setError('Something went wrong. Please try again or contact support@laktic.com'); }
     finally { setLoading(false); }
   };
 
@@ -410,7 +443,7 @@ export function AthleteRegister() {
   const setAuth = useAuthStore(s => s.setAuth);
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', weekly_volume_miles: '20', pr_mile: '', pr_5k: '' });
   const [events, setEvents] = useState<string[]>([]);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<React.ReactNode>('');
   const [loading, setLoading] = useState(false);
 
   const pwTooShort = form.password.length > 0 && form.password.length < 8;
@@ -421,23 +454,18 @@ export function AthleteRegister() {
   const toggleEvent = (e: string) => setEvents(prev => prev.includes(e) ? prev.filter(x => x !== e) : [...prev, e]);
 
   const handle = async () => {
-    if (form.password.length < 8) { setError('Password must be at least 8 characters'); return; }
+    if (!EMAIL_REGEX.test(form.email)) { setError('Please enter a valid email address.'); return; }
+    if (form.password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match');
+      setError('Passwords do not match.');
       document.getElementById('athlete-confirm-pw')?.focus();
       return;
     }
     setError(''); setLoading(true);
     try {
       const { data, error: signErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
-      if (signErr) {
-        const msg = signErr.message ?? '';
-        if (msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('over_email_send_rate_limit')) {
-          throw new Error('Too many accounts created recently. Please wait a few minutes and try again, or contact support@laktic.com');
-        }
-        throw new Error(msg || 'Sign up failed');
-      }
-      if (!data.session) throw new Error('Sign up failed');
+      if (signErr) { setError(mapSignUpError(signErr)); return; }
+      if (!data.session) { setError(mapSignUpError(null)); return; }
       const profile = await apiFetch('/api/athlete/profile', {
         method: 'POST',
         body: JSON.stringify({
@@ -450,7 +478,7 @@ export function AthleteRegister() {
       });
       setAuth(data.session, 'athlete', profile);
       nav('/athlete/onboarding');
-    } catch (e: any) { setError(e.message); }
+    } catch { setError('Something went wrong. Please try again or contact support@laktic.com'); }
     finally { setLoading(false); }
   };
 
