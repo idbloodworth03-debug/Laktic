@@ -570,6 +570,7 @@ const FOOTER_LINKS = [
   { label: 'For Coaches', href: '#coaches', hash: true },
   { label: 'For Athletes', href: '#athletes', hash: true },
   { label: 'Marketplace', href: '/marketplace/plans', hash: false },
+  { label: 'Privacy Policy', href: '/privacy', hash: false },
   { label: 'Sign In', href: '/login/coach', hash: false },
 ];
 

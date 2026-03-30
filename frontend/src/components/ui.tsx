@@ -387,6 +387,15 @@ function SidebarContent({ role, name, onLogout, collapsed, onToggle }: SidebarCo
           <LogOut size={15} className="shrink-0" />
           {!collapsed && <span className="text-[13px] font-medium">Sign out</span>}
         </button>
+        {!collapsed && (
+          <a
+            href="/privacy"
+            className="block text-center text-[11px] mt-1 hover:underline"
+            style={{ color: 'var(--color-text-tertiary)', opacity: 0.5 }}
+          >
+            Privacy Policy
+          </a>
+        )}
       </div>
     </>
   );

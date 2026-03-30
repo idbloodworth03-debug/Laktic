@@ -170,7 +170,12 @@ export function CoachSettings() {
               <p className="text-sm text-[var(--color-text-tertiary)] mb-3">
                 Download a copy of your Laktic data including your profile, bot configuration, workout template, and knowledge documents.
               </p>
-              <Button variant="secondary" size="sm" onClick={downloadData}>Download my data</Button>
+              <div className="flex items-center gap-4">
+                <Button variant="secondary" size="sm" onClick={downloadData}>Download my data</Button>
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-sm hover:underline" style={{ color: 'var(--color-accent)' }}>
+                  Privacy Policy
+                </a>
+              </div>
             </div>
             <div className="pt-4 border-t border-[var(--color-border)]">
               <p className="text-sm font-medium mb-1">Delete account</p>

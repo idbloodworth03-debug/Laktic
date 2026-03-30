@@ -436,6 +436,10 @@ export function CoachRegister() {
       <Button onClick={handle} loading={loading} disabled={!canSubmit} className="w-full font-semibold" size="lg">
         Create Coach Account
       </Button>
+      <p className="text-center text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
+        By creating an account you agree to our{' '}
+        <Link to="/privacy" className="transition-colors hover:underline" style={{ color: 'var(--color-accent)' }}>Privacy Policy</Link>
+      </p>
       <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
         Already have an account?{' '}
         <Link to="/login" className="transition-colors" style={{ color: 'var(--color-accent)' }}>Sign in</Link>
@@ -578,6 +582,10 @@ export function AthleteRegister() {
       <Button onClick={handle} loading={loading} disabled={!canSubmit} className="w-full font-semibold" size="lg">
         Create Athlete Account
       </Button>
+      <p className="text-center text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
+        By creating an account you agree to our{' '}
+        <Link to="/privacy" className="transition-colors hover:underline" style={{ color: 'var(--color-accent)' }}>Privacy Policy</Link>
+      </p>
       <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
         Already have an account?{' '}
         <Link to="/login" className="transition-colors" style={{ color: 'var(--color-accent)' }}>Sign in</Link>
