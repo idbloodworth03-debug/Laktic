@@ -79,7 +79,8 @@ router.get(
       .eq('coach_id', req.coach.id)
       .maybeSingle();
 
-    if (botErr) return res.status(500).json({ error: botErr.message });
+    if (botErr) { console.error('[GET /bot] Supabase error:', botErr.message, 'coach_id:', req.coach.id); return res.status(500).json({ error: botErr.message }); }
+    console.log('[GET /bot] coach_id:', req.coach.id, '→ bot:', bot ? bot.id : 'null');
     if (!bot) return res.json({ bot: null });
 
     const { data: workouts } = await supabase
@@ -106,9 +107,10 @@ router.post(
   requireCoach,
   validate(botCreateSchema),
   asyncHandler(async (req: AuthRequest, res) => {
+    console.log('[POST /bot] coach_id:', req.coach.id, 'body:', JSON.stringify(req.body));
     const { name, philosophy, event_focus, level_focus, personality, personality_prompt } = req.body;
     const existing = await supabase.from('coach_bots').select('id').eq('coach_id', req.coach.id).single();
-    if (existing.data) return res.status(400).json({ error: 'Bot already exists' });
+    if (existing.data) { console.log('[POST /bot] Bot already exists for coach:', req.coach.id); return res.status(400).json({ error: 'Bot already exists' }); }
 
     const { data, error } = await supabase
       .from('coach_bots')

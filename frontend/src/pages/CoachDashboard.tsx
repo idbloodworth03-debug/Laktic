@@ -128,7 +128,10 @@ export function CoachDashboard() {
       .catch((e: any) => setInboxError(e?.message || 'Failed to load messages'));
 
   useEffect(() => {
-    apiFetch('/api/coach/bot').then(setBotData).catch(() => setBotData({ bot: null })).finally(() => setLoading(false));
+    apiFetch('/api/coach/bot')
+      .then(data => { console.log('[CoachDashboard] botData from API:', JSON.stringify(data)); setBotData(data); })
+      .catch(err => { console.error('[CoachDashboard] bot fetch error:', err?.message); setBotData({ bot: null }); })
+      .finally(() => setLoading(false));
     apiFetch('/api/coach/team').then(setTeamData).catch(console.error).finally(() => setTeamLoading(false));
     apiFetch('/api/marketplace/my-application').then(setMarketplaceApp).catch(() => {});
     apiFetch('/api/team-challenges/active').then(setTeamChallenges).catch(() => {});
