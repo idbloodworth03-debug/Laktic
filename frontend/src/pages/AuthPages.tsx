@@ -383,7 +383,7 @@ export function CoachRegister() {
         email: form.email,
         password: form.password,
         options: {
-          emailRedirectTo: `${import.meta.env.VITE_APP_URL || 'http://localhost:5173'}/auth/callback`,
+          emailRedirectTo: `${import.meta.env.VITE_APP_URL ?? 'https://www.laktic.com'}/auth/callback`,
           data: { name: form.name, role: 'coach', school_or_org: form.school_or_org },
         },
       });
@@ -488,7 +488,7 @@ export function AthleteRegister() {
         email: form.email,
         password: form.password,
         options: {
-          emailRedirectTo: `${import.meta.env.VITE_APP_URL || 'http://localhost:5173'}/auth/callback`,
+          emailRedirectTo: `${import.meta.env.VITE_APP_URL ?? 'https://www.laktic.com'}/auth/callback`,
           data: athleteMeta,
         },
       });
@@ -604,10 +604,11 @@ export function CoachLogin() {
       const { data, error: signErr } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password });
       if (signErr || !data.session) throw new Error(signErr?.message || 'Login failed');
       const me = await apiFetch('/api/me');
-      if (me.role !== 'coach') { await supabase.auth.signOut(); throw new Error('This account is not a coach account'); }
+      if (me.role !== 'coach') { await supabase.auth.signOut(); throw new Error('This account is not a coach account.'); }
       setAuth(data.session, 'coach', me.profile);
-      nav('/coach/dashboard');
-    } catch (e: any) { setError(e.message); }
+      // Redirect to onboarding if not yet completed (strict check — safe for profiles without the column)
+      nav(me.profile.onboarding_completed === false ? '/coach/onboarding' : '/coach/dashboard');
+    } catch (e: any) { setError(e.message || 'Sign in failed. Please try again.'); }
     finally { setLoading(false); }
   };
 
@@ -657,14 +658,17 @@ export function AthleteLogin() {
       const { data, error: signErr } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password });
       if (signErr || !data.session) throw new Error(signErr?.message || 'Login failed');
       const me = await apiFetch('/api/me');
-      if (me.role !== 'athlete') { await supabase.auth.signOut(); throw new Error('This account is not an athlete account'); }
+      if (me.role !== 'athlete') { await supabase.auth.signOut(); throw new Error('This account is not an athlete account.'); }
       setAuth(data.session, 'athlete', me.profile);
-      // Check for active season
+      if (!me.profile.onboarding_completed) {
+        nav('/athlete/onboarding');
+        return;
+      }
       try {
         const { season } = await apiFetch('/api/athlete/season');
         nav(season ? '/athlete/plan' : '/athlete/browse');
       } catch { nav('/athlete/browse'); }
-    } catch (e: any) { setError(e.message); }
+    } catch (e: any) { setError(e.message || 'Sign in failed. Please try again.'); }
     finally { setLoading(false); }
   };
 
@@ -960,16 +964,20 @@ export function UnifiedLogin() {
       const me = await apiFetch('/api/me');
       setAuth(data.session, me.role, me.profile);
       if (me.role === 'coach') {
-        nav('/coach/dashboard');
+        nav(me.profile.onboarding_completed === false ? '/coach/onboarding' : '/coach/dashboard');
       } else if (me.role === 'athlete') {
-        try {
-          const { season } = await apiFetch('/api/athlete/season');
-          nav(season ? '/athlete/plan' : '/athlete/browse');
-        } catch { nav('/athlete/browse'); }
+        if (!me.profile.onboarding_completed) {
+          nav('/athlete/onboarding');
+        } else {
+          try {
+            const { season } = await apiFetch('/api/athlete/season');
+            nav(season ? '/athlete/plan' : '/athlete/browse');
+          } catch { nav('/athlete/browse'); }
+        }
       } else {
         throw new Error('Unknown account type. Please contact support.');
       }
-    } catch (e: any) { setError(e.message); }
+    } catch (e: any) { setError(e.message || 'Sign in failed. Please try again.'); }
     finally { setLoading(false); }
   };
 
