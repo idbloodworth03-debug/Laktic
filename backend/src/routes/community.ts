@@ -22,6 +22,7 @@ router.get(
   asyncHandler(async (req: AuthRequest, res) => {
     const page   = Math.max(1, parseInt(req.query.page as string) || 1);
     const offset = (page - 1) * PAGE_SIZE;
+    const sortByRelevance = req.query.sort === 'relevance';
 
     let activeTeamId: string | null = null;
     let athleteId:    string | null = null;
@@ -52,16 +53,24 @@ router.get(
       }
     }
 
+    // When sorting by relevance, fetch a larger pool so we can rank across recent posts
+    const fetchLimit = sortByRelevance ? 100 : PAGE_SIZE;
+
     let query = supabase
       .from('team_feed')
       .select(`
         id, feed_type, body, scope, image_url, created_at, team_id, athlete_id, coach_id,
         athlete_profiles!athlete_id (id, name),
         coach_profiles!coach_id (id, name),
-        feed_kudos (id, athlete_id, coach_id)
+        feed_kudos (id, athlete_id, coach_id),
+        post_comments (id)
       `, { count: 'exact' })
       .order('created_at', { ascending: false })
-      .range(offset, offset + PAGE_SIZE - 1);
+      .limit(fetchLimit);
+
+    if (!sortByRelevance) {
+      query = (query as any).range(offset, offset + PAGE_SIZE - 1);
+    }
 
     if (activeTeamId) {
       query = query.or(`scope.eq.public,team_id.eq.${activeTeamId}`);
@@ -74,18 +83,26 @@ router.get(
       console.error('[community/feed] query error:', error.message);
       return res.status(400).json({ error: error.message });
     }
-    console.log(`[community/feed] uid=${req.user!.id} team=${activeTeamId ?? 'none'} returned=${posts?.length ?? 0}`);
+    console.log(`[community/feed] uid=${req.user!.id} team=${activeTeamId ?? 'none'} sort=${sortByRelevance ? 'relevance' : 'recent'} returned=${posts?.length ?? 0}`);
 
-    const enriched = (posts || []).map(post => ({
+    let enriched = (posts || []).map(post => ({
       ...post,
       kudo_count: Array.isArray(post.feed_kudos) ? post.feed_kudos.length : 0,
+      comment_count: Array.isArray((post as any).post_comments) ? (post as any).post_comments.length : 0,
       i_kudoed: Array.isArray(post.feed_kudos) && (
         athleteId ? post.feed_kudos.some((k: any) => k.athlete_id === athleteId)
           : coachId ? post.feed_kudos.some((k: any) => k.coach_id === coachId)
           : false
       ),
       feed_kudos: undefined,
+      post_comments: undefined,
     }));
+
+    if (sortByRelevance) {
+      enriched = enriched
+        .sort((a, b) => (b.kudo_count + b.comment_count) - (a.kudo_count + a.comment_count))
+        .slice(offset, offset + PAGE_SIZE);
+    }
 
     res.json({ posts: enriched, hasMore: (count ?? 0) > offset + PAGE_SIZE, page });
   })

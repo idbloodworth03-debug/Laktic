@@ -4,7 +4,7 @@ import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
 import { AppLayout, Card, Badge, Button, ReadinessRing, ProgressBar, Spinner, StatCard } from '../components/ui';
-import { ArrowRight, ChevronRight, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { ArrowRight, ChevronRight, TrendingUp, TrendingDown, Minus, X } from 'lucide-react';
 
 interface ReadinessData {
   score: number;
@@ -40,6 +40,7 @@ interface CommunityPost {
   body: string;
   created_at: string;
   kudo_count: number;
+  comment_count: number;
   athlete_profiles: { name: string } | null;
   coach_profiles: { name: string } | null;
 }
@@ -84,6 +85,13 @@ export function AthleteDashboard() {
   const [feed, setFeed] = useState<CommunityPost[]>([]);
   const [selectedDist, setSelectedDist] = useState(0);
 
+  // Readiness modal state
+  const [showReadinessModal, setShowReadinessModal] = useState(false);
+  const [readinessRating, setReadinessRating] = useState<number | null>(null);
+  const [readinessNotes, setReadinessNotes] = useState('');
+  const [savingReadiness, setSavingReadiness] = useState(false);
+  const [readinessSuccess, setReadinessSuccess] = useState(false);
+
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
   useEffect(() => {
@@ -102,9 +110,38 @@ export function AthleteDashboard() {
         const upcoming = (d ?? []).filter((r: any) => new Date(r.race_date) > new Date()).slice(0, 3);
         setRaces(upcoming);
       }).catch(() => {}),
-      apiFetch('/api/community/feed?page=1').then(d => setFeed((d?.posts ?? []).slice(0, 5))).catch(() => {}),
+      apiFetch('/api/community/feed?page=1&sort=relevance').then(d => setFeed((d?.posts ?? []).slice(0, 3))).catch(() => {}),
     ]).finally(() => setLoading(false));
   }, []);
+
+  const submitReadiness = async () => {
+    if (readinessRating === null) return;
+    setSavingReadiness(true);
+    try {
+      // Map 1-10 overall feeling to mood/energy (1-5 scale)
+      const factor = Math.ceil(readinessRating / 2);
+      const data = await apiFetch('/api/recovery/readiness', {
+        method: 'POST',
+        body: JSON.stringify({
+          mood: factor,
+          energy: factor,
+          notes: readinessNotes.trim() || undefined,
+        }),
+      });
+      setReadiness({ ...data, logged: true });
+      setReadinessSuccess(true);
+      setTimeout(() => {
+        setShowReadinessModal(false);
+        setReadinessSuccess(false);
+        setReadinessRating(null);
+        setReadinessNotes('');
+      }, 1200);
+    } catch (err) {
+      console.error('[readiness submit]', err);
+    } finally {
+      setSavingReadiness(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -161,10 +198,11 @@ export function AthleteDashboard() {
                   ) : (
                     <>
                       <p className="text-sm font-medium text-[var(--color-text-primary)] mb-1">Log your readiness</p>
-                      <p className="text-xs text-[var(--color-text-tertiary)] mb-3">Tell us how you feel to get a personalized intensity recommendation.</p>
-                      <Link to="/athlete/dashboard">
+                      <p className="text-xs text-[var(--color-text-tertiary)] mb-1">Tap below to get your personalized intensity recommendation for today.</p>
+                      <p className="text-[11px] text-[var(--color-accent)]/70 mb-3">Takes 10 seconds — tells you exactly how hard to train.</p>
+                      <button onClick={() => setShowReadinessModal(true)}>
                         <Button variant="primary" size="sm">Log Readiness</Button>
-                      </Link>
+                      </button>
                     </>
                   )}
                 </div>
@@ -253,8 +291,13 @@ export function AthleteDashboard() {
                       <span className="text-[11px] text-[var(--color-text-tertiary)] shrink-0">{formatTime(post.created_at)}</span>
                     </div>
                     <p className="text-[13px] text-[var(--color-text-secondary)] leading-relaxed">{post.body}</p>
-                    {post.kudo_count > 0 && (
-                      <p className="text-[11px] text-[var(--color-text-tertiary)] mt-2">{post.kudo_count} kudos</p>
+                    {(post.kudo_count > 0 || post.comment_count > 0) && (
+                      <p className="text-[11px] text-[var(--color-text-tertiary)] mt-2">
+                        {[
+                          post.kudo_count > 0 ? `${post.kudo_count} kudos` : '',
+                          post.comment_count > 0 ? `${post.comment_count} comments` : '',
+                        ].filter(Boolean).join(' · ')}
+                      </p>
                     )}
                   </div>
                 ))}
@@ -336,6 +379,59 @@ export function AthleteDashboard() {
           </div>
         </div>
       </div>
+
+      {/* ── Readiness Modal ── */}
+      {showReadinessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) setShowReadinessModal(false); }}>
+          <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-6 w-full max-w-sm shadow-xl">
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-base font-semibold text-[var(--color-text-primary)]">How are you feeling today?</h2>
+              <button onClick={() => setShowReadinessModal(false)} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-xs text-[var(--color-text-tertiary)] mb-5">Rate your overall readiness on a 1–10 scale.</p>
+
+            {/* 1-10 scale */}
+            <div className="grid grid-cols-5 gap-2 mb-5">
+              {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                <button
+                  key={n}
+                  onClick={() => setReadinessRating(n)}
+                  className={`h-10 rounded-pill text-sm font-semibold transition-all duration-150 ${readinessRating === n ? 'bg-[var(--color-accent)] text-black scale-105' : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-border-light)]'}`}
+                >{n}</button>
+              ))}
+            </div>
+            <div className="flex justify-between text-[10px] text-[var(--color-text-tertiary)] mb-5 px-1">
+              <span>Very tired</span>
+              <span>Feeling great</span>
+            </div>
+
+            {/* Notes */}
+            <textarea
+              value={readinessNotes}
+              onChange={e => setReadinessNotes(e.target.value)}
+              placeholder="Optional notes (soreness, sleep quality, stress...)"
+              className="w-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-card px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] resize-none focus:outline-none focus:border-[var(--color-accent)]/50 mb-4"
+              rows={3}
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowReadinessModal(false)}
+                className="flex-1 py-2 text-sm text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
+              >Cancel</button>
+              <button
+                onClick={submitReadiness}
+                disabled={readinessRating === null || savingReadiness}
+                className={`flex-1 py-2 rounded-pill text-sm font-semibold transition-all duration-150 ${readinessSuccess ? 'bg-[var(--color-accent)] text-black' : readinessRating === null ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] cursor-not-allowed' : 'bg-[var(--color-accent)] text-black hover:opacity-90'}`}
+              >
+                {savingReadiness ? 'Saving...' : readinessSuccess ? 'Saved!' : 'Submit'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
