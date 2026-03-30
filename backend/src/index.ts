@@ -149,4 +149,25 @@ cron.schedule('0 8 * * 1', async () => {
   } catch {}
 });
 
+// Strava data retention — delete athlete_activities older than 7 days (Strava API compliance)
+// Runs nightly at 2:00 AM UTC
+cron.schedule('0 2 * * *', async () => {
+  try {
+    const { supabase: db } = await import('./db/supabase');
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { error, count } = await db
+      .from('athlete_activities')
+      .delete({ count: 'exact' })
+      .eq('source', 'strava')
+      .lt('created_at', cutoff);
+    if (error) {
+      console.error('[Strava retention cron] Delete failed:', error.message);
+    } else if (count && count > 0) {
+      console.log(`[Strava retention cron] Deleted ${count} stale Strava activities`);
+    }
+  } catch (err) {
+    console.error('[Strava retention cron] Unexpected error:', err);
+  }
+});
+
 export default app;

@@ -91,9 +91,9 @@ export function Privacy() {
               <div>
                 <h3 className="font-semibold text-[var(--color-text-primary)] mb-1">Data retention</h3>
                 <p className="text-sm">
-                  When you disconnect Strava, all activity data imported from Strava is immediately and permanently
-                  deleted from Laktic's database. We do not retain Strava activity data for longer than 7 days
-                  after a disconnect request.
+                  Strava activity data is automatically and permanently deleted from Laktic's database after
+                  7 days. A nightly automated job enforces this limit — no activity data is cached for longer
+                  than 7 days. When you disconnect Strava, all remaining synced activity data is deleted immediately.
                 </p>
               </div>
 
