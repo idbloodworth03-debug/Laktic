@@ -106,7 +106,8 @@ function PostCard({ post, onKudo, canKudo }: { post: any; onKudo: (id: string) =
       className="transition-all duration-150"
       style={{
         background: '#111111',
-        border: `1px solid ${hovered ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.06)'}`,
+        border: `1px solid ${hovered ? 'rgba(255,255,255,0.13)' : 'rgba(255,255,255,0.09)'}`,
+        borderTop: `3px solid ${cfg.color}`,
         borderRadius: 16,
         overflow: 'hidden',
       }}
@@ -688,8 +689,8 @@ function ChallengesSidebar({ isCoach }: { isCoach: boolean }) {
 
       <div
         style={{
-          background: '#111111',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: '#161616',
+          border: '1px solid rgba(255,255,255,0.10)',
           borderRadius: 16, padding: 20, marginBottom: 16,
         }}
       >
@@ -709,15 +710,26 @@ function ChallengesSidebar({ isCoach }: { isCoach: boolean }) {
         {loading ? (
           <div className="flex justify-center py-6"><Spinner /></div>
         ) : challenges.length === 0 ? (
-          <p className="text-xs text-center py-4" style={{ color: 'rgba(255,255,255,0.30)' }}>
-            {isCoach ? 'Create a challenge for your team.' : 'No active challenges yet.'}
-          </p>
+          <div className="py-4 text-center">
+            <p className="text-xs mb-3" style={{ color: 'rgba(255,255,255,0.30)' }}>No active challenges yet.</p>
+            {isCoach && (
+              <button
+                onClick={() => setShowCreate(true)}
+                className="text-xs font-semibold px-4 py-1.5 rounded-full transition-all duration-150"
+                style={{ background: 'rgba(0,229,160,0.10)', color: '#00E5A0', border: '1px solid rgba(0,229,160,0.25)', cursor: 'pointer' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,229,160,0.18)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,229,160,0.10)'; }}
+              >
+                + Create Challenge
+              </button>
+            )}
+          </div>
         ) : (
           <div className="space-y-3">
             {challenges.slice(0, 4).map(ch => (
               <div
                 key={ch.id}
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: 14 }}
+                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderTop: '2px solid #00E5A0', borderRadius: 12, padding: 14 }}
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex-1 min-w-0">
@@ -791,7 +803,7 @@ function TopAthletesSidebar() {
   if (athletes.length === 0) return null;
 
   return (
-    <div style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: 20 }}>
+    <div style={{ background: '#161616', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 16, padding: 20 }}>
       <h3 className="font-semibold text-sm mb-4" style={{ color: '#FFFFFF' }}>Top Athletes This Week</h3>
       <div className="space-y-3">
         {athletes.slice(0, 5).map((athlete: any, i: number) => (
@@ -889,16 +901,19 @@ export function Community() {
           </div>
 
           {/* Channel pills — horizontally scrollable */}
-          <div className="flex gap-2 mb-6 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
+          <div className="flex mb-6 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: 'none', gap: 8 }}>
             {CHANNELS.map(ch => (
               <button
                 key={ch}
                 onClick={() => setChannel(ch)}
-                className="shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold capitalize transition-all duration-150"
-                style={channel === ch
-                  ? { background: '#00E5A0', color: '#000', border: '1px solid #00E5A0', cursor: 'pointer' }
-                  : { background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }
-                }
+                className="shrink-0 rounded-full text-xs font-semibold capitalize transition-all duration-150"
+                style={{
+                  padding: '7px 16px',
+                  ...(channel === ch
+                    ? { background: '#00E5A0', color: '#000', border: '1px solid #00E5A0', cursor: 'pointer' }
+                    : { background: 'transparent', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.52)', cursor: 'pointer' }
+                  ),
+                }}
               >
                 {ch}
               </button>
@@ -909,10 +924,8 @@ export function Community() {
           <div className="flex flex-col lg:flex-row gap-6 items-start">
             {/* LEFT — Feed (65%) */}
             <div className="flex-1 min-w-0">
-              {/* Composer bar (athletes only) */}
-              {isAthlete && (
-                <ComposerBar name={profile?.name ?? 'A'} onClick={() => setShowCreate(true)} />
-              )}
+              {/* Composer bar — all authenticated users */}
+              <ComposerBar name={profile?.name ?? 'A'} onClick={() => setShowCreate(true)} />
 
               {loading ? (
                 <div className="flex justify-center py-20"><Spinner size="lg" /></div>
@@ -920,28 +933,40 @@ export function Community() {
                 <div
                   style={{
                     background: '#111111',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    backgroundImage: 'radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px)',
+                    backgroundSize: '24px 24px',
+                    border: '1px solid rgba(255,255,255,0.10)',
                     borderRadius: 16,
-                    padding: '56px 24px',
+                    padding: '72px 32px',
                     textAlign: 'center',
                   }}
                 >
-                  <div className="text-4xl mb-4">🏃</div>
-                  <p className="font-semibold text-base mb-1" style={{ color: '#FFFFFF' }}>Be the first to post</p>
-                  <p className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.38)' }}>
-                    Share your training, races, and wins with the community.
+                  <p className="font-bold text-xl mb-2" style={{ color: '#FFFFFF' }}>Nothing here yet</p>
+                  <p className="text-sm mb-8 mx-auto" style={{ color: 'rgba(255,255,255,0.42)', maxWidth: 340, lineHeight: 1.6 }}>
+                    Be the first to share a win, race result, or training milestone with the community.
                   </p>
-                  {isAthlete && (
+                  <div className="flex items-center justify-center gap-3 flex-wrap">
                     <button
                       onClick={() => setShowCreate(true)}
-                      className="px-7 py-2.5 text-sm font-bold rounded-full transition-all duration-150"
+                      className="px-6 py-2.5 text-sm font-bold rounded-full transition-all duration-150"
                       style={{ background: '#00E5A0', color: '#000', border: 'none', cursor: 'pointer' }}
                       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.85'; }}
                       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
                     >
-                      + Create Post
+                      Create Post
                     </button>
-                  )}
+                    {isCoach && (
+                      <button
+                        onClick={() => {/* coach create challenge handled in sidebar */}}
+                        className="px-6 py-2.5 text-sm font-bold rounded-full transition-all duration-150"
+                        style={{ background: 'transparent', color: 'rgba(255,255,255,0.75)', border: '1px solid rgba(255,255,255,0.18)', cursor: 'pointer' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.40)'; (e.currentTarget as HTMLElement).style.color = '#FFFFFF'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.18)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.75)'; }}
+                      >
+                        Create Challenge
+                      </button>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-4">
