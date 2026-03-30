@@ -84,13 +84,17 @@ router.post(
   asyncHandler(async (req: AuthRequest, res) => {
     const { name, weekly_volume_miles, primary_events, pr_mile, pr_5k } = req.body;
 
+    console.log('[POST /athlete/profile] user_id:', req.user!.id, 'name:', name);
     const { data, error } = await supabase
       .from('athlete_profiles')
       .insert({ user_id: req.user!.id, name, weekly_volume_miles, primary_events, pr_mile, pr_5k })
       .select()
       .single();
 
-    if (error) return res.status(400).json({ error: error.message });
+    if (error) {
+      console.error('[POST /athlete/profile] insert error:', error.message, '| code:', error.code);
+      return res.status(400).json({ error: error.message });
+    }
 
     // Fire-and-forget welcome email (non-blocking)
     const userEmail = req.user!.email;

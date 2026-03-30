@@ -25,13 +25,17 @@ router.post(
     const { name, school_or_org } = req.body;
 
     const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+    console.log('[POST /coach/profile] user_id:', req.user!.id, 'name:', name);
     const { data, error } = await supabase
       .from('coach_profiles')
       .insert({ user_id: req.user!.id, name, school_or_org, trial_ends_at: trialEndsAt })
       .select()
       .single();
 
-    if (error) return res.status(400).json({ error: error.message });
+    if (error) {
+      console.error('[POST /coach/profile] insert error:', error.message, '| code:', error.code);
+      return res.status(400).json({ error: error.message });
+    }
 
     // Fire-and-forget welcome email (non-blocking)
     const userEmail = req.user!.email;
