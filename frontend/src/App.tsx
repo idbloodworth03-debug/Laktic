@@ -42,6 +42,7 @@ import { CertificationPage } from './pages/CertificationPage';
 import { RecruitingSettings, RecruiterSignup, RecruiterDashboard } from './pages/RecruitingPages';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { AthletePro } from './pages/AthletePro';
+import { Privacy } from './pages/Privacy';
 
 function RequireCoach({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
@@ -117,6 +118,7 @@ export default function App() {
         <Route path="/athlete/:username" element={<AthletePublicProfile />} />
         <Route path="/coach/:username" element={<CoachPublicProfile />} />
         <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/privacy" element={<Privacy />} />
 
         {/* Referrals — authenticated */}
         <Route path="/referrals" element={<ReferralsPage />} />

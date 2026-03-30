@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/authStore';
 import { apiFetch } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
 import { AppLayout, Card, Button, Badge, Spinner, Alert, Input } from '../components/ui';
+import { StravaConnectButton } from '../components/StravaConnectButton';
 import { useNotifications } from '../hooks/useNotifications';
 
 interface StravaStatus {
@@ -261,7 +262,12 @@ export function AthleteSettings() {
               <p className="text-sm text-[var(--color-text-tertiary)] mb-3">
                 Download a copy of all your Laktic data including your profile, training plan, activities, and chat history.
               </p>
-              <Button variant="secondary" size="sm" onClick={downloadData}>Download my data</Button>
+              <div className="flex items-center gap-4">
+                <Button variant="secondary" size="sm" onClick={downloadData}>Download my data</Button>
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-sm text-[var(--color-accent)] hover:underline">
+                  Privacy Policy
+                </a>
+              </div>
             </div>
             <div className="pt-4 border-t border-[var(--color-border)]">
               <p className="text-sm font-medium mb-1">Delete account</p>
@@ -368,7 +374,7 @@ export function AthleteSettings() {
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-2 flex-wrap">
                 <Button onClick={triggerSync} loading={syncing} size="sm">
                   Sync Activities
                 </Button>
@@ -381,6 +387,23 @@ export function AthleteSettings() {
                   Disconnect
                 </Button>
               </div>
+
+              <p className="text-xs text-[var(--color-text-tertiary)]">
+                Disconnecting will delete all synced Strava activity data from Laktic.
+              </p>
+
+              {/* Powered by Strava — required by Strava API guidelines */}
+              <a
+                href="https://www.strava.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors pt-1"
+              >
+                <svg width="12" height="12" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <path d="M12 3l-4 7h3L7 17l8-9h-4L12 3z" fill="#FC5200" />
+                </svg>
+                Powered by Strava
+              </a>
             </div>
           ) : (
             <div className="space-y-4">
@@ -388,9 +411,7 @@ export function AthleteSettings() {
                 Connect your Strava account to automatically sync your running activities,
                 including pace, distance, heart rate, and elevation data.
               </p>
-              <Button onClick={connectStrava}>
-                Connect Strava
-              </Button>
+              <StravaConnectButton onClick={connectStrava} />
             </div>
           )}
         </Card>

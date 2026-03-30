@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { Button, Input, Textarea } from '../components/ui';
+import { StravaConnectButton } from '../components/StravaConnectButton';
 
 const EVENT_OPTIONS = ['800m', '1500m', 'Mile', '3000m', '5K', '10K', 'Half Marathon', 'Marathon', 'Steeplechase', 'Cross Country'];
 
@@ -361,9 +362,7 @@ export function AthleteOnboarding() {
             ))}
           </div>
 
-          <Button variant="primary" size="lg" loading={connectingStrava} onClick={connectStrava} className="w-full">
-            Connect Strava Account
-          </Button>
+          <StravaConnectButton loading={connectingStrava} onClick={connectStrava} className="w-full" />
 
           <p className="text-xs text-[var(--muted)] text-center">
             Strava API access may take 1–2 weeks to approve. You can still use Laktic while waiting.

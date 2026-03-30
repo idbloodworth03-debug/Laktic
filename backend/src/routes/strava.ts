@@ -108,12 +108,19 @@ router.post(
   })
 );
 
-// DELETE /api/athlete/strava — Disconnect Strava
+// DELETE /api/athlete/strava — Disconnect Strava and delete all synced activity data
 router.delete(
   '/strava',
   auth,
   requireAthlete,
   asyncHandler(async (req: AuthRequest, res) => {
+    // Delete all synced Strava activities (Strava API compliance — data must be deleted on disconnect)
+    await supabase
+      .from('athlete_activities')
+      .delete()
+      .eq('athlete_id', req.athlete.id)
+      .eq('source', 'strava');
+
     const { error } = await supabase
       .from('strava_connections')
       .update({ is_active: false })
