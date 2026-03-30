@@ -5,6 +5,7 @@ import { AppLayout, Card, Badge, Spinner, Button, EmptyState } from '../componen
 
 interface Activity {
   id: string;
+  strava_activity_id: number | null;
   activity_type: string;
   name: string;
   start_date: string;
@@ -94,6 +95,19 @@ export function Activities() {
           <h1 className="font-display text-2xl font-bold text-[var(--color-text-primary)]">Activities</h1>
         </div>
 
+        {/* Powered by Strava attribution — required by Strava API guidelines */}
+        <a
+          href="https://www.strava.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 mb-5 text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
+        >
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M12 3l-4 7h3L7 17l8-9h-4L12 3z" fill="#FC5200" />
+          </svg>
+          Powered by Strava
+        </a>
+
         {loading ? (
           <div className="flex justify-center py-20">
             <Spinner size="lg" />
@@ -139,11 +153,24 @@ export function Activities() {
                       <StatCell label="Avg HR" value={a.average_heartrate ? `${Math.round(a.average_heartrate)} bpm` : '--'} />
                     </div>
 
-                    {a.total_elevation_gain > 0 && (
-                      <div className="mt-2 text-xs text-[var(--color-text-tertiary)]">
-                        ↑ {Math.round(a.total_elevation_gain * 3.28084)} ft elevation
-                      </div>
-                    )}
+                    <div className="flex items-center justify-between mt-2">
+                      {a.total_elevation_gain > 0 && (
+                        <span className="text-xs text-[var(--color-text-tertiary)]">
+                          ↑ {Math.round(a.total_elevation_gain * 3.28084)} ft elevation
+                        </span>
+                      )}
+                      {a.source === 'strava' && a.strava_activity_id && (
+                        <a
+                          href={`https://www.strava.com/activities/${a.strava_activity_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-auto text-xs font-bold underline"
+                          style={{ color: '#FC5200' }}
+                        >
+                          View on Strava
+                        </a>
+                      )}
+                    </div>
                   </div>
                 );
               })}
