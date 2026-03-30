@@ -41,7 +41,8 @@
       "Bash(npm uninstall:*)",
       "Bash(find /c/Users/Nick/Projects/Laktic/frontend/src/pages -iname *privacy* -o -iname *policy*)",
       "Bash(echo \"EXIT:$?\")",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(\"C:/Users/Nick/Projects/Laktic/migrations.sql\":*)"
     ]
   }
 }

@@ -1892,3 +1892,92 @@ EXCEPTION WHEN others THEN RAISE NOTICE '[policy] tf__coach_insert_own: %', SQLE
 -- ════════════════════════════════════════════════════════════════════
 -- END Migration 025
 -- ════════════════════════════════════════════════════════════════════
+
+
+-- ════════════════════════════════════════════════════════════════════
+-- Migration 026 — post_comments table + feed_kudos coach support
+-- ════════════════════════════════════════════════════════════════════
+
+-- Comments on community posts
+CREATE TABLE IF NOT EXISTS public.post_comments (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id     UUID        NOT NULL REFERENCES public.team_feed(id) ON DELETE CASCADE,
+  author_id   UUID        NOT NULL,
+  author_type TEXT        NOT NULL CHECK (author_type IN ('athlete', 'coach')),
+  author_name TEXT        NOT NULL,
+  content     TEXT        NOT NULL CHECK (char_length(content) BETWEEN 1 AND 1000),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS post_comments_post_idx ON public.post_comments(post_id, created_at ASC);
+
+DO $$ BEGIN ALTER TABLE public.post_comments ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] post_comments: %', SQLERRM; END $$;
+
+-- SELECT: anyone authenticated can read comments on public posts, team members on team posts
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "pc__select_public" ON public.post_comments;
+  CREATE POLICY "pc__select_public" ON public.post_comments
+    FOR SELECT USING (
+      post_id IN (
+        SELECT id FROM public.team_feed WHERE scope = 'public'
+        UNION
+        SELECT tf.id FROM public.team_feed tf
+          JOIN public.team_members tm ON tm.team_id = tf.team_id
+          WHERE tm.athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+            AND tm.left_at IS NULL
+        UNION
+        SELECT tf.id FROM public.team_feed tf
+          JOIN public.teams t ON t.id = tf.team_id
+          WHERE t.coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] pc__select_public: %', SQLERRM; END $$;
+
+-- INSERT: any authenticated user with a profile can comment
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "pc__insert_authenticated" ON public.post_comments;
+  CREATE POLICY "pc__insert_authenticated" ON public.post_comments
+    FOR INSERT WITH CHECK (
+      (author_type = 'athlete' AND author_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid()))
+      OR
+      (author_type = 'coach'   AND author_id = (SELECT id FROM public.coach_profiles  WHERE user_id = auth.uid()))
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] pc__insert_authenticated: %', SQLERRM; END $$;
+
+-- DELETE: own comments only
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "pc__delete_own" ON public.post_comments;
+  CREATE POLICY "pc__delete_own" ON public.post_comments
+    FOR DELETE USING (
+      (author_type = 'athlete' AND author_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid()))
+      OR
+      (author_type = 'coach'   AND author_id = (SELECT id FROM public.coach_profiles  WHERE user_id = auth.uid()))
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] pc__delete_own: %', SQLERRM; END $$;
+
+-- Add coach_id to feed_kudos so coaches can like posts
+DO $$ BEGIN
+  ALTER TABLE public.feed_kudos ADD COLUMN IF NOT EXISTS coach_id UUID REFERENCES public.coach_profiles(id) ON DELETE CASCADE;
+EXCEPTION WHEN others THEN RAISE NOTICE '[alter] feed_kudos add coach_id: %', SQLERRM; END $$;
+
+-- Coach insert policy for feed_kudos
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "fk__coach_insert_own" ON public.feed_kudos;
+  CREATE POLICY "fk__coach_insert_own" ON public.feed_kudos
+    FOR INSERT WITH CHECK (
+      coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] fk__coach_insert_own: %', SQLERRM; END $$;
+
+-- Coach delete policy for feed_kudos
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "fk__coach_delete_own" ON public.feed_kudos;
+  CREATE POLICY "fk__coach_delete_own" ON public.feed_kudos
+    FOR DELETE USING (
+      coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] fk__coach_delete_own: %', SQLERRM; END $$;
+
+-- ════════════════════════════════════════════════════════════════════
+-- END Migration 026
+-- ════════════════════════════════════════════════════════════════════

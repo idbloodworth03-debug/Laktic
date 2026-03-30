@@ -27,89 +27,270 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-// ── Supabase image upload ──────────────────────────────────────────────────────
 async function uploadCommunityImage(file: File): Promise<string | null> {
   const ext = file.name.split('.').pop() ?? 'jpg';
   const path = `community/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-  const { error } = await supabase.storage
-    .from('community-images')
-    .upload(path, file, { contentType: file.type, upsert: false });
+  const { error } = await supabase.storage.from('community-images').upload(path, file, { contentType: file.type, upsert: false });
   if (error) return null;
   const { data } = supabase.storage.from('community-images').getPublicUrl(path);
   return data.publicUrl;
 }
 
-// ── Icons ─────────────────────────────────────────────────────────────────────
+// ── SVG Icons ─────────────────────────────────────────────────────────────────
 function HeartIcon({ filled }: { filled: boolean }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24"
-      fill={filled ? 'currentColor' : 'none'}
-      stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-    >
+    <svg width="17" height="17" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
     </svg>
   );
 }
-
 function CommentIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-    >
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
   );
 }
-
 function ShareIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-    >
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
-      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+    </svg>
+  );
+}
+function DotsIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
     </svg>
   );
 }
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
 function Avatar({ name, size = 40 }: { name: string; size?: number }) {
-  const initial = (name || 'A').charAt(0).toUpperCase();
   return (
-    <div
-      className="shrink-0 flex items-center justify-center font-bold select-none"
+    <div className="shrink-0 flex items-center justify-center font-bold select-none" style={{
+      width: size, height: size, borderRadius: '50%',
+      background: 'rgba(0,229,160,0.15)', border: '1px solid rgba(0,229,160,0.25)',
+      color: '#00E5A0', fontSize: size <= 32 ? 11 : size <= 40 ? 14 : 16,
+    }}>
+      {(name || 'A').charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+// ── ActionBtn ─────────────────────────────────────────────────────────────────
+function ActionBtn({ children, onClick, active, disabled, title }: {
+  children: React.ReactNode; onClick?: () => void; active?: boolean; disabled?: boolean; title?: string;
+}) {
+  const [hov, setHov] = useState(false);
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} title={title}
+      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all duration-150"
       style={{
-        width: size, height: size, borderRadius: '50%',
-        background: 'rgba(0,229,160,0.15)',
-        border: '1px solid rgba(0,229,160,0.25)',
-        color: '#00E5A0',
-        fontSize: size <= 32 ? 11 : size <= 40 ? 14 : 16,
+        color: active ? '#00E5A0' : hov ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.38)',
+        background: active ? 'rgba(0,229,160,0.10)' : hov ? 'rgba(255,255,255,0.05)' : 'transparent',
+        border: 'none', cursor: disabled ? 'default' : 'pointer',
       }}
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
     >
-      {initial}
+      {children}
+    </button>
+  );
+}
+
+// ── Post Menu (three-dot) ─────────────────────────────────────────────────────
+function PostMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <ActionBtn onClick={() => setOpen(o => !o)} active={open}><DotsIcon /></ActionBtn>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-20 py-1 rounded-xl overflow-hidden"
+          style={{ background: '#1e1e1e', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 8px 32px rgba(0,0,0,0.6)', minWidth: 130 }}>
+          <button type="button" className="w-full text-left px-4 py-2.5 text-sm transition-colors"
+            style={{ color: 'rgba(255,255,255,0.75)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+            onClick={() => { setOpen(false); onEdit(); }}>
+            Edit
+          </button>
+          <button type="button" className="w-full text-left px-4 py-2.5 text-sm transition-colors"
+            style={{ color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(248,113,113,0.10)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+            onClick={() => { setOpen(false); onDelete(); }}>
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Comment Thread ────────────────────────────────────────────────────────────
+function CommentThread({ postId }: { postId: string }) {
+  const [comments, setComments] = useState<any[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [text, setText]         = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    apiFetch(`/api/community/posts/${postId}/comments`)
+      .then(setComments).catch(() => {}).finally(() => { setLoading(false); inputRef.current?.focus(); });
+  }, [postId]);
+
+  const submit = async () => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setSubmitting(true);
+    try {
+      const c = await apiFetch(`/api/community/posts/${postId}/comments`, {
+        method: 'POST', body: JSON.stringify({ content: trimmed }),
+      });
+      setComments(prev => [...prev, c]);
+      setText('');
+    } catch {}
+    finally { setSubmitting(false); }
+  };
+
+  return (
+    <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}>
+      <div className="px-5 pt-3 pb-4">
+        {loading ? (
+          <div className="flex justify-center py-3"><Spinner /></div>
+        ) : comments.length === 0 ? (
+          <p className="text-xs py-2 text-center" style={{ color: 'rgba(255,255,255,0.28)' }}>No comments yet. Be the first.</p>
+        ) : (
+          <div className="space-y-3 mb-3">
+            {comments.map(c => (
+              <div key={c.id} className="flex gap-2.5 items-start">
+                <Avatar name={c.author_name} size={28} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xs font-semibold" style={{ color: '#FFFFFF' }}>{c.author_name}</span>
+                    {c.author_type === 'coach' && (
+                      <span className="text-[9px] font-bold px-1.5 rounded-full"
+                        style={{ background: 'rgba(0,229,160,0.12)', color: '#00E5A0', border: '1px solid rgba(0,229,160,0.25)' }}>
+                        Coach
+                      </span>
+                    )}
+                    <span className="text-[10px] ml-auto" style={{ color: 'rgba(255,255,255,0.28)' }}>{timeAgo(c.created_at)}</span>
+                  </div>
+                  <p className="text-xs leading-relaxed mt-0.5" style={{ color: 'rgba(255,255,255,0.72)' }}>{c.content}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Comment input */}
+        <div className="flex gap-2 items-center mt-2">
+          <input
+            ref={inputRef}
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
+            placeholder="Add a comment…"
+            maxLength={500}
+            className="flex-1 text-xs outline-none transition-all"
+            style={{
+              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)',
+              borderRadius: 20, padding: '7px 14px', color: '#FFFFFF',
+            }}
+            onFocus={e => { (e.target as HTMLElement).style.borderColor = '#00E5A0'; }}
+            onBlur={e => { (e.target as HTMLElement).style.borderColor = 'rgba(255,255,255,0.10)'; }}
+          />
+          <button type="button" onClick={submit} disabled={submitting || !text.trim()}
+            className="text-xs font-bold px-3 py-1.5 rounded-full transition-all"
+            style={{
+              background: text.trim() ? '#00E5A0' : 'rgba(255,255,255,0.08)',
+              color: text.trim() ? '#000' : 'rgba(255,255,255,0.3)',
+              border: 'none', cursor: text.trim() ? 'pointer' : 'default',
+            }}>
+            {submitting ? '…' : 'Post'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
 
 // ── Post Card ─────────────────────────────────────────────────────────────────
-function PostCard({ post, onKudo, canKudo }: { post: any; onKudo: (id: string) => void; canKudo: boolean }) {
-  const isCoachPost = !!post.coach_profiles;
-  const name: string = isCoachPost
-    ? (post.coach_profiles?.name ?? 'Coach')
-    : (post.athlete_profiles?.name ?? 'Athlete');
+function PostCard({
+  post, currentProfileId, currentRole, onKudo, onDelete, onEdit,
+}: {
+  post: any;
+  currentProfileId: string | undefined;
+  currentRole: string | undefined;
+  onKudo: (id: string) => void;
+  onDelete: (id: string) => void;
+  onEdit: (id: string, newBody: string) => void;
+}) {
+  const isCoachPost   = !!post.coach_profiles;
+  const name: string  = isCoachPost ? (post.coach_profiles?.name ?? 'Coach') : (post.athlete_profiles?.name ?? 'Athlete');
+  const postProfileId = isCoachPost ? post.coach_profiles?.id : post.athlete_profiles?.id;
+  const isAuthor      = currentProfileId != null && postProfileId === currentProfileId
+    && ((isCoachPost && currentRole === 'coach') || (!isCoachPost && currentRole === 'athlete'));
   const cfg = POST_TYPE_CONFIG[post.feed_type] ?? POST_TYPE_CONFIG.manual;
-  const [hovered, setHovered] = useState(false);
+
+  const [showComments, setShowComments] = useState(false);
+  const [commentCount, setCommentCount] = useState<number | null>(null);
+  const [editMode, setEditMode]         = useState(false);
+  const [editBody, setEditBody]         = useState(post.body);
+  const [saving, setSaving]             = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [hovered, setHovered]           = useState(false);
+  const [shared, setShared]             = useState(false);
+
+  const handleShare = async () => {
+    const text = `${name}: "${post.body}"`;
+    if (navigator.share) {
+      try { await navigator.share({ text, url: window.location.href }); } catch {}
+    } else {
+      await navigator.clipboard.writeText(text).catch(() => {});
+      setShared(true);
+      setTimeout(() => setShared(false), 1500);
+    }
+  };
+
+  const saveEdit = async () => {
+    if (!editBody.trim()) return;
+    setSaving(true);
+    try {
+      await apiFetch(`/api/community/posts/${post.id}`, { method: 'PATCH', body: JSON.stringify({ body: editBody.trim() }) });
+      onEdit(post.id, editBody.trim());
+      setEditMode(false);
+    } catch {}
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await apiFetch(`/api/community/posts/${post.id}`, { method: 'DELETE' });
+      onDelete(post.id);
+    } catch {}
+  };
 
   return (
     <article
-      className="transition-all duration-150"
       style={{
-        background: '#111111',
-        border: `1px solid ${hovered ? 'rgba(255,255,255,0.13)' : 'rgba(255,255,255,0.09)'}`,
-        borderTop: `3px solid ${cfg.color}`,
-        borderRadius: 16,
-        overflow: 'hidden',
+        background: hovered ? '#161616' : '#111111',
+        border: '1px solid #2a2a2a',
+        borderRadius: 16, overflow: 'hidden',
+        transition: 'background 0.15s, border-color 0.15s',
+        ...(hovered ? { borderColor: '#333333' } : {}),
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -121,102 +302,117 @@ function PostCard({ post, onKudo, canKudo }: { post: any; onKudo: (id: string) =
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-sm" style={{ color: '#FFFFFF' }}>{name}</span>
-              {/* Coach badge */}
               {isCoachPost && (
-                <span
-                  className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                  style={{ background: 'rgba(0,229,160,0.15)', color: '#00E5A0', border: '1px solid rgba(0,229,160,0.30)' }}
-                >
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(0,229,160,0.15)', color: '#00E5A0', border: '1px solid rgba(0,229,160,0.30)' }}>
                   Coach
                 </span>
               )}
+              {post.feed_type !== 'manual' && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                  style={{ background: cfg.bg, color: cfg.color }}>
+                  {cfg.label}
+                </span>
+              )}
             </div>
-            <div className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>{timeAgo(post.created_at)}</div>
+            <div className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.32)' }}>{timeAgo(post.created_at)}</div>
           </div>
-          {/* Post type badge — top right */}
-          <span
-            className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
-            style={{ background: cfg.bg, color: cfg.color }}
-          >
-            {cfg.label}
-          </span>
+          {isAuthor && !editMode && (
+            <PostMenu
+              onEdit={() => { setEditBody(post.body); setEditMode(true); }}
+              onDelete={() => setDeleteConfirm(true)}
+            />
+          )}
         </div>
 
-        {/* Body */}
-        <p className="leading-relaxed mb-3" style={{ color: 'rgba(255,255,255,0.82)', fontSize: 15 }}>
-          {post.body}
-        </p>
+        {/* Delete confirmation */}
+        {deleteConfirm && (
+          <div className="mb-3 flex items-center gap-3 px-3 py-2.5 rounded-xl"
+            style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.20)' }}>
+            <span className="text-sm flex-1" style={{ color: 'rgba(255,255,255,0.75)' }}>Delete this post?</span>
+            <button type="button" onClick={handleDelete}
+              className="text-xs font-bold px-3 py-1.5 rounded-full"
+              style={{ background: '#f87171', color: '#000', border: 'none', cursor: 'pointer' }}>
+              Delete
+            </button>
+            <button type="button" onClick={() => setDeleteConfirm(false)}
+              className="text-xs font-medium px-3 py-1.5 rounded-full"
+              style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)', border: 'none', cursor: 'pointer' }}>
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {/* Body or edit mode */}
+        {editMode ? (
+          <div className="mb-3">
+            <textarea
+              value={editBody}
+              onChange={e => setEditBody(e.target.value)}
+              rows={4}
+              maxLength={500}
+              autoFocus
+              className="w-full text-sm resize-none outline-none transition-all"
+              style={{
+                background: 'rgba(255,255,255,0.04)', border: '1px solid #00E5A0',
+                borderRadius: 10, padding: '10px 12px', color: '#FFFFFF', lineHeight: 1.6,
+              }}
+            />
+            <div className="flex gap-2 mt-2">
+              <button type="button" onClick={saveEdit} disabled={saving || !editBody.trim()}
+                className="text-xs font-bold px-4 py-1.5 rounded-full"
+                style={{ background: '#00E5A0', color: '#000', border: 'none', cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              <button type="button" onClick={() => setEditMode(false)}
+                className="text-xs font-medium px-4 py-1.5 rounded-full"
+                style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.6)', border: 'none', cursor: 'pointer' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="leading-relaxed mb-3 whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.85)', fontSize: 15 }}>
+            {post.body}
+          </p>
+        )}
 
         {/* Image */}
         {post.image_url && (
-          <div className="mb-3 overflow-hidden" style={{ borderRadius: 12, maxHeight: 400 }}>
-            <img
-              src={post.image_url}
-              alt="Post"
-              className="w-full object-cover"
-              style={{ maxHeight: 400 }}
-              loading="lazy"
-            />
+          <div className="mb-2 overflow-hidden" style={{ borderRadius: 12, maxHeight: 500 }}>
+            <img src={post.image_url} alt="Post" className="w-full object-cover" style={{ maxHeight: 500 }} loading="lazy" />
           </div>
         )}
       </div>
 
       {/* Action bar */}
-      <div
-        className="px-5 py-3 flex items-center gap-0.5"
-        style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
-      >
-        {/* Kudo */}
-        <ActionBtn
-          active={post.i_kudoed}
-          onClick={() => canKudo && onKudo(post.id)}
-          disabled={!canKudo}
-        >
+      <div className="px-4 pb-1 flex items-center gap-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <ActionBtn active={post.i_kudoed} onClick={() => onKudo(post.id)}>
           <HeartIcon filled={post.i_kudoed} />
           {post.kudo_count > 0 && <span>{post.kudo_count}</span>}
         </ActionBtn>
 
-        {/* Comment */}
-        <ActionBtn>
+        <ActionBtn onClick={() => { setShowComments(s => !s); }} active={showComments}>
           <CommentIcon />
+          {commentCount != null && commentCount > 0 && <span>{commentCount}</span>}
         </ActionBtn>
 
-        {/* Share — pushed right */}
         <div className="ml-auto">
-          <ActionBtn>
+          <ActionBtn onClick={handleShare} title={shared ? 'Copied!' : 'Share'}>
             <ShareIcon />
+            {shared && <span style={{ color: '#00E5A0' }}>Copied</span>}
           </ActionBtn>
         </div>
       </div>
-    </article>
-  );
-}
 
-function ActionBtn({
-  children, onClick, active, disabled,
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  active?: boolean;
-  disabled?: boolean;
-}) {
-  const [hov, setHov] = useState(false);
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150"
-      style={{
-        color: active ? '#00E5A0' : hov ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.38)',
-        background: active ? 'rgba(0,229,160,0.10)' : 'transparent',
-        border: 'none',
-        cursor: disabled ? 'default' : 'pointer',
-      }}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-    >
-      {children}
-    </button>
+      {/* Comment thread */}
+      {showComments && (
+        <CommentThread
+          postId={post.id}
+          key={post.id}
+        />
+      )}
+    </article>
   );
 }
 
@@ -224,41 +420,31 @@ function ActionBtn({
 function ComposerBar({ name, onClick }: { name: string; onClick: () => void }) {
   const [hov, setHov] = useState(false);
   return (
-    <div
-      className="flex items-center gap-3 px-4 py-3 mb-4 cursor-pointer transition-all duration-150"
-      style={{
-        background: '#111111',
-        border: `1px solid ${hov ? 'rgba(0,229,160,0.30)' : 'rgba(255,255,255,0.06)'}`,
-        borderRadius: 16,
-      }}
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-    >
+    <div className="flex items-center gap-3 px-4 py-3 mb-4 cursor-pointer transition-all duration-150"
+      style={{ background: '#111111', border: `1px solid ${hov ? 'rgba(0,229,160,0.30)' : 'rgba(255,255,255,0.07)'}`, borderRadius: 16 }}
+      onClick={onClick} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>
       <Avatar name={name || 'A'} size={36} />
-      <span className="text-sm flex-1" style={{ color: 'rgba(255,255,255,0.28)' }}>
-        What's on your mind?
+      <span className="text-sm flex-1" style={{ color: 'rgba(255,255,255,0.30)' }}>
+        Share your training, race results, or a win…
       </span>
-      <span
-        className="text-xs font-semibold px-3 py-1.5 rounded-full shrink-0"
-        style={{ background: 'rgba(0,229,160,0.12)', color: '#00E5A0', border: '1px solid rgba(0,229,160,0.20)' }}
-      >
+      <span className="text-xs font-semibold px-3 py-1.5 rounded-full shrink-0"
+        style={{ background: 'rgba(0,229,160,0.12)', color: '#00E5A0', border: '1px solid rgba(0,229,160,0.22)' }}>
         Post
       </span>
     </div>
   );
 }
 
-// ── Create Post Modal ──────────────────────────────────────────────────────────
+// ── Create Post Modal ─────────────────────────────────────────────────────────
 function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (post: any) => void }) {
-  const [body, setBody] = useState('');
+  const [body, setBody]   = useState('');
   const [scope, setScope] = useState<'public' | 'team'>('public');
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFile, setImageFile]     = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [posting, setPosting] = useState(false);
-  const [error, setError] = useState('');
-  const [captions, setCaptions] = useState<{ short: string; hype: string; reflective: string } | null>(null);
+  const [uploading, setUploading]     = useState(false);
+  const [posting, setPosting]         = useState(false);
+  const [error, setError]             = useState('');
+  const [captions, setCaptions]       = useState<{ short: string; hype: string; reflective: string } | null>(null);
   const [generatingCaptions, setGeneratingCaptions] = useState(false);
   const [captionError, setCaptionError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -274,25 +460,17 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
   };
 
   const removeImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
+    setImageFile(null); setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const generateCaptions = async () => {
-    setGeneratingCaptions(true);
-    setCaptionError('');
+    setGeneratingCaptions(true); setCaptionError('');
     try {
-      const result = await apiFetch('/api/ai/generate-caption', {
-        method: 'POST',
-        body: JSON.stringify({ milestone_label: body || undefined }),
-      });
+      const result = await apiFetch('/api/ai/generate-caption', { method: 'POST', body: JSON.stringify({ milestone_label: body || undefined }) });
       setCaptions(result.captions);
-    } catch (e: any) {
-      setCaptionError(e.message || 'Failed to generate captions');
-    } finally {
-      setGeneratingCaptions(false);
-    }
+    } catch (e: any) { setCaptionError(e.message || 'Failed to generate captions'); }
+    finally { setGeneratingCaptions(false); }
   };
 
   const submit = async () => {
@@ -308,53 +486,34 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
       }
       const post = await apiFetch('/api/community/posts', {
         method: 'POST',
-        body: JSON.stringify({
-          body: body.trim(), scope,
-          ...(imageUrl && { image_url: imageUrl }),
-        }),
+        body: JSON.stringify({ body: body.trim(), scope, ...(imageUrl && { image_url: imageUrl }) }),
       });
-      onPost(post);
-      onClose();
-    } catch (e: any) {
-      setError(e.message || 'Failed to post');
-    } finally {
-      setPosting(false); setUploading(false);
-    }
+      onPost(post); onClose();
+    } catch (e: any) { setError(e.message || 'Failed to post'); }
+    finally { setPosting(false); setUploading(false); }
   };
 
   const CAPTION_STYLES = ['Short', 'Hype', 'Reflective'] as const;
-  const captionValues = captions ? [captions.short, captions.hype, captions.reflective] : [];
+  const captionValues  = captions ? [captions.short, captions.hype, captions.reflective] : [];
 
   const pill = (active: boolean): React.CSSProperties => ({
-    borderRadius: 9999, fontSize: 12, fontWeight: 500,
-    padding: '4px 12px', cursor: 'pointer', transition: 'all 0.15s', border: 'none',
-    ...(active
-      ? { background: '#00E5A0', color: '#000' }
-      : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }
-    ),
+    borderRadius: 9999, fontSize: 12, fontWeight: 500, padding: '4px 14px',
+    cursor: 'pointer', transition: 'all 0.15s', border: 'none',
+    ...(active ? { background: '#00E5A0', color: '#000' } : { background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.5)' }),
   });
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-      <div
-        className="relative w-full max-w-lg overflow-hidden"
-        style={{
-          background: '#161616',
-          border: '1px solid rgba(255,255,255,0.10)',
-          borderRadius: 20,
-          boxShadow: '0 32px 80px rgba(0,0,0,0.85)',
-        }}
-        onClick={e => e.stopPropagation()}
-      >
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" />
+      <div className="relative w-full max-w-lg overflow-hidden"
+        style={{ background: '#161616', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 20, boxShadow: '0 32px 80px rgba(0,0,0,0.85)' }}
+        onClick={e => e.stopPropagation()}>
+
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <h2 className="font-semibold text-base" style={{ color: '#FFFFFF' }}>Share with the Community</h2>
-          <button
-            onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center text-lg transition-all duration-150"
-            style={{ borderRadius: '50%', color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer' }}
-          >×</button>
+          <button type="button" onClick={onClose} className="w-7 h-7 flex items-center justify-center text-lg"
+            style={{ borderRadius: '50%', color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer' }}>×</button>
         </div>
 
         <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
@@ -364,20 +523,14 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
               <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.35)' }}>AI suggestions — tap to use:</p>
               <div className="flex flex-col gap-1.5">
                 {captionValues.map((cap, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setBody(cap)}
+                  <button key={i} type="button" onClick={() => setBody(cap)}
                     className="text-left text-xs px-3 py-2.5 rounded-xl transition-all leading-relaxed"
                     style={{
                       border: body === cap ? '1px solid #00E5A0' : '1px solid rgba(255,255,255,0.08)',
                       background: body === cap ? 'rgba(0,229,160,0.08)' : 'transparent',
-                      color: body === cap ? '#00E5A0' : 'rgba(255,255,255,0.6)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <span className="block mb-0.5 text-[10px] font-semibold uppercase tracking-wide opacity-60">
-                      {CAPTION_STYLES[i]}
-                    </span>
+                      color: body === cap ? '#00E5A0' : 'rgba(255,255,255,0.6)', cursor: 'pointer',
+                    }}>
+                    <span className="block mb-0.5 text-[10px] font-semibold uppercase tracking-wide opacity-60">{CAPTION_STYLES[i]}</span>
                     {cap}
                   </button>
                 ))}
@@ -387,25 +540,19 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
 
           {/* Textarea */}
           <div>
-            <textarea
-              value={body}
-              onChange={e => setBody(e.target.value)}
+            <textarea value={body} onChange={e => setBody(e.target.value)}
               placeholder="Share your training, race results, or a win…"
-              rows={4}
-              maxLength={500}
-              autoFocus
+              rows={5} maxLength={500} autoFocus
               className="w-full text-sm resize-none outline-none transition-all duration-150"
               style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 12, padding: '12px 14px',
-                color: '#FFFFFF',
+                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 12, padding: '12px 14px', color: '#FFFFFF', lineHeight: 1.65,
               }}
               onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = '#00E5A0'; }}
               onBlur={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(255,255,255,0.08)'; }}
             />
             <div className="flex items-center justify-between mt-1">
-              <span className="text-xs" style={{ color: 'rgba(255,255,255,0.28)' }}>{body.length}/500</span>
+              <span className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>{body.length}/500</span>
               {captionError && <span className="text-xs text-red-400">{captionError}</span>}
             </div>
           </div>
@@ -416,26 +563,15 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
             {imagePreview ? (
               <div className="relative overflow-hidden" style={{ borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)' }}>
                 <img src={imagePreview} alt="Preview" className="w-full max-h-48 object-cover" />
-                <button
-                  onClick={removeImage}
-                  className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center text-white text-sm"
-                  style={{ background: 'rgba(0,0,0,0.7)', borderRadius: '50%', border: 'none', cursor: 'pointer' }}
-                >×</button>
+                <button type="button" onClick={removeImage} className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center text-white text-sm"
+                  style={{ background: 'rgba(0,0,0,0.7)', borderRadius: '50%', border: 'none', cursor: 'pointer' }}>×</button>
               </div>
             ) : (
-              <button
-                onClick={() => fileInputRef.current?.click()}
+              <button type="button" onClick={() => fileInputRef.current?.click()}
                 className="w-full py-3 text-xs flex items-center justify-center gap-2 transition-all duration-150"
                 style={{ border: '1px dashed rgba(255,255,255,0.12)', borderRadius: 12, color: 'rgba(255,255,255,0.35)', background: 'transparent', cursor: 'pointer' }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = '#00E5A0';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#00E5A0';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.12)';
-                  (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.35)';
-                }}
-              >
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#00E5A0'; (e.currentTarget as HTMLButtonElement).style.color = '#00E5A0'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.12)'; (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.35)'; }}>
                 📷 Add photo (optional · max 5 MB)
               </button>
             )}
@@ -443,9 +579,9 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
 
           {/* Scope */}
           <div className="flex items-center gap-3">
-            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>Visible to:</span>
+            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.42)' }}>Visible to:</span>
             {(['public', 'team'] as const).map(s => (
-              <button key={s} onClick={() => setScope(s)} style={pill(scope === s)}>
+              <button key={s} type="button" onClick={() => setScope(s)} style={pill(scope === s)}>
                 {s === 'public' ? 'Everyone' : 'Team only'}
               </button>
             ))}
@@ -455,12 +591,9 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
 
           {/* Footer */}
           <div className="flex items-center justify-between gap-3 pt-1">
-            <button
-              onClick={generateCaptions}
-              disabled={generatingCaptions}
+            <button type="button" onClick={generateCaptions} disabled={generatingCaptions}
               className="flex items-center gap-1.5 text-xs transition-colors disabled:opacity-40"
-              style={{ color: '#00E5A0', background: 'none', border: 'none', cursor: 'pointer' }}
-            >
+              style={{ color: '#00E5A0', background: 'none', border: 'none', cursor: 'pointer' }}>
               {generatingCaptions
                 ? <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin inline-block" /> Generating…</>
                 : '✦ AI Caption'
@@ -481,30 +614,24 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
 
 // ── Create Challenge Modal ────────────────────────────────────────────────────
 function CreateChallengeModal({ onClose, onCreated }: { onClose: () => void; onCreated: (challenge: any) => void }) {
-  const [title, setTitle] = useState('');
+  const [title, setTitle]       = useState('');
   const [targetValue, setTargetValue] = useState('');
-  const [targetUnit, setTargetUnit] = useState('miles');
-  const [metric, setMetric] = useState<'miles' | 'workouts' | 'hours' | 'elevation_ft'>('miles');
-  const [endsAt, setEndsAt] = useState('');
+  const [targetUnit, setTargetUnit]   = useState('miles');
+  const [metric, setMetric]     = useState<'miles' | 'workouts' | 'hours' | 'elevation_ft'>('miles');
+  const [endsAt, setEndsAt]     = useState('');
   const [description, setDescription] = useState('');
-  const [posting, setPosting] = useState(false);
-  const [error, setError] = useState('');
+  const [posting, setPosting]   = useState(false);
+  const [error, setError]       = useState('');
 
   const submit = async () => {
     if (!title.trim() || !targetValue || !endsAt) { setError('Title, target, and end date are required.'); return; }
     setPosting(true); setError('');
     try {
-      const ch = await apiFetch('/api/challenges', {
-        method: 'POST',
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim() || undefined,
-          target_value: parseFloat(targetValue),
-          target_unit: targetUnit,
-          metric,
-          ends_at: new Date(endsAt + 'T23:59:59').toISOString(),
-        }),
-      });
+      const ch = await apiFetch('/api/challenges', { method: 'POST', body: JSON.stringify({
+        title: title.trim(), description: description.trim() || undefined,
+        target_value: parseFloat(targetValue), target_unit: targetUnit, metric,
+        ends_at: new Date(endsAt + 'T23:59:59').toISOString(),
+      }) });
       onCreated(ch); onClose();
     } catch (e: any) { setError(e.message || 'Failed to create challenge'); }
     finally { setPosting(false); }
@@ -515,65 +642,45 @@ function CreateChallengeModal({ onClose, onCreated }: { onClose: () => void; onC
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-      <div
-        className="relative w-full max-w-lg"
+      <div className="relative w-full max-w-lg"
         style={{ background: '#161616', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 20, boxShadow: '0 32px 80px rgba(0,0,0,0.85)' }}
-        onClick={e => e.stopPropagation()}
-      >
+        onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <h2 className="font-semibold text-base" style={{ color: '#FFFFFF' }}>Create a Challenge</h2>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center text-lg"
+          <button type="button" onClick={onClose} className="w-7 h-7 flex items-center justify-center text-lg"
             style={{ color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.06)', borderRadius: '50%', border: 'none', cursor: 'pointer' }}>×</button>
         </div>
-
         <div className="p-5 space-y-4">
           <Input label="Challenge title" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. October Miles Challenge" />
-
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wider block mb-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Description (optional)</label>
-            <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="What's this challenge about?"
-              rows={2}
+            <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="What's this challenge about?" rows={2}
               className="w-full text-sm resize-none outline-none transition-all duration-150"
               style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '8px 12px', color: '#FFFFFF' }}
               onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = '#00E5A0'; }}
-              onBlur={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(255,255,255,0.08)'; }}
-            />
+              onBlur={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(255,255,255,0.08)'; }} />
           </div>
-
           <div>
             <label className="text-xs font-medium block mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>Track by</label>
             <div className="grid grid-cols-4 gap-1.5">
               {(['miles', 'workouts', 'hours', 'elevation_ft'] as const).map(m => (
-                <button
-                  key={m}
-                  onClick={() => handleMetricChange(m)}
-                  className="py-2 px-2 text-xs font-medium text-center capitalize transition-all duration-150"
+                <button key={m} type="button" onClick={() => handleMetricChange(m)} className="py-2 px-2 text-xs font-medium text-center capitalize transition-all duration-150"
                   style={metric === m
                     ? { background: '#00E5A0', border: '1px solid #00E5A0', borderRadius: 12, color: '#000', cursor: 'pointer' }
-                    : { background: 'transparent', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 12, color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }
-                  }
-                >
+                    : { background: 'transparent', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 12, color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}>
                   {m.replace('_ft', ' ft')}
                 </button>
               ))}
             </div>
           </div>
-
           <div className="grid grid-cols-2 gap-3">
             <Input label={`Target (${METRIC_LABELS[metric]})`} type="number" min="1" value={targetValue} onChange={e => setTargetValue(e.target.value)} placeholder="e.g. 100" />
             <Input label="Ends on" type="date" value={endsAt} onChange={e => setEndsAt(e.target.value)} min={new Date().toISOString().slice(0, 10)} />
           </div>
-
           {error && <p className="text-xs text-red-400">{error}</p>}
-
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
-            <Button size="sm" loading={posting} disabled={!title.trim() || !targetValue || !endsAt} onClick={submit}>
-              Create Challenge
-            </Button>
+            <Button size="sm" loading={posting} disabled={!title.trim() || !targetValue || !endsAt} onClick={submit}>Create Challenge</Button>
           </div>
         </div>
       </div>
@@ -586,43 +693,32 @@ function LeaderboardModal({ data, onClose }: { data: { challenge: any; leaderboa
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-      <div
-        className="relative w-full max-w-md p-6 max-h-[80vh] flex flex-col"
+      <div className="relative w-full max-w-md p-6 max-h-[80vh] flex flex-col"
         style={{ background: '#161616', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 20, boxShadow: '0 32px 80px rgba(0,0,0,0.85)' }}
-        onClick={e => e.stopPropagation()}
-      >
-        <button onClick={onClose} className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center text-lg"
+        onClick={e => e.stopPropagation()}>
+        <button type="button" onClick={onClose} className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center text-lg"
           style={{ color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.06)', borderRadius: '50%', border: 'none', cursor: 'pointer' }}>×</button>
         <div className="mb-4">
           <h3 className="font-semibold text-base" style={{ color: '#FFFFFF' }}>{data.challenge.title}</h3>
-          <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>
-            Target: {data.challenge.target_value} {data.challenge.target_unit}
-          </p>
+          <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>Target: {data.challenge.target_value} {data.challenge.target_unit}</p>
         </div>
         <div className="flex-1 overflow-y-auto space-y-2">
           {data.leaderboard.length === 0 ? (
             <p className="text-sm text-center py-8" style={{ color: 'rgba(255,255,255,0.4)' }}>No participants yet.</p>
           ) : data.leaderboard.map((entry: any) => (
-            <div key={entry.athlete_id} className="flex items-center gap-3 py-2.5"
-              style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-              <span className="w-7 h-7 flex items-center justify-center text-sm font-bold shrink-0"
-                style={{
-                  borderRadius: '50%',
-                  background: entry.rank === 1 ? 'rgba(245,158,11,0.2)' : entry.rank === 2 ? 'rgba(160,160,160,0.15)' : entry.rank === 3 ? 'rgba(180,83,9,0.2)' : 'rgba(255,255,255,0.06)',
-                  color: entry.rank === 1 ? '#FCD34D' : entry.rank === 2 ? '#D1D5DB' : entry.rank === 3 ? '#D97706' : 'rgba(255,255,255,0.4)',
-                }}>
-                {entry.rank}
-              </span>
+            <div key={entry.athlete_id} className="flex items-center gap-3 py-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <span className="w-7 h-7 flex items-center justify-center text-sm font-bold shrink-0" style={{
+                borderRadius: '50%',
+                background: entry.rank === 1 ? 'rgba(245,158,11,0.2)' : entry.rank === 2 ? 'rgba(160,160,160,0.15)' : entry.rank === 3 ? 'rgba(180,83,9,0.2)' : 'rgba(255,255,255,0.06)',
+                color: entry.rank === 1 ? '#FCD34D' : entry.rank === 2 ? '#D1D5DB' : entry.rank === 3 ? '#D97706' : 'rgba(255,255,255,0.4)',
+              }}>{entry.rank}</span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm font-medium truncate" style={{ color: '#FFFFFF' }}>{entry.name}</span>
-                  <span className="text-xs shrink-0 ml-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                    {Math.round(entry.progress * 10) / 10} {data.challenge.target_unit}
-                  </span>
+                  <span className="text-xs shrink-0 ml-2" style={{ color: 'rgba(255,255,255,0.4)' }}>{Math.round(entry.progress * 10) / 10} {data.challenge.target_unit}</span>
                 </div>
                 <div className="w-full h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}>
-                  <div className="h-1.5 rounded-full transition-all"
-                    style={{ width: `${Math.min(100, entry.pct_complete)}%`, background: '#00E5A0' }} />
+                  <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.min(100, entry.pct_complete)}%`, background: '#00E5A0' }} />
                 </div>
               </div>
               <span className="text-xs font-medium shrink-0 w-10 text-right" style={{ color: '#00E5A0' }}>{entry.pct_complete}%</span>
@@ -637,14 +733,12 @@ function LeaderboardModal({ data, onClose }: { data: { challenge: any; leaderboa
 // ── Challenges Sidebar ────────────────────────────────────────────────────────
 function ChallengesSidebar({ isCoach }: { isCoach: boolean }) {
   const [challenges, setChallenges] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [joining, setJoining] = useState<string | null>(null);
+  const [loading, setLoading]       = useState(true);
+  const [joining, setJoining]       = useState<string | null>(null);
   const [leaderboard, setLeaderboard] = useState<{ challenge: any; leaderboard: any[] } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
-  const load = () => {
-    apiFetch('/api/challenges').then(setChallenges).catch(() => {}).finally(() => setLoading(false));
-  };
+  const load = () => { apiFetch('/api/challenges').then(setChallenges).catch(() => {}).finally(() => setLoading(false)); };
   useEffect(() => { load(); }, []);
 
   const join = async (id: string) => {
@@ -657,55 +751,31 @@ function ChallengesSidebar({ isCoach }: { isCoach: boolean }) {
   };
 
   const openLeaderboard = async (id: string) => {
-    try {
-      const data = await apiFetch(`/api/challenges/${id}/leaderboard`);
-      setLeaderboard(data);
-    } catch {}
+    try { const data = await apiFetch(`/api/challenges/${id}/leaderboard`); setLeaderboard(data); } catch {}
   };
 
   return (
     <>
       {leaderboard && <LeaderboardModal data={leaderboard} onClose={() => setLeaderboard(null)} />}
-      {showCreate && (
-        <CreateChallengeModal
-          onClose={() => setShowCreate(false)}
-          onCreated={ch => { setChallenges(prev => [ch, ...prev]); }}
-        />
-      )}
-
-      <div
-        style={{
-          background: '#161616',
-          border: '1px solid rgba(255,255,255,0.10)',
-          borderRadius: 16, padding: 20, marginBottom: 16,
-        }}
-      >
+      {showCreate && <CreateChallengeModal onClose={() => setShowCreate(false)} onCreated={ch => { setChallenges(prev => [ch, ...prev]); setShowCreate(false); }} />}
+      <div style={{ background: '#161616', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-sm" style={{ color: '#FFFFFF' }}>Active Challenges</h3>
           {isCoach && (
-            <button
-              className="text-xs font-medium transition-all duration-150"
+            <button type="button" className="text-xs font-medium transition-all"
               style={{ color: '#00E5A0', background: 'none', border: 'none', cursor: 'pointer' }}
-              onClick={() => setShowCreate(true)}
-            >
-              + Create
-            </button>
+              onClick={() => setShowCreate(true)}>+ Create</button>
           )}
         </div>
-
         {loading ? (
           <div className="flex justify-center py-6"><Spinner /></div>
         ) : challenges.length === 0 ? (
           <div className="py-4 text-center">
             <p className="text-xs mb-3" style={{ color: 'rgba(255,255,255,0.30)' }}>No active challenges yet.</p>
             {isCoach && (
-              <button
-                onClick={() => setShowCreate(true)}
-                className="text-xs font-semibold px-4 py-1.5 rounded-full transition-all duration-150"
-                style={{ background: 'rgba(0,229,160,0.10)', color: '#00E5A0', border: '1px solid rgba(0,229,160,0.25)', cursor: 'pointer' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,229,160,0.18)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,229,160,0.10)'; }}
-              >
+              <button type="button" onClick={() => setShowCreate(true)}
+                className="text-xs font-semibold px-4 py-1.5 rounded-full transition-all"
+                style={{ background: 'rgba(0,229,160,0.10)', color: '#00E5A0', border: '1px solid rgba(0,229,160,0.25)', cursor: 'pointer' }}>
                 + Create Challenge
               </button>
             )}
@@ -713,10 +783,7 @@ function ChallengesSidebar({ isCoach }: { isCoach: boolean }) {
         ) : (
           <div className="space-y-3">
             {challenges.slice(0, 4).map(ch => (
-              <div
-                key={ch.id}
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderTop: '2px solid #00E5A0', borderRadius: 12, padding: 14 }}
-              >
+              <div key={ch.id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderTop: '2px solid #00E5A0', borderRadius: 12, padding: 14 }}>
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold leading-snug truncate" style={{ color: '#FFFFFF' }}>{ch.title}</p>
@@ -728,48 +795,34 @@ function ChallengesSidebar({ isCoach }: { isCoach: boolean }) {
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
                       style={{ background: 'rgba(0,229,160,0.12)', color: '#00E5A0' }}>Joined</span>
                   ) : (
-                    <button
-                      onClick={() => join(ch.id)}
-                      disabled={joining === ch.id}
-                      className="text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 transition-all duration-150"
-                      style={{ background: '#00E5A0', color: '#000', border: 'none', cursor: 'pointer' }}
-                    >
+                    <button type="button" onClick={() => join(ch.id)} disabled={joining === ch.id}
+                      className="text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 transition-all"
+                      style={{ background: '#00E5A0', color: '#000', border: 'none', cursor: 'pointer' }}>
                       {joining === ch.id ? '…' : 'Join'}
                     </button>
                   )}
                 </div>
-
-                {/* Progress bar */}
                 {ch.joined && (
                   <div className="mb-2">
                     <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
-                      <div className="h-1.5 rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, ch.pct_complete)}%`, background: '#00E5A0' }} />
+                      <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.min(100, ch.pct_complete)}%`, background: '#00E5A0' }} />
                     </div>
                     <div className="flex items-center justify-between mt-1">
-                      <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                        {Math.round(ch.my_progress * 10) / 10} / {ch.target_value} {ch.target_unit}
-                      </span>
+                      <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{Math.round(ch.my_progress * 10) / 10} / {ch.target_value} {ch.target_unit}</span>
                       <span className="text-[10px] font-semibold" style={{ color: '#00E5A0' }}>{ch.pct_complete}%</span>
                     </div>
                   </div>
                 )}
-
-                <button
-                  onClick={() => openLeaderboard(ch.id)}
+                <button type="button" onClick={() => openLeaderboard(ch.id)}
                   style={{ color: 'rgba(255,255,255,0.35)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, padding: 0 }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.65)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.35)'; }}
-                >
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.35)'; }}>
                   View leaderboard →
                 </button>
               </div>
             ))}
-
             {challenges.length > 4 && (
-              <p className="text-xs text-center pt-1" style={{ color: '#00E5A0', cursor: 'default' }}>
-                +{challenges.length - 4} more challenges
-              </p>
+              <p className="text-xs text-center pt-1" style={{ color: '#00E5A0' }}>+{challenges.length - 4} more challenges</p>
             )}
           </div>
         )}
@@ -781,13 +834,8 @@ function ChallengesSidebar({ isCoach }: { isCoach: boolean }) {
 // ── Top Athletes Sidebar ──────────────────────────────────────────────────────
 function TopAthletesSidebar() {
   const [athletes, setAthletes] = useState<any[]>([]);
-
-  useEffect(() => {
-    apiFetch('/api/community/top-athletes').then(setAthletes).catch(() => {});
-  }, []);
-
+  useEffect(() => { apiFetch('/api/community/top-athletes').then(setAthletes).catch(() => {}); }, []);
   if (athletes.length === 0) return null;
-
   return (
     <div style={{ background: '#161616', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 16, padding: 20 }}>
       <h3 className="font-semibold text-sm mb-4" style={{ color: '#FFFFFF' }}>Top Athletes This Week</h3>
@@ -815,12 +863,11 @@ export function Community() {
   const { profile, clearAuth, role } = useAuthStore();
   const nav = useNavigate();
   const isCoach = role === 'coach';
-  const isAthlete = role === 'athlete';
 
-  const [posts, setPosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [posts, setPosts]           = useState<any[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [page, setPage]             = useState(1);
+  const [hasMore, setHasMore]       = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -843,30 +890,29 @@ export function Community() {
   useEffect(() => {
     if (!sentinelRef.current) return;
     const observer = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
-        loadPage(page + 1, false);
-      }
+      if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) loadPage(page + 1, false);
     }, { threshold: 0.1 });
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
   }, [hasMore, loadingMore, loading, page]);
 
   const toggleKudo = async (postId: string) => {
-    setPosts(prev => prev.map(p =>
-      p.id === postId
-        ? { ...p, i_kudoed: !p.i_kudoed, kudo_count: p.i_kudoed ? p.kudo_count - 1 : p.kudo_count + 1 }
-        : p
+    setPosts(prev => prev.map(p => p.id === postId
+      ? { ...p, i_kudoed: !p.i_kudoed, kudo_count: p.i_kudoed ? p.kudo_count - 1 : p.kudo_count + 1 }
+      : p
     ));
     try {
-      await apiFetch(`/api/athlete/feed/${postId}/kudos`, { method: 'POST' });
+      await apiFetch(`/api/community/posts/${postId}/kudos`, { method: 'POST' });
     } catch {
-      setPosts(prev => prev.map(p =>
-        p.id === postId
-          ? { ...p, i_kudoed: !p.i_kudoed, kudo_count: p.i_kudoed ? p.kudo_count - 1 : p.kudo_count + 1 }
-          : p
+      setPosts(prev => prev.map(p => p.id === postId
+        ? { ...p, i_kudoed: !p.i_kudoed, kudo_count: p.i_kudoed ? p.kudo_count - 1 : p.kudo_count + 1 }
+        : p
       ));
     }
   };
+
+  const deletePost = (postId: string) => setPosts(prev => prev.filter(p => p.id !== postId));
+  const editPost   = (postId: string, newBody: string) => setPosts(prev => prev.map(p => p.id === postId ? { ...p, body: newBody } : p));
 
   return (
     <AppLayout role={role ?? 'athlete'} name={profile?.name} onLogout={logout}>
@@ -882,82 +928,66 @@ export function Community() {
           {/* Header */}
           <div className="mb-6">
             <h1 className="font-bold text-3xl" style={{ color: '#FFFFFF' }}>Community</h1>
-            <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>Where wins get celebrated.</p>
+            <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Where wins get celebrated.</p>
           </div>
 
-          {/* Two-column grid */}
-          <div className="flex flex-col lg:flex-row gap-6 items-start">
-            {/* LEFT — Feed (65%) */}
-            <div className="flex-1 min-w-0">
-              {/* Composer bar — all authenticated users */}
-              <ComposerBar name={profile?.name ?? 'A'} onClick={() => setShowCreate(true)} />
+          {/* Two-column layout */}
+          <div className="flex flex-col lg:flex-row gap-8 items-start">
 
-              {loading ? (
-                <div className="flex justify-center py-20"><Spinner size="lg" /></div>
-              ) : posts.length === 0 ? (
-                <div
-                  style={{
+            {/* LEFT — Feed, max 680px */}
+            <div className="flex-1 min-w-0">
+              <div style={{ maxWidth: 680 }}>
+                <ComposerBar name={profile?.name ?? 'A'} onClick={() => setShowCreate(true)} />
+
+                {loading ? (
+                  <div className="flex justify-center py-20"><Spinner size="lg" /></div>
+                ) : posts.length === 0 ? (
+                  <div style={{
                     background: '#111111',
                     backgroundImage: 'radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px)',
                     backgroundSize: '24px 24px',
                     border: '1px solid rgba(255,255,255,0.10)',
-                    borderRadius: 16,
-                    padding: '72px 32px',
-                    textAlign: 'center',
-                  }}
-                >
-                  <p className="font-bold text-xl mb-2" style={{ color: '#FFFFFF' }}>Nothing here yet</p>
-                  <p className="text-sm mb-8 mx-auto" style={{ color: 'rgba(255,255,255,0.42)', maxWidth: 340, lineHeight: 1.6 }}>
-                    Be the first to share a win, race result, or training milestone with the community.
-                  </p>
-                  <div className="flex items-center justify-center gap-3 flex-wrap">
-                    <button
-                      onClick={() => setShowCreate(true)}
-                      className="px-6 py-2.5 text-sm font-bold rounded-full transition-all duration-150"
+                    borderRadius: 16, padding: '72px 32px', textAlign: 'center',
+                  }}>
+                    <p className="font-bold text-xl mb-3" style={{ color: '#FFFFFF' }}>Nothing here yet</p>
+                    <p className="text-sm mb-8 mx-auto" style={{ color: 'rgba(255,255,255,0.40)', maxWidth: 320, lineHeight: 1.65 }}>
+                      Be the first to share a win, race result, or training milestone with the community.
+                    </p>
+                    <button type="button" onClick={() => setShowCreate(true)}
+                      className="px-7 py-2.5 text-sm font-bold rounded-full transition-all duration-150"
                       style={{ background: '#00E5A0', color: '#000', border: 'none', cursor: 'pointer' }}
                       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.85'; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
-                    >
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}>
                       Create Post
                     </button>
-                    {isCoach && (
-                      <button
-                        onClick={() => {/* coach create challenge handled in sidebar */}}
-                        className="px-6 py-2.5 text-sm font-bold rounded-full transition-all duration-150"
-                        style={{ background: 'transparent', color: 'rgba(255,255,255,0.75)', border: '1px solid rgba(255,255,255,0.18)', cursor: 'pointer' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.40)'; (e.currentTarget as HTMLElement).style.color = '#FFFFFF'; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.18)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.75)'; }}
-                      >
-                        Create Challenge
-                      </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {posts.map(post => (
+                      <PostCard
+                        key={post.id}
+                        post={post}
+                        currentProfileId={profile?.id}
+                        currentRole={role ?? undefined}
+                        onKudo={toggleKudo}
+                        onDelete={deletePost}
+                        onEdit={editPost}
+                      />
+                    ))}
+                    {loadingMore && <div className="flex justify-center py-4"><Spinner /></div>}
+                    <div ref={sentinelRef} className="h-4" />
+                    {!hasMore && posts.length > 8 && (
+                      <p className="text-center text-xs py-4" style={{ color: 'rgba(255,255,255,0.20)' }}>
+                        You're all caught up
+                      </p>
                     )}
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {posts.map(post => (
-                    <PostCard
-                      key={post.id}
-                      post={post}
-                      onKudo={toggleKudo}
-                      canKudo={isAthlete}
-                    />
-                  ))}
-                  {loadingMore && (
-                    <div className="flex justify-center py-4"><Spinner /></div>
-                  )}
-                  <div ref={sentinelRef} className="h-4" />
-                  {!hasMore && posts.length > 10 && (
-                    <p className="text-center text-xs py-4" style={{ color: 'rgba(255,255,255,0.22)' }}>
-                      You've seen it all
-                    </p>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
-            {/* RIGHT — Sidebar (35%) */}
-            <div className="shrink-0 w-full lg:w-80 xl:w-96">
+            {/* RIGHT — Sidebar (desktop only) */}
+            <div className="hidden lg:block w-80 shrink-0 sticky top-8">
               <ChallengesSidebar isCoach={isCoach} />
               <TopAthletesSidebar />
             </div>
