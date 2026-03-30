@@ -190,7 +190,7 @@ export function AthleteCalendar() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
-      const BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3001';
+      const BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001';
       const res = await fetch(`${BASE}/api/athlete/calendar/export.ics`, {
         headers: { Authorization: `Bearer ${token}` }
       });

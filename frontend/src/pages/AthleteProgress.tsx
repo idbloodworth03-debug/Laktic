@@ -5,7 +5,7 @@ import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
 import { AppLayout, Button, Card, Badge, Spinner, Alert } from '../components/ui';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL as string || 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL as string || 'http://localhost:3001';
 
 type WeeklySummary = {
   id: string;
