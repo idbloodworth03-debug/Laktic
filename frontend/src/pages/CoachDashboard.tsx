@@ -128,7 +128,7 @@ export function CoachDashboard() {
       .catch((e: any) => setInboxError(e?.message || 'Failed to load messages'));
 
   useEffect(() => {
-    apiFetch('/api/coach/bot').then(setBotData).catch(console.error).finally(() => setLoading(false));
+    apiFetch('/api/coach/bot').then(setBotData).catch(() => setBotData({ bot: null })).finally(() => setLoading(false));
     apiFetch('/api/coach/team').then(setTeamData).catch(console.error).finally(() => setTeamLoading(false));
     apiFetch('/api/marketplace/my-application').then(setMarketplaceApp).catch(() => {});
     apiFetch('/api/team-challenges/active').then(setTeamChallenges).catch(() => {});
@@ -393,11 +393,11 @@ export function CoachDashboard() {
         {/* ── Overview tab — no bot ────────────────────────────────────── */}
         {dashTab === 'overview' && !bot && (
           <EmptyState
-            title="No bot yet"
-            message="Create your coaching bot to start generating personalized plans for athletes."
+            title="You haven't created a coaching bot yet"
+            message="Build your coaching identity once — the AI coaches every athlete on your roster in your voice, automatically."
             action={
               <Link to="/coach/bot/setup">
-                <Button>Create Bot</Button>
+                <Button variant="primary">Create Your Bot</Button>
               </Link>
             }
           />

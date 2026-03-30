@@ -72,8 +72,14 @@ router.get(
   auth,
   requireCoach,
   asyncHandler(async (req: AuthRequest, res) => {
-    const { data: bot } = await supabase.from('coach_bots').select('*').eq('coach_id', req.coach.id).single();
+    // maybeSingle() returns null (no error) when 0 rows found, unlike single() which throws PGRST116
+    const { data: bot, error: botErr } = await supabase
+      .from('coach_bots')
+      .select('*')
+      .eq('coach_id', req.coach.id)
+      .maybeSingle();
 
+    if (botErr) return res.status(500).json({ error: botErr.message });
     if (!bot) return res.json({ bot: null });
 
     const { data: workouts } = await supabase

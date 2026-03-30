@@ -41,6 +41,7 @@ export function BotSetupEdit() {
   const [bot, setBot] = useState<any>(null);
   const [botForm, setBotForm] = useState({ name: '', philosophy: '', event_focus: '', level_focus: '', personality: 'custom', personality_prompt: '' });
   const [workouts, setWorkouts] = useState<Workout[]>(DAYS.map((_, i) => emptyWorkout(i + 1)));
+  const [knowledgeCount, setKnowledgeCount] = useState(0);
   const [saving, setSaving] = useState(false);
   const [savingDay, setSavingDay] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
@@ -57,11 +58,27 @@ export function BotSetupEdit() {
           const existing = filled.find((w: any) => w.day_of_week === i + 1);
           return existing ? { ...existing, distance_miles: existing.distance_miles?.toString() || '', ai_adjustable: existing.ai_adjustable ?? true } : emptyWorkout(i + 1);
         }));
+        setKnowledgeCount((data.knowledge || []).length);
       }
     });
   }, []);
 
   const saveDraft = async () => {
+    // Validate required fields before hitting the API
+    if (!botForm.name.trim()) {
+      setError('Please add a bot name before saving.');
+      return;
+    }
+    if (botForm.personality === 'custom' && !botForm.personality_prompt.trim()) {
+      setError('Please select a coaching personality or write a custom personality prompt before saving.');
+      return;
+    }
+    const filledWorkouts = workouts.filter(w => !!w.title).length;
+    if (filledWorkouts === 0 && knowledgeCount === 0) {
+      setError('Please add at least one workout or upload a coaching document before saving — an empty bot will generate useless plans for athletes.');
+      return;
+    }
+
     setSaving(true); setError('');
     try {
       const payload = {
