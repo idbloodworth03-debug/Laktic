@@ -667,3 +667,26 @@ CREATE TABLE IF NOT EXISTS public.recruiter_accounts (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ALTER TABLE public.recruiter_accounts ENABLE ROW LEVEL SECURITY;
+
+-- Migration 023 — coach community posts
+-- Allow coaches to post to the community feed.
+-- athlete_id becomes nullable; new coach_id column identifies coach posts.
+-- Constraint ensures every post has exactly one author (athlete XOR coach).
+ALTER TABLE public.team_feed
+  ALTER COLUMN athlete_id DROP NOT NULL;
+
+ALTER TABLE public.team_feed
+  ADD COLUMN IF NOT EXISTS coach_id UUID REFERENCES public.coach_profiles(id) ON DELETE CASCADE;
+
+ALTER TABLE public.team_feed
+  DROP CONSTRAINT IF EXISTS team_feed_author_check;
+
+ALTER TABLE public.team_feed
+  ADD CONSTRAINT team_feed_author_check
+    CHECK (
+      (athlete_id IS NOT NULL AND coach_id IS NULL) OR
+      (athlete_id IS NULL     AND coach_id IS NOT NULL)
+    );
+
+CREATE INDEX IF NOT EXISTS team_feed_coach_idx ON public.team_feed(coach_id, created_at DESC)
+  WHERE coach_id IS NOT NULL;

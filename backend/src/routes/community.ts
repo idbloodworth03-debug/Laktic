@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { supabase } from '../db/supabase';
-import { auth, requireAthlete, AuthRequest } from '../middleware/auth';
+import { auth, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
 import { validate } from '../middleware/validate';
 import { z } from 'zod';
@@ -16,8 +16,8 @@ const communityPostSchema = z.object({
   image_url: z.string().url().max(2000).optional()
 });
 
-// GET /api/community/feed?page=1&channel=all
-// Returns public posts + the user's own team posts, paginated (coaches and athletes)
+// ── GET /api/community/feed ───────────────────────────────────────────────────
+// Public posts + the user's own team posts. Works for coaches and athletes.
 router.get(
   '/feed',
   auth,
@@ -26,7 +26,7 @@ router.get(
     const channel = (req.query.channel as string) || 'all';
     const offset = (page - 1) * PAGE_SIZE;
 
-    // Resolve active team and athlete id for the current user (either role)
+    // Resolve active team and current user's athlete_id (if any)
     let activeTeamId: string | null = null;
     let athleteId: string | null = null;
 
@@ -40,7 +40,6 @@ router.get(
       activeTeamId = athleteProfile.active_team_id ?? null;
       athleteId = athleteProfile.id;
     } else {
-      // Coach: look up their team
       const { data: coachProfile } = await supabase
         .from('coach_profiles')
         .select('id')
@@ -61,19 +60,18 @@ router.get(
       .select(`
         id, feed_type, body, scope, sport_channel, image_url, created_at, team_id,
         athlete_profiles!athlete_id (id, name),
+        coach_profiles!coach_id (id, name),
         feed_kudos (id, athlete_id)
       `, { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1);
 
-    // Visibility: public posts OR posts from the user's own team
     if (activeTeamId) {
       query = query.or(`scope.eq.public,team_id.eq.${activeTeamId}`);
     } else {
       query = query.eq('scope', 'public');
     }
 
-    // Channel filter
     if (channel && channel !== 'all') {
       query = query.eq('sport_channel', channel);
     }
@@ -87,69 +85,117 @@ router.get(
       i_kudoed: athleteId && Array.isArray(post.feed_kudos)
         ? post.feed_kudos.some((k: any) => k.athlete_id === athleteId)
         : false,
-      feed_kudos: undefined
+      feed_kudos: undefined,
     }));
 
-    res.json({
-      posts: enriched,
-      hasMore: (count ?? 0) > offset + PAGE_SIZE,
-      page
-    });
+    res.json({ posts: enriched, hasMore: (count ?? 0) > offset + PAGE_SIZE, page });
   })
 );
 
-// POST /api/community/posts
+// ── POST /api/community/posts ─────────────────────────────────────────────────
+// Any authenticated user (coach or athlete) can post.
 router.post(
   '/posts',
   auth,
-  requireAthlete,
   validate(communityPostSchema),
   asyncHandler(async (req: AuthRequest, res) => {
     const { body: postBody, scope, sport_channel, image_url } = req.body;
 
-    // Resolve team_id from active team (required for team posts, optional for public)
-    const activeTeamId = req.athlete.active_team_id ?? null;
-    if (scope === 'team' && !activeTeamId) {
-      return res.status(400).json({ error: 'You must be on a team to post team-only content.' });
-    }
+    // Determine if the poster is an athlete or coach
+    const { data: athleteProfile } = await supabase
+      .from('athlete_profiles')
+      .select('id, active_team_id')
+      .eq('user_id', req.user!.id)
+      .maybeSingle();
 
-    let teamId = activeTeamId;
-    if (!teamId) {
-      // For public posts without a team, look up any active membership
-      const { data: membership } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('athlete_id', req.athlete.id)
-        .is('left_at', null)
-        .limit(1)
+    if (athleteProfile) {
+      // ── Athlete post ───────────────────────────────────────────────────────
+      const activeTeamId = athleteProfile.active_team_id ?? null;
+      if (scope === 'team' && !activeTeamId) {
+        return res.status(400).json({ error: 'You must be on a team to post team-only content.' });
+      }
+
+      let teamId = activeTeamId;
+      if (!teamId) {
+        const { data: membership } = await supabase
+          .from('team_members')
+          .select('team_id')
+          .eq('athlete_id', athleteProfile.id)
+          .is('left_at', null)
+          .limit(1)
+          .maybeSingle();
+        teamId = membership?.team_id ?? null;
+      }
+
+      if (!teamId) {
+        return res.status(400).json({ error: 'You must be on a team to post.' });
+      }
+
+      const { data, error } = await supabase
+        .from('team_feed')
+        .insert({
+          team_id: teamId,
+          athlete_id: athleteProfile.id,
+          coach_id: null,
+          feed_type: 'manual',
+          body: postBody,
+          scope,
+          ...(sport_channel && { sport_channel }),
+          ...(image_url && { image_url }),
+        })
+        .select(`
+          id, feed_type, body, scope, sport_channel, image_url, created_at, team_id,
+          athlete_profiles!athlete_id (id, name),
+          coach_profiles!coach_id (id, name)
+        `)
         .single();
-      teamId = membership?.team_id ?? null;
+
+      if (error) return res.status(400).json({ error: error.message });
+      return res.json({ ...data, kudo_count: 0, i_kudoed: false });
     }
 
-    if (!teamId) {
-      return res.status(400).json({ error: 'You must be on a team to post.' });
+    // ── Coach post ─────────────────────────────────────────────────────────
+    const { data: coachProfile } = await supabase
+      .from('coach_profiles')
+      .select('id')
+      .eq('user_id', req.user!.id)
+      .maybeSingle();
+
+    if (!coachProfile) {
+      return res.status(403).json({ error: 'Must be an athlete or coach to post.' });
+    }
+
+    const { data: team } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('coach_id', coachProfile.id)
+      .maybeSingle();
+
+    if (!team) {
+      return res.status(400).json({ error: 'You must have a team to post.' });
     }
 
     const { data, error } = await supabase
       .from('team_feed')
       .insert({
-        team_id: teamId,
-        athlete_id: req.athlete.id,
+        team_id: team.id,
+        athlete_id: null,
+        coach_id: coachProfile.id,
         feed_type: 'manual',
         body: postBody,
         scope,
         ...(sport_channel && { sport_channel }),
-        ...(image_url && { image_url })
+        ...(image_url && { image_url }),
       })
       .select(`
         id, feed_type, body, scope, sport_channel, image_url, created_at, team_id,
-        athlete_profiles!athlete_id (id, name)
+        athlete_profiles!athlete_id (id, name),
+        coach_profiles!coach_id (id, name)
       `)
       .single();
 
     if (error) return res.status(400).json({ error: error.message });
-
-    res.json({ ...data, kudo_count: 0, i_kudoed: false });
+    return res.json({ ...data, kudo_count: 0, i_kudoed: false });
   })
 );
 

@@ -97,7 +97,10 @@ function Avatar({ name, size = 40 }: { name: string; size?: number }) {
 
 // ── Post Card ─────────────────────────────────────────────────────────────────
 function PostCard({ post, onKudo, canKudo }: { post: any; onKudo: (id: string) => void; canKudo: boolean }) {
-  const name: string = post.athlete_profiles?.name ?? 'Athlete';
+  const isCoachPost = !!post.coach_profiles;
+  const name: string = isCoachPost
+    ? (post.coach_profiles?.name ?? 'Coach')
+    : (post.athlete_profiles?.name ?? 'Athlete');
   const cfg = POST_TYPE_CONFIG[post.feed_type] ?? POST_TYPE_CONFIG.manual;
   const [hovered, setHovered] = useState(false);
 
@@ -121,10 +124,19 @@ function PostCard({ post, onKudo, canKudo }: { post: any; onKudo: (id: string) =
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-sm" style={{ color: '#FFFFFF' }}>{name}</span>
+              {/* Coach badge */}
+              {isCoachPost && (
+                <span
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(0,229,160,0.15)', color: '#00E5A0', border: '1px solid rgba(0,229,160,0.30)' }}
+                >
+                  Coach
+                </span>
+              )}
               {post.sport_channel && (
                 <span
                   className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
-                  style={{ background: 'rgba(0,229,160,0.12)', color: '#00E5A0' }}
+                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.55)' }}
                 >
                   {post.sport_channel}
                 </span>
