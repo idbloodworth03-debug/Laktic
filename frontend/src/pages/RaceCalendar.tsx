@@ -236,7 +236,6 @@ function RaceCardModal({ result, onClose, athleteName }: { result: RaceResult; o
         body: JSON.stringify({
           body: caption,
           scope: 'public',
-          sport_channel: 'road',
         }),
       });
       setShared(true);

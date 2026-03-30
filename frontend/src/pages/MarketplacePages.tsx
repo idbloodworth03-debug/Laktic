@@ -3,22 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { AppLayout, Button, Card, Badge, Spinner, EmptyState, Input, Textarea, Select, Alert } from '../components/ui';
-
-const SPEC_LABELS: Record<string, string> = {
-  distance: 'Distance', sprints: 'Sprints', triathlon: 'Triathlon',
-  trail: 'Trail', field: 'Field', cross_country: 'Cross Country', multi_event: 'Multi-Event',
-};
-
-const SPEC_OPTIONS = [
-  { value: 'distance', label: 'Distance' },
-  { value: 'sprints', label: 'Sprints' },
-  { value: 'triathlon', label: 'Triathlon' },
-  { value: 'trail', label: 'Trail' },
-  { value: 'field', label: 'Field' },
-  { value: 'cross_country', label: 'Cross Country' },
-  { value: 'multi_event', label: 'Multi-Event' },
-];
+import { AppLayout, Button, Card, Badge, Spinner, EmptyState, Input, Textarea, Alert } from '../components/ui';
 
 // ── Marketplace Browse ────────────────────────────────────────────────────────
 export function MarketplacePage() {
@@ -26,7 +11,6 @@ export function MarketplacePage() {
   const nav = useNavigate();
   const [coaches, setCoaches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('');
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
   useEffect(() => {
@@ -36,38 +20,27 @@ export function MarketplacePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = filter
-    ? coaches.filter(c => c.specialization === filter)
-    : coaches;
-
   return (
     <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
       <div className="min-h-screen bg-[var(--color-bg-primary)]">
         <div className="max-w-6xl mx-auto px-6 py-10">
-          <div className="flex items-end justify-between mb-8 fade-up">
-            <div>
-              <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">Elite Coach Marketplace</h1>
-              <p className="text-sm text-[var(--color-text-tertiary)] mt-1">
-                Train with methods from proven coaches. Subscribe to a coach model to get a plan built on their philosophy.
-              </p>
-            </div>
-            <Select
-              value={filter}
-              onChange={e => setFilter(e.target.value)}
-              options={[{ value: '', label: 'All specializations' }, ...SPEC_OPTIONS]}
-            />
+          <div className="mb-8 fade-up">
+            <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">Elite Coach Marketplace</h1>
+            <p className="text-sm text-[var(--color-text-tertiary)] mt-1">
+              Train with methods from proven coaches. Subscribe to a coach model to get a plan built on their philosophy.
+            </p>
           </div>
 
           {loading ? (
             <div className="flex justify-center py-20"><Spinner size="lg" /></div>
-          ) : filtered.length === 0 ? (
+          ) : coaches.length === 0 ? (
             <EmptyState
               title="No elite coaches yet"
               message="Elite coaches are reviewed and approved by Laktic. Check back soon."
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filtered.map(coach => (
+              {coaches.map(coach => (
                 <MarketplaceCoachCard key={coach.id} coach={coach} />
               ))}
             </div>
@@ -98,7 +71,6 @@ function MarketplaceCoachCard({ coach }: { coach: any }) {
           >
             {cp?.name?.charAt(0)?.toUpperCase() ?? '?'}
           </div>
-          <Badge label={SPEC_LABELS[coach.specialization] ?? coach.specialization} color="blue" />
         </div>
         <h3 className="text-base font-semibold text-[var(--color-text-primary)] mb-0.5">{cp?.name}</h3>
         {cp?.school_or_org && (
@@ -177,7 +149,6 @@ export function MarketplaceCoachProfile() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{cp?.name}</h1>
-                <Badge label={SPEC_LABELS[coach.specialization] ?? coach.specialization} color="blue" />
               </div>
               {cp?.school_or_org && <p className="text-sm text-[var(--color-text-tertiary)] mt-0.5">{cp.school_or_org}</p>}
               <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
@@ -265,7 +236,6 @@ export function MarketplaceApply() {
   const [form, setForm] = useState({
     bio: '',
     credentials: '',
-    specialization: 'distance',
     price_per_month: 25,
   });
   const [saving, setSaving] = useState(false);
@@ -280,7 +250,6 @@ export function MarketplaceApply() {
           setForm({
             bio: data.bio ?? '',
             credentials: data.credentials ?? '',
-            specialization: data.specialization ?? 'distance',
             price_per_month: data.price_per_month ?? 25,
           });
         }
@@ -362,13 +331,6 @@ export function MarketplaceApply() {
                     onChange={e => setForm(f => ({ ...f, credentials: e.target.value }))}
                     rows={4}
                     required
-                  />
-
-                  <Select
-                    label="Primary Specialization"
-                    value={form.specialization}
-                    onChange={e => setForm(f => ({ ...f, specialization: e.target.value }))}
-                    options={SPEC_OPTIONS}
                   />
 
                   <Input

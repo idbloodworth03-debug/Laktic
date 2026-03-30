@@ -6,9 +6,6 @@ import { supabase } from '../lib/supabaseClient';
 import { AppLayout, Button, Spinner, Input } from '../components/ui';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const CHANNELS = ['all', 'track', 'xc', 'triathlon', 'road', 'swimming', 'general'] as const;
-type Channel = typeof CHANNELS[number];
-
 const METRIC_LABELS: Record<string, string> = {
   miles: 'miles', workouts: 'workouts', hours: 'hours', elevation_ft: 'ft elevation',
 };
@@ -131,14 +128,6 @@ function PostCard({ post, onKudo, canKudo }: { post: any; onKudo: (id: string) =
                   style={{ background: 'rgba(0,229,160,0.15)', color: '#00E5A0', border: '1px solid rgba(0,229,160,0.30)' }}
                 >
                   Coach
-                </span>
-              )}
-              {post.sport_channel && (
-                <span
-                  className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
-                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.55)' }}
-                >
-                  {post.sport_channel}
                 </span>
               )}
             </div>
@@ -264,7 +253,6 @@ function ComposerBar({ name, onClick }: { name: string; onClick: () => void }) {
 function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (post: any) => void }) {
   const [body, setBody] = useState('');
   const [scope, setScope] = useState<'public' | 'team'>('public');
-  const [channel, setChannel] = useState<Channel | ''>('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -322,7 +310,6 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
         method: 'POST',
         body: JSON.stringify({
           body: body.trim(), scope,
-          sport_channel: channel || undefined,
           ...(imageUrl && { image_url: imageUrl }),
         }),
       });
@@ -452,19 +439,6 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
                 📷 Add photo (optional · max 5 MB)
               </button>
             )}
-          </div>
-
-          {/* Channel selector */}
-          <div>
-            <label className="text-xs font-medium block mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>Sport channel</label>
-            <div className="flex flex-wrap gap-1.5">
-              {(['track', 'xc', 'triathlon', 'road', 'swimming', 'general'] as const).map(ch => (
-                <button key={ch} onClick={() => setChannel(prev => prev === ch ? '' : ch)}
-                  className="capitalize" style={pill(channel === ch)}>
-                  {ch}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Scope */}
@@ -843,7 +817,6 @@ export function Community() {
   const isCoach = role === 'coach';
   const isAthlete = role === 'athlete';
 
-  const [channel, setChannel] = useState<Channel>('all');
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -854,10 +827,10 @@ export function Community() {
 
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
-  const loadPage = async (pg: number, ch: Channel, reset: boolean) => {
+  const loadPage = async (pg: number, reset: boolean) => {
     if (reset) { setLoading(true); setPosts([]); } else setLoadingMore(true);
     try {
-      const data = await apiFetch(`/api/community/feed?page=${pg}&channel=${ch}`);
+      const data = await apiFetch(`/api/community/feed?page=${pg}`);
       setPosts(prev => reset ? data.posts : [...prev, ...data.posts]);
       setHasMore(data.hasMore);
       setPage(pg);
@@ -865,18 +838,18 @@ export function Community() {
     finally { setLoading(false); setLoadingMore(false); }
   };
 
-  useEffect(() => { loadPage(1, channel, true); }, [channel]);
+  useEffect(() => { loadPage(1, true); }, []);
 
   useEffect(() => {
     if (!sentinelRef.current) return;
     const observer = new IntersectionObserver(entries => {
       if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
-        loadPage(page + 1, channel, false);
+        loadPage(page + 1, false);
       }
     }, { threshold: 0.1 });
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [hasMore, loadingMore, loading, page, channel]);
+  }, [hasMore, loadingMore, loading, page]);
 
   const toggleKudo = async (postId: string) => {
     setPosts(prev => prev.map(p =>
@@ -910,26 +883,6 @@ export function Community() {
           <div className="mb-6">
             <h1 className="font-bold text-3xl" style={{ color: '#FFFFFF' }}>Community</h1>
             <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>Where wins get celebrated.</p>
-          </div>
-
-          {/* Channel pills — horizontally scrollable */}
-          <div className="flex mb-6 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: 'none', gap: 8 }}>
-            {CHANNELS.map(ch => (
-              <button
-                key={ch}
-                onClick={() => setChannel(ch)}
-                className="shrink-0 rounded-full text-xs font-semibold capitalize transition-all duration-150"
-                style={{
-                  padding: '7px 16px',
-                  ...(channel === ch
-                    ? { background: '#00E5A0', color: '#000', border: '1px solid #00E5A0', cursor: 'pointer' }
-                    : { background: 'transparent', border: '1px solid rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.52)', cursor: 'pointer' }
-                  ),
-                }}
-              >
-                {ch}
-              </button>
-            ))}
           </div>
 
           {/* Two-column grid */}

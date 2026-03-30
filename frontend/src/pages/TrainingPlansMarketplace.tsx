@@ -21,14 +21,13 @@ export function TrainingPlansMarketplace() {
   const { profile, role } = useAuthStore();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState({ sport: '', level: '' });
+  const [filter, setFilter] = useState({ level: '' });
   const [buying, setBuying] = useState<string | null>(null);
 
   const logout = async () => { const { supabase } = await import('../lib/supabaseClient'); await supabase.auth.signOut(); useAuthStore.getState().clearAuth(); };
 
   useEffect(() => {
     const params = new URLSearchParams();
-    if (filter.sport) params.set('sport', filter.sport);
     if (filter.level) params.set('level', filter.level);
     apiFetch(`/api/marketplace-plans?${params}`).then(setPlans).catch(() => {}).finally(() => setLoading(false));
   }, [filter]);
@@ -73,17 +72,6 @@ export function TrainingPlansMarketplace() {
         <div className="flex gap-3 mb-6">
           <select
             className="bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text)] focus:outline-none focus:border-brand-500"
-            value={filter.sport}
-            onChange={e => setFilter(f => ({ ...f, sport: e.target.value }))}
-          >
-            <option value="">All Sports</option>
-            <option value="running">Running</option>
-            <option value="cycling">Cycling</option>
-            <option value="triathlon">Triathlon</option>
-            <option value="swimming">Swimming</option>
-          </select>
-          <select
-            className="bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text)] focus:outline-none focus:border-brand-500"
             value={filter.level}
             onChange={e => setFilter(f => ({ ...f, level: e.target.value }))}
           >
@@ -110,7 +98,6 @@ export function TrainingPlansMarketplace() {
                 </div>
                 <p className="text-sm text-[var(--muted)] line-clamp-3 flex-1">{plan.description}</p>
                 <div className="flex flex-wrap gap-2">
-                  <span className="text-xs bg-brand-950/40 border border-brand-800/40 text-brand-300 rounded px-2 py-0.5 capitalize">{plan.sport}</span>
                   <span className="text-xs bg-[var(--bg)] border border-[var(--border)] text-[var(--muted)] rounded px-2 py-0.5 capitalize">{plan.level}</span>
                   <span className="text-xs bg-[var(--bg)] border border-[var(--border)] text-[var(--muted)] rounded px-2 py-0.5">{plan.duration_weeks}wk</span>
                 </div>
@@ -238,12 +225,6 @@ export function CoachPlanManage() {
               <input className="input-base" placeholder="Title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
               <textarea className="input-base resize-none h-24" placeholder="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
               <div className="grid grid-cols-2 gap-3">
-                <select className="input-base" value={form.sport} onChange={e => setForm(f => ({ ...f, sport: e.target.value }))}>
-                  <option value="running">Running</option>
-                  <option value="cycling">Cycling</option>
-                  <option value="triathlon">Triathlon</option>
-                  <option value="swimming">Swimming</option>
-                </select>
                 <select className="input-base" value={form.level} onChange={e => setForm(f => ({ ...f, level: e.target.value }))}>
                   <option value="beginner">Beginner</option>
                   <option value="intermediate">Intermediate</option>
@@ -277,7 +258,7 @@ export function CoachPlanManage() {
                     <h3 className="font-semibold">{plan.title}</h3>
                     <Badge label={plan.published ? 'Published' : 'Draft'} color={plan.published ? 'green' : 'gray'} />
                   </div>
-                  <p className="text-sm text-[var(--muted)]">{plan.sport} · {plan.level} · {plan.duration_weeks}wk · {plan.price_cents === 0 ? 'Free' : `$${(plan.price_cents / 100).toFixed(2)}`}</p>
+                  <p className="text-sm text-[var(--muted)]">{plan.level} · {plan.duration_weeks}wk · {plan.price_cents === 0 ? 'Free' : `$${(plan.price_cents / 100).toFixed(2)}`}</p>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="secondary" size="sm" onClick={() => togglePublish(plan)}>{plan.published ? 'Unpublish' : 'Publish'}</Button>

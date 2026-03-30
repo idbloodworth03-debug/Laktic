@@ -12,7 +12,6 @@ const PAGE_SIZE = 20;
 const communityPostSchema = z.object({
   body: z.string().min(1).max(500),
   scope: z.enum(['public', 'team']).default('public'),
-  sport_channel: z.enum(['track', 'xc', 'triathlon', 'road', 'swimming', 'general']).optional(),
   image_url: z.string().url().max(2000).optional()
 });
 
@@ -23,7 +22,6 @@ router.get(
   auth,
   asyncHandler(async (req: AuthRequest, res) => {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const channel = (req.query.channel as string) || 'all';
     const offset = (page - 1) * PAGE_SIZE;
 
     // Resolve active team and current user's athlete_id (if any)
@@ -69,7 +67,7 @@ router.get(
     let query = supabase
       .from('team_feed')
       .select(`
-        id, feed_type, body, scope, sport_channel, image_url, created_at, team_id,
+        id, feed_type, body, scope, image_url, created_at, team_id,
         athlete_profiles!athlete_id (id, name),
         coach_profiles!coach_id (id, name),
         feed_kudos (id, athlete_id)
@@ -83,16 +81,12 @@ router.get(
       query = query.eq('scope', 'public');
     }
 
-    if (channel && channel !== 'all') {
-      query = query.eq('sport_channel', channel);
-    }
-
     const { data: posts, error, count } = await query;
     if (error) {
       console.error('[community/feed] query error:', error.message, error);
       return res.status(400).json({ error: error.message });
     }
-    console.log(`[community/feed] uid=${req.user!.id} activeTeam=${activeTeamId ?? 'none'} channel=${channel} returned=${posts?.length ?? 0} total=${count}`);
+    console.log(`[community/feed] uid=${req.user!.id} activeTeam=${activeTeamId ?? 'none'} returned=${posts?.length ?? 0} total=${count}`);
 
     const enriched = (posts || []).map(post => ({
       ...post,
@@ -114,7 +108,7 @@ router.post(
   auth,
   validate(communityPostSchema),
   asyncHandler(async (req: AuthRequest, res) => {
-    const { body: postBody, scope, sport_channel, image_url } = req.body;
+    const { body: postBody, scope, image_url } = req.body;
     console.log(`[community/posts] POST uid=${req.user!.id} scope=${scope}`);
 
     // Determine if the poster is an athlete or coach
@@ -160,11 +154,11 @@ router.post(
           feed_type: 'manual',
           body: postBody,
           scope,
-          ...(sport_channel && { sport_channel }),
+
           ...(image_url && { image_url }),
         })
         .select(`
-          id, feed_type, body, scope, sport_channel, image_url, created_at, team_id,
+          id, feed_type, body, scope, image_url, created_at, team_id,
           athlete_profiles!athlete_id (id, name),
           coach_profiles!coach_id (id, name)
         `)
@@ -217,7 +211,7 @@ router.post(
         feed_type: 'manual',
         body: postBody,
         scope,
-        ...(sport_channel && { sport_channel }),
+
         ...(image_url && { image_url }),
       })
       .select(`
