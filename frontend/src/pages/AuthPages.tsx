@@ -322,7 +322,7 @@ function SplitAuth({ title, subtitle, error, children }: SplitAuthProps) {
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function mapSignUpError(err: { message?: string; code?: string } | null): React.ReactNode {
-  if (!err) return null;
+  if (!err) return 'Something went wrong. Please try again or contact support@laktic.com';
   const code = err.code ?? '';
   const msg = (err.message ?? '').toLowerCase();
 
@@ -381,7 +381,12 @@ export function CoachRegister() {
     try {
       const { data, error: signErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
       if (signErr) { setError(mapSignUpError(signErr)); return; }
-      if (!data.session) { setError(mapSignUpError(null)); return; }
+      // Email confirmation is enabled in Supabase — user created but not yet signed in
+      if (data.user && !data.session) {
+        setError('Account created! Check your inbox and confirm your email, then sign in.');
+        return;
+      }
+      if (!data.session) { setError('Sign up failed. Please try again or contact support@laktic.com'); return; }
       const profile = await apiFetch('/api/coach/profile', {
         method: 'POST',
         body: JSON.stringify({ name: form.name, school_or_org: form.school_or_org }),
@@ -465,7 +470,12 @@ export function AthleteRegister() {
     try {
       const { data, error: signErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
       if (signErr) { setError(mapSignUpError(signErr)); return; }
-      if (!data.session) { setError(mapSignUpError(null)); return; }
+      // Email confirmation is enabled in Supabase — user created but not yet signed in
+      if (data.user && !data.session) {
+        setError('Account created! Check your inbox and confirm your email, then sign in.');
+        return;
+      }
+      if (!data.session) { setError('Sign up failed. Please try again or contact support@laktic.com'); return; }
       const profile = await apiFetch('/api/athlete/profile', {
         method: 'POST',
         body: JSON.stringify({
@@ -520,6 +530,7 @@ export function AthleteRegister() {
           {EVENT_OPTIONS.map(e => (
             <button
               key={e}
+              type="button"
               onClick={() => toggleEvent(e)}
               className="px-3 py-1 rounded-full text-xs font-medium border transition-colors"
               style={
