@@ -341,7 +341,14 @@ export function CoachRegister() {
     setError(''); setLoading(true);
     try {
       const { data, error: signErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
-      if (signErr || !data.session) throw new Error(signErr?.message || 'Sign up failed');
+      if (signErr) {
+        const msg = signErr.message ?? '';
+        if (msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('over_email_send_rate_limit')) {
+          throw new Error('Too many accounts created recently. Please wait a few minutes and try again, or contact support@laktic.com');
+        }
+        throw new Error(msg || 'Sign up failed');
+      }
+      if (!data.session) throw new Error('Sign up failed');
       const profile = await apiFetch('/api/coach/profile', {
         method: 'POST',
         body: JSON.stringify({ name: form.name, school_or_org: form.school_or_org }),
@@ -423,7 +430,14 @@ export function AthleteRegister() {
     setError(''); setLoading(true);
     try {
       const { data, error: signErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
-      if (signErr || !data.session) throw new Error(signErr?.message || 'Sign up failed');
+      if (signErr) {
+        const msg = signErr.message ?? '';
+        if (msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('over_email_send_rate_limit')) {
+          throw new Error('Too many accounts created recently. Please wait a few minutes and try again, or contact support@laktic.com');
+        }
+        throw new Error(msg || 'Sign up failed');
+      }
+      if (!data.session) throw new Error('Sign up failed');
       const profile = await apiFetch('/api/athlete/profile', {
         method: 'POST',
         body: JSON.stringify({
