@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 
-import { CoachRegister, AthleteRegister, CoachLogin, AthleteLogin, PasswordResetConfirm } from './pages/AuthPages';
+import { CoachRegister, AthleteRegister, CoachLogin, AthleteLogin, PasswordResetConfirm, UnifiedLogin } from './pages/AuthPages';
 import { LandingPage } from './pages/LandingPage';
 import { ForgotPassword, ResetPassword } from './pages/PasswordReset';
 import { AthleteDashboard } from './pages/AthleteDashboard';
@@ -67,6 +67,9 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/register/coach" element={<CoachRegister />} />
         <Route path="/register/athlete" element={<AthleteRegister />} />
+        <Route path="/coach/signup" element={<CoachRegister />} />
+        <Route path="/athlete/signup" element={<AthleteRegister />} />
+        <Route path="/login" element={<UnifiedLogin />} />
         <Route path="/login/coach" element={<CoachLogin />} />
         <Route path="/login/athlete" element={<AthleteLogin />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />

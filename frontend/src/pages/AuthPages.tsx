@@ -385,13 +385,11 @@ export function CoachRegister() {
       </Button>
       <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
         Already have an account?{' '}
-        <Link
-          to="/login/coach"
-          className="transition-colors"
-          style={{ color: 'var(--color-accent)' }}
-        >
-          Sign in
-        </Link>
+        <Link to="/login" className="transition-colors" style={{ color: 'var(--color-accent)' }}>Sign in</Link>
+      </p>
+      <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
+        Are you an athlete?{' '}
+        <Link to="/athlete/signup" className="transition-colors" style={{ color: 'var(--color-accent)' }}>Sign up here</Link>
       </p>
     </SplitAuth>
   );
@@ -511,13 +509,11 @@ export function AthleteRegister() {
       </Button>
       <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
         Already have an account?{' '}
-        <Link
-          to="/login/athlete"
-          className="transition-colors"
-          style={{ color: 'var(--color-accent)' }}
-        >
-          Sign in
-        </Link>
+        <Link to="/login" className="transition-colors" style={{ color: 'var(--color-accent)' }}>Sign in</Link>
+      </p>
+      <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
+        Are you a coach?{' '}
+        <Link to="/coach/signup" className="transition-colors" style={{ color: 'var(--color-accent)' }}>Sign up here</Link>
       </p>
     </SplitAuth>
   );
@@ -872,6 +868,64 @@ export function PasswordResetConfirm() {
       <Button onClick={handle} loading={loading} disabled={!canSubmit} className="w-full font-semibold" size="lg">
         Update Password
       </Button>
+    </SplitAuth>
+  );
+
+}
+
+// ── Unified Login ─────────────────────────────────────────────────────────────
+export function UnifiedLogin() {
+  const nav = useNavigate();
+  const setAuth = useAuthStore(s => s.setAuth);
+  const [form, setForm] = useState({ email: '', password: '' });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handle = async () => {
+    setError(''); setLoading(true);
+    try {
+      const { data, error: signErr } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password });
+      if (signErr || !data.session) throw new Error(signErr?.message || 'Login failed');
+      const me = await apiFetch('/api/me');
+      setAuth(data.session, me.role, me.profile);
+      if (me.role === 'coach') {
+        nav('/coach/dashboard');
+      } else if (me.role === 'athlete') {
+        try {
+          const { season } = await apiFetch('/api/athlete/season');
+          nav(season ? '/athlete/plan' : '/athlete/browse');
+        } catch { nav('/athlete/browse'); }
+      } else {
+        throw new Error('Unknown account type. Please contact support.');
+      }
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <SplitAuth title="Sign In" subtitle="Welcome back to Laktic." error={error}>
+      <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="you@example.com" />
+      <Input label="Password" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
+      <div className="flex justify-end -mt-2">
+        <Link
+          to="/forgot-password"
+          className="text-xs transition-colors"
+          style={{ color: 'var(--color-text-tertiary)' }}
+          onMouseEnter={e => ((e.target as HTMLElement).style.color = 'var(--color-accent)')}
+          onMouseLeave={e => ((e.target as HTMLElement).style.color = 'var(--color-text-tertiary)')}
+        >
+          Forgot password?
+        </Link>
+      </div>
+      <Button onClick={handle} loading={loading} className="w-full font-semibold" size="lg">
+        Sign In
+      </Button>
+      <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
+        New here?{' '}
+        <Link to="/coach/signup" className="transition-colors" style={{ color: 'var(--color-accent)' }}>Sign up as a coach</Link>
+        {' '}or{' '}
+        <Link to="/athlete/signup" className="transition-colors" style={{ color: 'var(--color-accent)' }}>athlete</Link>
+      </p>
     </SplitAuth>
   );
 }

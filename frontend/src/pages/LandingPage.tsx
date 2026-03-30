@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Users, Zap, X } from 'lucide-react';
 
 // ── Scroll-triggered fade-in ──────────────────────────────────────────────────
 
@@ -112,9 +113,100 @@ function DashboardCard() {
   );
 }
 
+// ── Role selector modal ───────────────────────────────────────────────────────
+
+function RoleSelectorModal({ onClose }: { onClose: () => void }) {
+  // Close on Escape key
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', fn);
+    return () => window.removeEventListener('keydown', fn);
+  }, [onClose]);
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+      onClick={onClose}
+    >
+      <div
+        style={{ position: 'relative', background: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', padding: 'clamp(28px, 4vw, 48px)', maxWidth: '640px', width: '100%', boxShadow: '0 40px 100px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Close */}
+        <button
+          onClick={onClose}
+          style={{ position: 'absolute', top: '16px', right: '16px', width: '32px', height: '32px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.5)', transition: 'all 0.2s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'white'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
+        >
+          <X size={15} />
+        </button>
+
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <h2 style={{ fontSize: 'clamp(22px, 3vw, 30px)', fontFamily: "'DM Sans', sans-serif", fontWeight: 700, color: 'white', letterSpacing: '-0.025em', marginBottom: '8px' }}>
+            Who are you joining as?
+          </h2>
+          <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.44)', lineHeight: 1.5 }}>
+            Choose your role to get started — you can always add the other later.
+          </p>
+        </div>
+
+        {/* Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          {/* Coach card */}
+          <Link
+            to="/coach/signup"
+            onClick={onClose}
+            style={{ display: 'block', padding: '28px 24px', background: 'rgba(0,229,160,0.04)', border: '1px solid rgba(0,229,160,0.18)', borderRadius: '16px', textDecoration: 'none', transition: 'all 0.22s', cursor: 'pointer' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,229,160,0.09)'; e.currentTarget.style.borderColor = 'rgba(0,229,160,0.45)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,229,160,0.12)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,229,160,0.04)'; e.currentTarget.style.borderColor = 'rgba(0,229,160,0.18)'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
+          >
+            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(0,229,160,0.12)', border: '1px solid rgba(0,229,160,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '18px' }}>
+              <Users size={22} color="#00E5A0" />
+            </div>
+            <div style={{ fontSize: '19px', fontWeight: 700, color: 'white', letterSpacing: '-0.02em', marginBottom: '8px', fontFamily: "'DM Sans', sans-serif" }}>I'm a Coach</div>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.48)', lineHeight: 1.6, margin: '0 0 20px' }}>
+              Set up your team and coaching bot. Coach every athlete at scale.
+            </p>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#00E5A0' }}>
+              Get started <span style={{ fontSize: '16px' }}>→</span>
+            </div>
+          </Link>
+
+          {/* Athlete card */}
+          <Link
+            to="/athlete/signup"
+            onClick={onClose}
+            style={{ display: 'block', padding: '28px 24px', background: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.18)', borderRadius: '16px', textDecoration: 'none', transition: 'all 0.22s', cursor: 'pointer' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.09)'; e.currentTarget.style.borderColor = 'rgba(139,92,246,0.45)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(139,92,246,0.12)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.04)'; e.currentTarget.style.borderColor = 'rgba(139,92,246,0.18)'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
+          >
+            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '18px' }}>
+              <Zap size={22} color="#a78bfa" />
+            </div>
+            <div style={{ fontSize: '19px', fontWeight: 700, color: 'white', letterSpacing: '-0.02em', marginBottom: '8px', fontFamily: "'DM Sans', sans-serif" }}>I'm an Athlete</div>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.48)', lineHeight: 1.6, margin: '0 0 20px' }}>
+              Join a team and get your personalized training plan.
+            </p>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#a78bfa' }}>
+              Get started <span style={{ fontSize: '16px' }}>→</span>
+            </div>
+          </Link>
+        </div>
+
+        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px', color: 'rgba(255,255,255,0.3)' }}>
+          Already have an account?{' '}
+          <Link to="/login" onClick={onClose} style={{ color: '#00E5A0', textDecoration: 'none', fontWeight: 500 }}>Sign in</Link>
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Navbar ────────────────────────────────────────────────────────────────────
 
-function Navbar() {
+function Navbar({ onOpenModal }: { onOpenModal: () => void }) {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 50);
@@ -148,16 +240,16 @@ function Navbar() {
       </div>
 
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
-        <Link to="/login/coach"
+        <Link to="/login"
           style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', textDecoration: 'none', fontWeight: 500, padding: '7px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.12)', transition: 'all 0.2s' }}
           onMouseEnter={e => { e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.28)'; }}
           onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; }}
         >Sign In</Link>
-        <Link to="/register/coach"
-          style={{ fontSize: '14px', fontWeight: 600, color: '#000', background: '#00E5A0', textDecoration: 'none', padding: '7px 16px', borderRadius: '8px', transition: 'background 0.2s' }}
+        <button onClick={onOpenModal}
+          style={{ fontSize: '14px', fontWeight: 600, color: '#000', background: '#00E5A0', padding: '7px 16px', borderRadius: '8px', transition: 'background 0.2s', border: 'none', cursor: 'pointer' }}
           onMouseEnter={e => (e.currentTarget.style.background = '#00cc8f')}
           onMouseLeave={e => (e.currentTarget.style.background = '#00E5A0')}
-        >Get Started Free</Link>
+        >Get Started Free</button>
       </div>
     </nav>
   );
@@ -165,7 +257,7 @@ function Navbar() {
 
 // ── Hero ──────────────────────────────────────────────────────────────────────
 
-function Hero() {
+function Hero({ onOpenModal }: { onOpenModal: () => void }) {
   return (
     <section id="coaches" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', position: 'relative', overflow: 'hidden', paddingTop: '60px' }}>
       {/* Grid bg */}
@@ -197,11 +289,11 @@ function Hero() {
           </p>
 
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <Link to="/register/coach"
-              style={{ display: 'inline-block', padding: '13px 28px', background: '#00E5A0', color: '#000', fontWeight: 700, fontSize: '15px', borderRadius: '10px', textDecoration: 'none', transition: 'all 0.2s' }}
+            <button onClick={onOpenModal}
+              style={{ display: 'inline-block', padding: '13px 28px', background: '#00E5A0', color: '#000', fontWeight: 700, fontSize: '15px', borderRadius: '10px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.background = '#00cc8f'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,229,160,0.3)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = '#00E5A0'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
-            >Start Free Trial</Link>
+            >Get Started Free</button>
             <a href="#how-it-works"
               style={{ display: 'inline-block', padding: '13px 24px', background: 'transparent', color: 'rgba(255,255,255,0.75)', fontWeight: 600, fontSize: '15px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.16)', textDecoration: 'none', transition: 'all 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.36)'; e.currentTarget.style.color = 'white'; }}
@@ -448,7 +540,7 @@ function UrgencySection() {
 
 // ── Final CTA ─────────────────────────────────────────────────────────────────
 
-function FinalCTA() {
+function FinalCTA({ onOpenModal }: { onOpenModal: () => void }) {
   const fade = useFadeIn();
   return (
     <section style={{ padding: 'clamp(72px, 9vw, 120px) clamp(16px, 4vw, 40px)', background: '#00E5A0' }}>
@@ -460,11 +552,11 @@ function FinalCTA() {
           <p style={{ fontSize: '18px', color: 'rgba(0,60,44,0.75)', marginBottom: '34px', lineHeight: 1.55 }}>
             Start your free 14-day trial. No credit card required.
           </p>
-          <Link to="/register/coach"
-            style={{ display: 'inline-block', padding: '15px 36px', background: '#000', color: '#00E5A0', fontWeight: 700, fontSize: '16px', borderRadius: '10px', textDecoration: 'none', transition: 'all 0.2s' }}
+          <button onClick={onOpenModal}
+            style={{ display: 'inline-block', padding: '15px 36px', background: '#000', color: '#00E5A0', fontWeight: 700, fontSize: '16px', borderRadius: '10px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}
             onMouseEnter={e => { e.currentTarget.style.background = '#111'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,0,0,0.3)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = '#000'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
-          >Get Started Free</Link>
+          >Get Started Free</button>
           <p style={{ marginTop: '16px', fontSize: '13px', color: 'rgba(0,60,44,0.55)' }}>Takes 30 minutes to set up. Cancel anytime.</p>
         </div>
       </div>
@@ -508,6 +600,10 @@ function Footer() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function LandingPage() {
+  const [modalOpen, setModalOpen] = useState(false);
+  const openModal = () => setModalOpen(true);
+  const closeModal = () => setModalOpen(false);
+
   useEffect(() => {
     document.title = "Laktic — Your athletes deserve a coach that never sleeps";
     return () => { document.title = "Laktic — Train Smarter"; };
@@ -515,6 +611,7 @@ export function LandingPage() {
 
   return (
     <div style={{ background: '#0a0a0a', minHeight: '100vh', fontFamily: "'DM Sans', sans-serif", color: 'white' }}>
+      {modalOpen && <RoleSelectorModal onClose={closeModal} />}
       <style>{`
         @keyframes lk-float {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
@@ -537,15 +634,15 @@ export function LandingPage() {
           .lk-stats-grid > div:nth-child(4) { border-top: 1px solid rgba(255,255,255,0.07) !important; }
         }
       `}</style>
-      <Navbar />
-      <Hero />
+      <Navbar onOpenModal={openModal} />
+      <Hero onOpenModal={openModal} />
       <SocialProof />
       <PainSection />
       <SolutionSection />
       <HowItWorksSection />
       <AthleteSection />
       <UrgencySection />
-      <FinalCTA />
+      <FinalCTA onOpenModal={openModal} />
       <Footer />
     </div>
   );
