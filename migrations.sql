@@ -690,3 +690,1154 @@ ALTER TABLE public.team_feed
 
 CREATE INDEX IF NOT EXISTS team_feed_coach_idx ON public.team_feed(coach_id, created_at DESC)
   WHERE coach_id IS NOT NULL;
+
+-- ─────────────────────────────────────────────────────────────────
+-- Migration 024 — Row Level Security Policies (all tables)
+--
+-- Schema verified from migrations.sql before writing this migration.
+-- Column names confirmed:
+--   team_challenges:     challenger_team_id | challenged_team_id
+--   direct_messages:     athlete_id | coach_id | sender_role | read_at  (table exists)
+--   marketplace_plans:   published  (BOOLEAN — NOT is_published)
+--   recruiting_profiles: visible    (BOOLEAN — NOT is_visible_to_recruiters)
+--   recruiter_accounts:  active     (BOOLEAN — NOT verified)
+--   marketplace_coaches: approval_status = 'approved'
+--   race_results:        exists (confirmed via ALTER TABLE in migration 021)
+--   community_challenges: does NOT exist — omitted
+--
+-- Safety guarantees:
+--   • ENABLE ROW LEVEL SECURITY is idempotent — safe to re-run.
+--   • DROP POLICY IF EXISTS before every CREATE POLICY — no conflict errors.
+--   • Every statement is in its own DO $$ BEGIN ... EXCEPTION ... END $$ block.
+--     A missing table or any other error emits a NOTICE and never stops the script.
+-- ─────────────────────────────────────────────────────────────────
+
+
+-- ════════════════════════════════════════════════════════════════════
+-- STEP 1 — Enable RLS on every table (idempotent; unknown tables caught)
+-- ════════════════════════════════════════════════════════════════════
+
+DO $$ BEGIN ALTER TABLE public.coach_profiles            ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] coach_profiles: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.athlete_profiles          ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] athlete_profiles: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.coach_bots                ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] coach_bots: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.bot_workouts              ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] bot_workouts: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.coach_knowledge_documents ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] coach_knowledge_documents: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.knowledge_doc_versions    ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] knowledge_doc_versions: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.athlete_seasons           ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] athlete_seasons: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.chat_messages             ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] chat_messages: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.teams                     ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] teams: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.team_members              ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] team_members: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.team_calendar_events      ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] team_calendar_events: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.attendance_records        ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] attendance_records: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.athlete_body_metrics      ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] athlete_body_metrics: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.fuel_log                  ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] fuel_log: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.push_subscriptions        ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] push_subscriptions: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.athlete_activities        ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] athlete_activities: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.race_results              ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] race_results: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.weekly_summaries          ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] weekly_summaries: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.strava_connections        ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] strava_connections: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.daily_readiness           ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] daily_readiness: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.injury_risk_scores        ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] injury_risk_scores: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.performance_predictions   ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] performance_predictions: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.race_gameplans            ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] race_gameplans: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.race_debriefs             ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] race_debriefs: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.recovery_profiles         ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] recovery_profiles: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.plan_jobs                 ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] plan_jobs: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.direct_messages           ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] direct_messages: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.coach_digests             ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] coach_digests: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.marketplace_coaches       ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] marketplace_coaches: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.team_feed                 ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] team_feed: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.feed_kudos                ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] feed_kudos: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.milestones                ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] milestones: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.challenges                ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] challenges: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.challenge_participants    ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] challenge_participants: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.team_challenges           ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] team_challenges: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.referrals                 ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] referrals: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.share_events              ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] share_events: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.marketplace_plans         ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] marketplace_plans: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.plan_purchases            ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] plan_purchases: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.coach_certifications      ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] coach_certifications: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.recruiting_profiles       ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] recruiting_profiles: %', SQLERRM; END $$;
+DO $$ BEGIN ALTER TABLE public.recruiter_accounts        ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN others THEN RAISE NOTICE '[RLS enable] recruiter_accounts: %', SQLERRM; END $$;
+
+
+-- ════════════════════════════════════════════════════════════════════
+-- STEP 2 — Policies
+--
+-- Naming convention: "<table_prefix>__<role>_<operation>_<scope>"
+-- Each policy is in its own DO block — one failure never stops another.
+-- DROP POLICY IF EXISTS before CREATE POLICY prevents duplicate-name errors.
+-- ════════════════════════════════════════════════════════════════════
+
+
+-- ── coach_profiles ───────────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "cp__coach_select_own" ON public.coach_profiles;
+  CREATE POLICY "cp__coach_select_own" ON public.coach_profiles
+    FOR SELECT USING (user_id = auth.uid());
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] cp__coach_select_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "cp__coach_update_own" ON public.coach_profiles;
+  CREATE POLICY "cp__coach_update_own" ON public.coach_profiles
+    FOR UPDATE USING (user_id = auth.uid());
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] cp__coach_update_own: %', SQLERRM; END $$;
+
+-- Athletes on the coach's team may read the coach's profile
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "cp__athlete_select_their_coach" ON public.coach_profiles;
+  CREATE POLICY "cp__athlete_select_their_coach" ON public.coach_profiles
+    FOR SELECT USING (
+      EXISTS (
+        SELECT 1 FROM public.teams t
+        JOIN public.team_members tm ON tm.team_id = t.id
+        WHERE t.coach_id = coach_profiles.id
+          AND tm.athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+          AND tm.left_at IS NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] cp__athlete_select_their_coach: %', SQLERRM; END $$;
+
+
+-- ── athlete_profiles ─────────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "ap__athlete_select_own" ON public.athlete_profiles;
+  CREATE POLICY "ap__athlete_select_own" ON public.athlete_profiles
+    FOR SELECT USING (user_id = auth.uid());
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] ap__athlete_select_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "ap__athlete_update_own" ON public.athlete_profiles;
+  CREATE POLICY "ap__athlete_update_own" ON public.athlete_profiles
+    FOR UPDATE USING (user_id = auth.uid());
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] ap__athlete_update_own: %', SQLERRM; END $$;
+
+-- Coaches may read profiles of athletes on their team
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "ap__coach_select_team_athletes" ON public.athlete_profiles;
+  CREATE POLICY "ap__coach_select_team_athletes" ON public.athlete_profiles
+    FOR SELECT USING (
+      EXISTS (
+        SELECT 1 FROM public.teams t
+        JOIN public.team_members tm ON tm.team_id = t.id
+        WHERE t.coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+          AND tm.athlete_id = athlete_profiles.id
+          AND tm.left_at IS NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] ap__coach_select_team_athletes: %', SQLERRM; END $$;
+
+
+-- ── coach_bots ───────────────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "cb__coach_all_own" ON public.coach_bots;
+  CREATE POLICY "cb__coach_all_own" ON public.coach_bots
+    FOR ALL USING (coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid()));
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] cb__coach_all_own: %', SQLERRM; END $$;
+
+-- Any authenticated user may read published bots (marketplace browsing)
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "cb__auth_select_published" ON public.coach_bots;
+  CREATE POLICY "cb__auth_select_published" ON public.coach_bots
+    FOR SELECT USING (is_published = TRUE AND auth.uid() IS NOT NULL);
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] cb__auth_select_published: %', SQLERRM; END $$;
+
+-- Athletes on the team may read their team's bot even when unpublished
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "cb__athlete_select_team_bot" ON public.coach_bots;
+  CREATE POLICY "cb__athlete_select_team_bot" ON public.coach_bots
+    FOR SELECT USING (
+      id IN (
+        SELECT t.default_bot_id FROM public.teams t
+        JOIN public.team_members tm ON tm.team_id = t.id
+        WHERE tm.athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+          AND tm.left_at IS NULL
+          AND t.default_bot_id IS NOT NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] cb__athlete_select_team_bot: %', SQLERRM; END $$;
+
+
+-- ── bot_workouts ─────────────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "bw__coach_all_own" ON public.bot_workouts;
+  CREATE POLICY "bw__coach_all_own" ON public.bot_workouts
+    FOR ALL USING (
+      bot_id IN (
+        SELECT id FROM public.coach_bots
+        WHERE coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] bw__coach_all_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "bw__athlete_select_team" ON public.bot_workouts;
+  CREATE POLICY "bw__athlete_select_team" ON public.bot_workouts
+    FOR SELECT USING (
+      bot_id IN (
+        SELECT t.default_bot_id FROM public.teams t
+        JOIN public.team_members tm ON tm.team_id = t.id
+        WHERE tm.athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+          AND tm.left_at IS NULL
+          AND t.default_bot_id IS NOT NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] bw__athlete_select_team: %', SQLERRM; END $$;
+
+
+-- ── coach_knowledge_documents ────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "ckd__coach_all_own" ON public.coach_knowledge_documents;
+  CREATE POLICY "ckd__coach_all_own" ON public.coach_knowledge_documents
+    FOR ALL USING (
+      coach_bot_id IN (
+        SELECT id FROM public.coach_bots
+        WHERE coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] ckd__coach_all_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "ckd__athlete_select_team" ON public.coach_knowledge_documents;
+  CREATE POLICY "ckd__athlete_select_team" ON public.coach_knowledge_documents
+    FOR SELECT USING (
+      coach_bot_id IN (
+        SELECT t.default_bot_id FROM public.teams t
+        JOIN public.team_members tm ON tm.team_id = t.id
+        WHERE tm.athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+          AND tm.left_at IS NULL
+          AND t.default_bot_id IS NOT NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] ckd__athlete_select_team: %', SQLERRM; END $$;
+
+
+-- ── knowledge_doc_versions ───────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "kdv__coach_all_own" ON public.knowledge_doc_versions;
+  CREATE POLICY "kdv__coach_all_own" ON public.knowledge_doc_versions
+    FOR ALL USING (
+      doc_id IN (
+        SELECT kd.id FROM public.coach_knowledge_documents kd
+        JOIN public.coach_bots cb ON cb.id = kd.coach_bot_id
+        WHERE cb.coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] kdv__coach_all_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "kdv__athlete_select_team" ON public.knowledge_doc_versions;
+  CREATE POLICY "kdv__athlete_select_team" ON public.knowledge_doc_versions
+    FOR SELECT USING (
+      doc_id IN (
+        SELECT kd.id FROM public.coach_knowledge_documents kd
+        JOIN public.coach_bots cb ON cb.id = kd.coach_bot_id
+        JOIN public.teams t ON t.default_bot_id = cb.id
+        JOIN public.team_members tm ON tm.team_id = t.id
+        WHERE tm.athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+          AND tm.left_at IS NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] kdv__athlete_select_team: %', SQLERRM; END $$;
+
+
+-- ── athlete_seasons ──────────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "aseason__athlete_all_own" ON public.athlete_seasons;
+  CREATE POLICY "aseason__athlete_all_own" ON public.athlete_seasons
+    FOR ALL USING (athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid()));
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] aseason__athlete_all_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "aseason__coach_select_team" ON public.athlete_seasons;
+  CREATE POLICY "aseason__coach_select_team" ON public.athlete_seasons
+    FOR SELECT USING (
+      EXISTS (
+        SELECT 1 FROM public.teams t
+        JOIN public.team_members tm ON tm.team_id = t.id
+        WHERE t.coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+          AND tm.athlete_id = athlete_seasons.athlete_id
+          AND tm.left_at IS NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] aseason__coach_select_team: %', SQLERRM; END $$;
+
+
+-- ── chat_messages ────────────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "chat__athlete_all_own" ON public.chat_messages;
+  CREATE POLICY "chat__athlete_all_own" ON public.chat_messages
+    FOR ALL USING (
+      season_id IN (
+        SELECT id FROM public.athlete_seasons
+        WHERE athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] chat__athlete_all_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "chat__coach_select_team" ON public.chat_messages;
+  CREATE POLICY "chat__coach_select_team" ON public.chat_messages
+    FOR SELECT USING (
+      season_id IN (
+        SELECT s.id FROM public.athlete_seasons s
+        JOIN public.teams t ON t.default_bot_id = s.bot_id
+        JOIN public.team_members tm ON tm.team_id = t.id
+        WHERE t.coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+          AND tm.athlete_id = s.athlete_id
+          AND tm.left_at IS NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] chat__coach_select_team: %', SQLERRM; END $$;
+
+
+-- ── teams ────────────────────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "teams__coach_all_own" ON public.teams;
+  CREATE POLICY "teams__coach_all_own" ON public.teams
+    FOR ALL USING (coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid()));
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] teams__coach_all_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "teams__athlete_select_member" ON public.teams;
+  CREATE POLICY "teams__athlete_select_member" ON public.teams
+    FOR SELECT USING (
+      id IN (
+        SELECT team_id FROM public.team_members
+        WHERE athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+          AND left_at IS NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] teams__athlete_select_member: %', SQLERRM; END $$;
+
+
+-- ── team_members ─────────────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "tm__coach_all_own_team" ON public.team_members;
+  CREATE POLICY "tm__coach_all_own_team" ON public.team_members
+    FOR ALL USING (
+      team_id IN (
+        SELECT id FROM public.teams
+        WHERE coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] tm__coach_all_own_team: %', SQLERRM; END $$;
+
+-- Athlete may see their own membership rows
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "tm__athlete_select_own" ON public.team_members;
+  CREATE POLICY "tm__athlete_select_own" ON public.team_members
+    FOR SELECT USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] tm__athlete_select_own: %', SQLERRM; END $$;
+
+-- Athlete may see other members on their teams (roster pages)
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "tm__athlete_select_teammates" ON public.team_members;
+  CREATE POLICY "tm__athlete_select_teammates" ON public.team_members
+    FOR SELECT USING (
+      team_id IN (
+        SELECT tm2.team_id FROM public.team_members tm2
+        WHERE tm2.athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+          AND tm2.left_at IS NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] tm__athlete_select_teammates: %', SQLERRM; END $$;
+
+
+-- ── team_calendar_events ─────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "tce__coach_all_own" ON public.team_calendar_events;
+  CREATE POLICY "tce__coach_all_own" ON public.team_calendar_events
+    FOR ALL USING (coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid()));
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] tce__coach_all_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "tce__athlete_select_team" ON public.team_calendar_events;
+  CREATE POLICY "tce__athlete_select_team" ON public.team_calendar_events
+    FOR SELECT USING (
+      team_id IN (
+        SELECT team_id FROM public.team_members
+        WHERE athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+          AND left_at IS NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] tce__athlete_select_team: %', SQLERRM; END $$;
+
+
+-- ── attendance_records ───────────────────────────────────────────────────────
+
+-- Coach manages all attendance for their team's events
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "ar__coach_all_team" ON public.attendance_records;
+  CREATE POLICY "ar__coach_all_team" ON public.attendance_records
+    FOR ALL USING (
+      event_id IN (
+        SELECT id FROM public.team_calendar_events
+        WHERE coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] ar__coach_all_team: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "ar__athlete_select_own" ON public.attendance_records;
+  CREATE POLICY "ar__athlete_select_own" ON public.attendance_records
+    FOR SELECT USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] ar__athlete_select_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "ar__athlete_insert_own" ON public.attendance_records;
+  CREATE POLICY "ar__athlete_insert_own" ON public.attendance_records
+    FOR INSERT WITH CHECK (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] ar__athlete_insert_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "ar__athlete_update_own" ON public.attendance_records;
+  CREATE POLICY "ar__athlete_update_own" ON public.attendance_records
+    FOR UPDATE USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] ar__athlete_update_own: %', SQLERRM; END $$;
+
+
+-- ── athlete_body_metrics ─────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "abm__athlete_all_own" ON public.athlete_body_metrics;
+  CREATE POLICY "abm__athlete_all_own" ON public.athlete_body_metrics
+    FOR ALL USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] abm__athlete_all_own: %', SQLERRM; END $$;
+
+
+-- ── fuel_log ─────────────────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "fl__athlete_all_own" ON public.fuel_log;
+  CREATE POLICY "fl__athlete_all_own" ON public.fuel_log
+    FOR ALL USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] fl__athlete_all_own: %', SQLERRM; END $$;
+
+
+-- ── push_subscriptions ───────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "psub__user_all_own" ON public.push_subscriptions;
+  CREATE POLICY "psub__user_all_own" ON public.push_subscriptions
+    FOR ALL USING (user_id = auth.uid());
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] psub__user_all_own: %', SQLERRM; END $$;
+
+
+-- ── athlete_activities ───────────────────────────────────────────────────────
+-- (table exists; CREATE TABLE not in this file — wrapped to be safe)
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "aa__athlete_all_own" ON public.athlete_activities;
+  CREATE POLICY "aa__athlete_all_own" ON public.athlete_activities
+    FOR ALL USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] aa__athlete_all_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "aa__coach_select_team" ON public.athlete_activities;
+  CREATE POLICY "aa__coach_select_team" ON public.athlete_activities
+    FOR SELECT USING (
+      EXISTS (
+        SELECT 1 FROM public.teams t
+        JOIN public.team_members tm ON tm.team_id = t.id
+        WHERE t.coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+          AND tm.athlete_id = athlete_activities.athlete_id
+          AND tm.left_at IS NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] aa__coach_select_team: %', SQLERRM; END $$;
+
+
+-- ── race_results ─────────────────────────────────────────────────────────────
+-- (table exists — confirmed by ALTER TABLE in migration 021)
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "rr__athlete_all_own" ON public.race_results;
+  CREATE POLICY "rr__athlete_all_own" ON public.race_results
+    FOR ALL USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] rr__athlete_all_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "rr__coach_select_team" ON public.race_results;
+  CREATE POLICY "rr__coach_select_team" ON public.race_results
+    FOR SELECT USING (
+      EXISTS (
+        SELECT 1 FROM public.teams t
+        JOIN public.team_members tm ON tm.team_id = t.id
+        WHERE t.coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+          AND tm.athlete_id = race_results.athlete_id
+          AND tm.left_at IS NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] rr__coach_select_team: %', SQLERRM; END $$;
+
+
+-- ── weekly_summaries ─────────────────────────────────────────────────────────
+-- (table may not exist — fully wrapped)
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "ws__athlete_all_own" ON public.weekly_summaries;
+  CREATE POLICY "ws__athlete_all_own" ON public.weekly_summaries
+    FOR ALL USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] ws__athlete_all_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "ws__coach_select_team" ON public.weekly_summaries;
+  CREATE POLICY "ws__coach_select_team" ON public.weekly_summaries
+    FOR SELECT USING (
+      EXISTS (
+        SELECT 1 FROM public.teams t
+        JOIN public.team_members tm ON tm.team_id = t.id
+        WHERE t.coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+          AND tm.athlete_id = weekly_summaries.athlete_id
+          AND tm.left_at IS NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] ws__coach_select_team: %', SQLERRM; END $$;
+
+
+-- ── strava_connections ───────────────────────────────────────────────────────
+-- (table may not exist — fully wrapped)
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "sconn__athlete_all_own" ON public.strava_connections;
+  CREATE POLICY "sconn__athlete_all_own" ON public.strava_connections
+    FOR ALL USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] sconn__athlete_all_own: %', SQLERRM; END $$;
+
+
+-- ── daily_readiness ──────────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "dr__athlete_select_own" ON public.daily_readiness;
+  CREATE POLICY "dr__athlete_select_own" ON public.daily_readiness
+    FOR SELECT USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] dr__athlete_select_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "dr__coach_select_team" ON public.daily_readiness;
+  CREATE POLICY "dr__coach_select_team" ON public.daily_readiness
+    FOR SELECT USING (
+      EXISTS (
+        SELECT 1 FROM public.teams t
+        JOIN public.team_members tm ON tm.team_id = t.id
+        WHERE t.coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+          AND tm.athlete_id = daily_readiness.athlete_id
+          AND tm.left_at IS NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] dr__coach_select_team: %', SQLERRM; END $$;
+
+
+-- ── injury_risk_scores ───────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "irs__athlete_select_own" ON public.injury_risk_scores;
+  CREATE POLICY "irs__athlete_select_own" ON public.injury_risk_scores
+    FOR SELECT USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] irs__athlete_select_own: %', SQLERRM; END $$;
+
+-- Coaches can read AND update (flag/dismiss) risk scores for their team
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "irs__coach_all_team" ON public.injury_risk_scores;
+  CREATE POLICY "irs__coach_all_team" ON public.injury_risk_scores
+    FOR ALL USING (
+      EXISTS (
+        SELECT 1 FROM public.teams t
+        JOIN public.team_members tm ON tm.team_id = t.id
+        WHERE t.coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+          AND tm.athlete_id = injury_risk_scores.athlete_id
+          AND tm.left_at IS NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] irs__coach_all_team: %', SQLERRM; END $$;
+
+
+-- ── performance_predictions ──────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "pp__athlete_select_own" ON public.performance_predictions;
+  CREATE POLICY "pp__athlete_select_own" ON public.performance_predictions
+    FOR SELECT USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] pp__athlete_select_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "pp__coach_select_team" ON public.performance_predictions;
+  CREATE POLICY "pp__coach_select_team" ON public.performance_predictions
+    FOR SELECT USING (
+      EXISTS (
+        SELECT 1 FROM public.teams t
+        JOIN public.team_members tm ON tm.team_id = t.id
+        WHERE t.coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+          AND tm.athlete_id = performance_predictions.athlete_id
+          AND tm.left_at IS NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] pp__coach_select_team: %', SQLERRM; END $$;
+
+
+-- ── race_gameplans ───────────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "rg__athlete_select_own" ON public.race_gameplans;
+  CREATE POLICY "rg__athlete_select_own" ON public.race_gameplans
+    FOR SELECT USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] rg__athlete_select_own: %', SQLERRM; END $$;
+
+-- Coaches can read AND approve/update gameplans for their team
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "rg__coach_all_team" ON public.race_gameplans;
+  CREATE POLICY "rg__coach_all_team" ON public.race_gameplans
+    FOR ALL USING (
+      EXISTS (
+        SELECT 1 FROM public.teams t
+        JOIN public.team_members tm ON tm.team_id = t.id
+        WHERE t.coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+          AND tm.athlete_id = race_gameplans.athlete_id
+          AND tm.left_at IS NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] rg__coach_all_team: %', SQLERRM; END $$;
+
+
+-- ── race_debriefs ────────────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "rd__athlete_all_own" ON public.race_debriefs;
+  CREATE POLICY "rd__athlete_all_own" ON public.race_debriefs
+    FOR ALL USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] rd__athlete_all_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "rd__coach_select_team" ON public.race_debriefs;
+  CREATE POLICY "rd__coach_select_team" ON public.race_debriefs
+    FOR SELECT USING (
+      EXISTS (
+        SELECT 1 FROM public.teams t
+        JOIN public.team_members tm ON tm.team_id = t.id
+        WHERE t.coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+          AND tm.athlete_id = race_debriefs.athlete_id
+          AND tm.left_at IS NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] rd__coach_select_team: %', SQLERRM; END $$;
+
+
+-- ── recovery_profiles ────────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "recov__athlete_all_own" ON public.recovery_profiles;
+  CREATE POLICY "recov__athlete_all_own" ON public.recovery_profiles
+    FOR ALL USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] recov__athlete_all_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "recov__coach_select_team" ON public.recovery_profiles;
+  CREATE POLICY "recov__coach_select_team" ON public.recovery_profiles
+    FOR SELECT USING (
+      EXISTS (
+        SELECT 1 FROM public.teams t
+        JOIN public.team_members tm ON tm.team_id = t.id
+        WHERE t.coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+          AND tm.athlete_id = recovery_profiles.athlete_id
+          AND tm.left_at IS NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] recov__coach_select_team: %', SQLERRM; END $$;
+
+
+-- ── plan_jobs ────────────────────────────────────────────────────────────────
+-- Athletes may only read — backend writes via service role
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "pj__athlete_select_own" ON public.plan_jobs;
+  CREATE POLICY "pj__athlete_select_own" ON public.plan_jobs
+    FOR SELECT USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] pj__athlete_select_own: %', SQLERRM; END $$;
+
+
+-- ── direct_messages ──────────────────────────────────────────────────────────
+-- Verified columns: athlete_id, coach_id, sender_role, read_at
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "dm__athlete_select_thread" ON public.direct_messages;
+  CREATE POLICY "dm__athlete_select_thread" ON public.direct_messages
+    FOR SELECT USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] dm__athlete_select_thread: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "dm__coach_select_thread" ON public.direct_messages;
+  CREATE POLICY "dm__coach_select_thread" ON public.direct_messages
+    FOR SELECT USING (
+      coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] dm__coach_select_thread: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "dm__athlete_insert" ON public.direct_messages;
+  CREATE POLICY "dm__athlete_insert" ON public.direct_messages
+    FOR INSERT WITH CHECK (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+      AND sender_role = 'athlete'
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] dm__athlete_insert: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "dm__coach_insert" ON public.direct_messages;
+  CREATE POLICY "dm__coach_insert" ON public.direct_messages
+    FOR INSERT WITH CHECK (
+      coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+      AND sender_role = 'coach'
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] dm__coach_insert: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "dm__athlete_update_read" ON public.direct_messages;
+  CREATE POLICY "dm__athlete_update_read" ON public.direct_messages
+    FOR UPDATE USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] dm__athlete_update_read: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "dm__coach_update_read" ON public.direct_messages;
+  CREATE POLICY "dm__coach_update_read" ON public.direct_messages
+    FOR UPDATE USING (
+      coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] dm__coach_update_read: %', SQLERRM; END $$;
+
+
+-- ── coach_digests ────────────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "cd__coach_all_own" ON public.coach_digests;
+  CREATE POLICY "cd__coach_all_own" ON public.coach_digests
+    FOR ALL USING (
+      coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] cd__coach_all_own: %', SQLERRM; END $$;
+
+
+-- ── marketplace_coaches ──────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "mc__coach_all_own" ON public.marketplace_coaches;
+  CREATE POLICY "mc__coach_all_own" ON public.marketplace_coaches
+    FOR ALL USING (
+      coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] mc__coach_all_own: %', SQLERRM; END $$;
+
+-- Any authenticated user may browse approved marketplace coaches
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "mc__auth_select_approved" ON public.marketplace_coaches;
+  CREATE POLICY "mc__auth_select_approved" ON public.marketplace_coaches
+    FOR SELECT USING (approval_status = 'approved' AND auth.uid() IS NOT NULL);
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] mc__auth_select_approved: %', SQLERRM; END $$;
+
+
+-- ── team_feed ────────────────────────────────────────────────────────────────
+-- Public-scope posts are readable by all authenticated users.
+-- Team-scope posts are readable only by that team's members and coach.
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "tf__select_team_or_public" ON public.team_feed;
+  CREATE POLICY "tf__select_team_or_public" ON public.team_feed
+    FOR SELECT USING (
+      scope = 'public'
+      OR team_id IN (
+        SELECT team_id FROM public.team_members
+        WHERE athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+          AND left_at IS NULL
+      )
+      OR team_id IN (
+        SELECT id FROM public.teams
+        WHERE coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] tf__select_team_or_public: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "tf__athlete_insert_own" ON public.team_feed;
+  CREATE POLICY "tf__athlete_insert_own" ON public.team_feed
+    FOR INSERT WITH CHECK (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+      AND team_id IN (
+        SELECT team_id FROM public.team_members
+        WHERE athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+          AND left_at IS NULL
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] tf__athlete_insert_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "tf__athlete_delete_own" ON public.team_feed;
+  CREATE POLICY "tf__athlete_delete_own" ON public.team_feed
+    FOR DELETE USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] tf__athlete_delete_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "tf__coach_insert_own" ON public.team_feed;
+  CREATE POLICY "tf__coach_insert_own" ON public.team_feed
+    FOR INSERT WITH CHECK (
+      coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+      AND team_id IN (
+        SELECT id FROM public.teams
+        WHERE coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] tf__coach_insert_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "tf__coach_delete_own" ON public.team_feed;
+  CREATE POLICY "tf__coach_delete_own" ON public.team_feed
+    FOR DELETE USING (
+      coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] tf__coach_delete_own: %', SQLERRM; END $$;
+
+
+-- ── feed_kudos ───────────────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "fk__select_visible_posts" ON public.feed_kudos;
+  CREATE POLICY "fk__select_visible_posts" ON public.feed_kudos
+    FOR SELECT USING (
+      feed_post_id IN (
+        SELECT id FROM public.team_feed
+        WHERE scope = 'public'
+          OR team_id IN (
+            SELECT team_id FROM public.team_members
+            WHERE athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+              AND left_at IS NULL
+          )
+          OR team_id IN (
+            SELECT id FROM public.teams
+            WHERE coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+          )
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] fk__select_visible_posts: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "fk__athlete_insert_own" ON public.feed_kudos;
+  CREATE POLICY "fk__athlete_insert_own" ON public.feed_kudos
+    FOR INSERT WITH CHECK (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] fk__athlete_insert_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "fk__athlete_delete_own" ON public.feed_kudos;
+  CREATE POLICY "fk__athlete_delete_own" ON public.feed_kudos
+    FOR DELETE USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] fk__athlete_delete_own: %', SQLERRM; END $$;
+
+
+-- ── milestones ───────────────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "mil__athlete_all_own" ON public.milestones;
+  CREATE POLICY "mil__athlete_all_own" ON public.milestones
+    FOR ALL USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] mil__athlete_all_own: %', SQLERRM; END $$;
+
+
+-- ── challenges ───────────────────────────────────────────────────────────────
+-- All authenticated users can read; only coaches can write
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "ch__auth_select_all" ON public.challenges;
+  CREATE POLICY "ch__auth_select_all" ON public.challenges
+    FOR SELECT USING (auth.uid() IS NOT NULL);
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] ch__auth_select_all: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "ch__coach_insert_own" ON public.challenges;
+  CREATE POLICY "ch__coach_insert_own" ON public.challenges
+    FOR INSERT WITH CHECK (
+      coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] ch__coach_insert_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "ch__coach_update_own" ON public.challenges;
+  CREATE POLICY "ch__coach_update_own" ON public.challenges
+    FOR UPDATE USING (
+      coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] ch__coach_update_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "ch__coach_delete_own" ON public.challenges;
+  CREATE POLICY "ch__coach_delete_own" ON public.challenges
+    FOR DELETE USING (
+      coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] ch__coach_delete_own: %', SQLERRM; END $$;
+
+
+-- ── challenge_participants ───────────────────────────────────────────────────
+-- All authenticated can read participant lists (leaderboards)
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "chp__auth_select_all" ON public.challenge_participants;
+  CREATE POLICY "chp__auth_select_all" ON public.challenge_participants
+    FOR SELECT USING (auth.uid() IS NOT NULL);
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] chp__auth_select_all: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "chp__athlete_insert_own" ON public.challenge_participants;
+  CREATE POLICY "chp__athlete_insert_own" ON public.challenge_participants
+    FOR INSERT WITH CHECK (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] chp__athlete_insert_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "chp__athlete_delete_own" ON public.challenge_participants;
+  CREATE POLICY "chp__athlete_delete_own" ON public.challenge_participants
+    FOR DELETE USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] chp__athlete_delete_own: %', SQLERRM; END $$;
+
+
+-- ── team_challenges ──────────────────────────────────────────────────────────
+-- Verified columns: challenger_team_id, challenged_team_id
+-- Members of either team (athletes + coach) may read; only challenger coach may insert
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "tc__select_involved" ON public.team_challenges;
+  CREATE POLICY "tc__select_involved" ON public.team_challenges
+    FOR SELECT USING (
+      challenger_team_id IN (
+        SELECT team_id FROM public.team_members
+        WHERE athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+          AND left_at IS NULL
+        UNION ALL
+        SELECT id FROM public.teams
+        WHERE coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+      )
+      OR challenged_team_id IN (
+        SELECT team_id FROM public.team_members
+        WHERE athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+          AND left_at IS NULL
+        UNION ALL
+        SELECT id FROM public.teams
+        WHERE coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] tc__select_involved: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "tc__coach_insert" ON public.team_challenges;
+  CREATE POLICY "tc__coach_insert" ON public.team_challenges
+    FOR INSERT WITH CHECK (
+      challenger_team_id IN (
+        SELECT id FROM public.teams
+        WHERE coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] tc__coach_insert: %', SQLERRM; END $$;
+
+-- Both coaches (challenger and challenged) may update status
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "tc__coach_update" ON public.team_challenges;
+  CREATE POLICY "tc__coach_update" ON public.team_challenges
+    FOR UPDATE USING (
+      challenger_team_id IN (
+        SELECT id FROM public.teams
+        WHERE coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+      )
+      OR challenged_team_id IN (
+        SELECT id FROM public.teams
+        WHERE coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] tc__coach_update: %', SQLERRM; END $$;
+
+
+-- ── marketplace_plans ────────────────────────────────────────────────────────
+-- Verified column: published (BOOLEAN) — NOT is_published
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "mp__coach_all_own" ON public.marketplace_plans;
+  CREATE POLICY "mp__coach_all_own" ON public.marketplace_plans
+    FOR ALL USING (
+      coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] mp__coach_all_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "mp__auth_select_published" ON public.marketplace_plans;
+  CREATE POLICY "mp__auth_select_published" ON public.marketplace_plans
+    FOR SELECT USING (published = TRUE AND auth.uid() IS NOT NULL);
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] mp__auth_select_published: %', SQLERRM; END $$;
+
+
+-- ── plan_purchases ───────────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "pu__athlete_all_own" ON public.plan_purchases;
+  CREATE POLICY "pu__athlete_all_own" ON public.plan_purchases
+    FOR ALL USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] pu__athlete_all_own: %', SQLERRM; END $$;
+
+-- Coaches may see who purchased their plans (sales reporting)
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "pu__coach_select_sales" ON public.plan_purchases;
+  CREATE POLICY "pu__coach_select_sales" ON public.plan_purchases
+    FOR SELECT USING (
+      plan_id IN (
+        SELECT id FROM public.marketplace_plans
+        WHERE coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] pu__coach_select_sales: %', SQLERRM; END $$;
+
+
+-- ── coach_certifications ─────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "cc__coach_all_own" ON public.coach_certifications;
+  CREATE POLICY "cc__coach_all_own" ON public.coach_certifications
+    FOR ALL USING (
+      coach_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] cc__coach_all_own: %', SQLERRM; END $$;
+
+
+-- ── recruiting_profiles ──────────────────────────────────────────────────────
+-- Verified column: visible (BOOLEAN) — NOT is_visible_to_recruiters
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "rec__athlete_all_own" ON public.recruiting_profiles;
+  CREATE POLICY "rec__athlete_all_own" ON public.recruiting_profiles
+    FOR ALL USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] rec__athlete_all_own: %', SQLERRM; END $$;
+
+-- Active recruiters may read athlete profiles where visible = TRUE
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "rec__recruiter_select_visible" ON public.recruiting_profiles;
+  CREATE POLICY "rec__recruiter_select_visible" ON public.recruiting_profiles
+    FOR SELECT USING (
+      visible = TRUE
+      AND EXISTS (
+        SELECT 1 FROM public.recruiter_accounts
+        WHERE user_id = auth.uid() AND active = TRUE
+      )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] rec__recruiter_select_visible: %', SQLERRM; END $$;
+
+
+-- ── recruiter_accounts ───────────────────────────────────────────────────────
+-- Verified column: active (BOOLEAN) — NOT verified
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "ra__recruiter_all_own" ON public.recruiter_accounts;
+  CREATE POLICY "ra__recruiter_all_own" ON public.recruiter_accounts
+    FOR ALL USING (user_id = auth.uid());
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] ra__recruiter_all_own: %', SQLERRM; END $$;
+
+
+-- ── referrals ────────────────────────────────────────────────────────────────
+-- referrer_id is a profile UUID (not auth.uid()) — use referrer_type to resolve.
+-- referred_user_id IS auth.uid() (the new signup's auth user).
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "ref__user_select_own" ON public.referrals;
+  CREATE POLICY "ref__user_select_own" ON public.referrals
+    FOR SELECT USING (
+      ( referrer_type = 'athlete'
+        AND referrer_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid()) )
+      OR ( referrer_type = 'coach'
+        AND referrer_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid()) )
+      OR referred_user_id = auth.uid()
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] ref__user_select_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "ref__user_insert_own" ON public.referrals;
+  CREATE POLICY "ref__user_insert_own" ON public.referrals
+    FOR INSERT WITH CHECK (
+      ( referrer_type = 'athlete'
+        AND referrer_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid()) )
+      OR ( referrer_type = 'coach'
+        AND referrer_id = (SELECT id FROM public.coach_profiles WHERE user_id = auth.uid()) )
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] ref__user_insert_own: %', SQLERRM; END $$;
+
+
+-- ── share_events ─────────────────────────────────────────────────────────────
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "se__athlete_all_own" ON public.share_events;
+  CREATE POLICY "se__athlete_all_own" ON public.share_events
+    FOR ALL USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] se__athlete_all_own: %', SQLERRM; END $$;
+
+
+-- ════════════════════════════════════════════════════════════════════
+-- END Migration 024
+-- ════════════════════════════════════════════════════════════════════
