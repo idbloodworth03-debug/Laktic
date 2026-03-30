@@ -17,18 +17,44 @@ const communityPostSchema = z.object({
 });
 
 // GET /api/community/feed?page=1&channel=all
-// Returns public posts + the athlete's own team posts, paginated
+// Returns public posts + the user's own team posts, paginated (coaches and athletes)
 router.get(
   '/feed',
   auth,
-  requireAthlete,
   asyncHandler(async (req: AuthRequest, res) => {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const channel = (req.query.channel as string) || 'all';
     const offset = (page - 1) * PAGE_SIZE;
 
-    // Resolve athlete's active team
-    const activeTeamId = req.athlete.active_team_id ?? null;
+    // Resolve active team and athlete id for the current user (either role)
+    let activeTeamId: string | null = null;
+    let athleteId: string | null = null;
+
+    const { data: athleteProfile } = await supabase
+      .from('athlete_profiles')
+      .select('id, active_team_id')
+      .eq('user_id', req.user!.id)
+      .maybeSingle();
+
+    if (athleteProfile) {
+      activeTeamId = athleteProfile.active_team_id ?? null;
+      athleteId = athleteProfile.id;
+    } else {
+      // Coach: look up their team
+      const { data: coachProfile } = await supabase
+        .from('coach_profiles')
+        .select('id')
+        .eq('user_id', req.user!.id)
+        .maybeSingle();
+      if (coachProfile) {
+        const { data: team } = await supabase
+          .from('teams')
+          .select('id')
+          .eq('coach_id', coachProfile.id)
+          .maybeSingle();
+        activeTeamId = team?.id ?? null;
+      }
+    }
 
     let query = supabase
       .from('team_feed')
@@ -40,7 +66,7 @@ router.get(
       .order('created_at', { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1);
 
-    // Visibility: public posts OR posts from athlete's own team
+    // Visibility: public posts OR posts from the user's own team
     if (activeTeamId) {
       query = query.or(`scope.eq.public,team_id.eq.${activeTeamId}`);
     } else {
@@ -58,8 +84,8 @@ router.get(
     const enriched = (posts || []).map(post => ({
       ...post,
       kudo_count: Array.isArray(post.feed_kudos) ? post.feed_kudos.length : 0,
-      i_kudoed: Array.isArray(post.feed_kudos)
-        ? post.feed_kudos.some((k: any) => k.athlete_id === req.athlete.id)
+      i_kudoed: athleteId && Array.isArray(post.feed_kudos)
+        ? post.feed_kudos.some((k: any) => k.athlete_id === athleteId)
         : false,
       feed_kudos: undefined
     }));

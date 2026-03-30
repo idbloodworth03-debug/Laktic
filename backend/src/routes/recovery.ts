@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { supabase } from '../db/supabase';
-import { auth, requireAthlete, AuthRequest } from '../middleware/auth';
+import { auth, requireAthlete, requireCoach, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
 import { validate } from '../middleware/validate';
 import { z } from 'zod';
@@ -236,9 +236,8 @@ router.get(
 router.get(
   '/team',
   auth,
+  requireCoach,
   asyncHandler(async (req: AuthRequest, res) => {
-    // Allow coaches
-    if (!req.coach) return res.status(403).json({ error: 'Coach access required' });
 
     const { data: teamData } = await supabase
       .from('teams')
