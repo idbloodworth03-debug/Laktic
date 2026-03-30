@@ -9,10 +9,19 @@ export function AuthCallback() {
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
   const setAuth = useAuthStore(s => s.setAuth);
-  const [status, setStatus] = useState<'loading' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
+  const [redirectPath, setRedirectPath] = useState('');
 
   const fail = (msg: string) => { setErrorMsg(msg); setStatus('error'); };
+
+  // After success state shows for 2s, navigate to onboarding
+  useEffect(() => {
+    if (status === 'success' && redirectPath) {
+      const t = setTimeout(() => nav(redirectPath, { replace: true }), 2000);
+      return () => clearTimeout(t);
+    }
+  }, [status, redirectPath]);
 
   useEffect(() => {
     (async () => {
@@ -68,7 +77,8 @@ export function AuthCallback() {
         const { role: existingRole, profile } = await apiFetch('/api/me');
         console.log('[AuthCallback] existing profile found:', existingRole, profile?.id);
         setAuth(session, existingRole, profile);
-        nav(existingRole === 'coach' ? '/coach/onboarding' : '/athlete/onboarding', { replace: true });
+        setRedirectPath(existingRole === 'coach' ? '/coach/onboarding' : '/athlete/onboarding');
+        setStatus('success');
         return;
       } catch (meErr: any) {
         // Expected when no profile exists yet — log so we can see what the actual error was
@@ -99,7 +109,8 @@ export function AuthCallback() {
           });
           console.log('[AuthCallback] coach profile created:', profile?.id);
           setAuth(session, 'coach', profile);
-          nav('/coach/onboarding', { replace: true });
+          setRedirectPath('/coach/onboarding');
+          setStatus('success');
 
         } else {
           // Coerce numeric fields — Supabase user_metadata may deserialize as string
@@ -120,7 +131,8 @@ export function AuthCallback() {
           });
           console.log('[AuthCallback] athlete profile created:', profile?.id);
           setAuth(session, 'athlete', profile);
-          nav('/athlete/onboarding', { replace: true });
+          setRedirectPath('/athlete/onboarding');
+          setStatus('success');
         }
 
       } catch (createErr: any) {
@@ -145,6 +157,31 @@ export function AuthCallback() {
             <a href="/athlete/signup" style={{ color: 'var(--color-text-tertiary)' }} className="hover:underline">
               Back to sign up
             </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'success') {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--color-bg-primary)' }}>
+        <div className="text-center space-y-4">
+          <div
+            className="mx-auto w-16 h-16 rounded-full flex items-center justify-center"
+            style={{ background: 'rgba(0,229,160,0.12)', border: '1px solid rgba(0,229,160,0.3)' }}
+          >
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M5 13l4 4L19 7" stroke="var(--color-accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <div>
+            <p className="font-display text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+              Email confirmed!
+            </p>
+            <p className="text-sm mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
+              Taking you to your account…
+            </p>
           </div>
         </div>
       </div>

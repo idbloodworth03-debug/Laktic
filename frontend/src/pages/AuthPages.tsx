@@ -382,7 +382,10 @@ export function CoachRegister() {
       const { data, error: signErr } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
-        options: { data: { name: form.name, role: 'coach', school_or_org: form.school_or_org } },
+        options: {
+          emailRedirectTo: `${import.meta.env.VITE_APP_URL || 'http://localhost:5173'}/auth/callback`,
+          data: { name: form.name, role: 'coach', school_or_org: form.school_or_org },
+        },
       });
       if (signErr) { setError(mapSignUpError(signErr)); return; }
       // Email confirmation enabled — redirect to confirmation pending page
@@ -484,7 +487,10 @@ export function AthleteRegister() {
       const { data, error: signErr } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
-        options: { data: athleteMeta },
+        options: {
+          emailRedirectTo: `${import.meta.env.VITE_APP_URL || 'http://localhost:5173'}/auth/callback`,
+          data: athleteMeta,
+        },
       });
       if (signErr) { setError(mapSignUpError(signErr)); return; }
       // Email confirmation enabled — redirect to confirmation pending page
