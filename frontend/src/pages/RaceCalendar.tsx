@@ -7,7 +7,7 @@ import { AppLayout, Button, Input, Card, Toggle, Alert, Badge } from '../compone
 import { ShareMomentModal } from '../components/ShareMomentModal';
 import type { ShareCardData } from '../components/ShareCardCanvas';
 
-type Race = { name: string; date: string; is_goal_race: boolean; notes: string };
+type Race = { name: string; date: string; is_goal_race: boolean; notes: string; distance?: string; goal_time?: string; };
 type RaceResult = {
   id: string;
   race_name: string;
@@ -33,7 +33,12 @@ type ResultForm = {
   notes: string;
 };
 
-function emptyRace(): Race { return { name: '', date: '', is_goal_race: false, notes: '' }; }
+function emptyRace(): Race { return { name: '', date: '', is_goal_race: false, notes: '', distance: '', goal_time: '' }; }
+
+const daysUntil = (date: string) => {
+  const diff = new Date(date + 'T00:00:00').getTime() - new Date().setHours(0,0,0,0);
+  return Math.ceil(diff / 86400000);
+};
 
 function emptyResult(race?: Race): ResultForm {
   return {
@@ -491,6 +496,8 @@ export function RaceCalendar() {
                           <div className="text-xs text-[var(--muted)]">
                             {new Date(race.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                           </div>
+                          {race.distance && <div className="text-xs text-[var(--muted)] mt-0.5">{race.distance}{race.goal_time ? ` · Goal: ${race.goal_time}` : ''}</div>}
+                          {!isPastRace(race.date) && <div className="text-xs font-medium mt-0.5" style={{ color: 'var(--color-accent)' }}>{daysUntil(race.date)} days away</div>}
                           {race.notes && <div className="text-xs text-[var(--muted)] mt-0.5 italic">{race.notes}</div>}
                         </div>
                         <div className="flex items-center gap-2.5 shrink-0">
@@ -543,6 +550,10 @@ export function RaceCalendar() {
                     <Input label="Date" type="date" value={newRace.date} onChange={e => setNewRace(r => ({ ...r, date: e.target.value }))} />
                   </div>
                   <Input label="Notes (optional)" value={newRace.notes} onChange={e => setNewRace(r => ({ ...r, notes: e.target.value }))} placeholder="e.g. conference meet, need to peak" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input label="Distance" value={newRace.distance || ''} onChange={e => setNewRace(r => ({ ...r, distance: e.target.value }))} placeholder="e.g. Half Marathon, 5K" />
+                    <Input label="Goal Time (optional)" value={newRace.goal_time || ''} onChange={e => setNewRace(r => ({ ...r, goal_time: e.target.value }))} placeholder="e.g. 1:45:00" />
+                  </div>
                   <Toggle checked={newRace.is_goal_race} onChange={v => setNewRace(r => ({ ...r, is_goal_race: v }))} label="This is a goal race (full taper)" />
                   <div className="flex gap-2 justify-end">
                     <Button variant="ghost" size="sm" onClick={() => { setAddingRace(false); setNewRace(emptyRace()); }}>Cancel</Button>

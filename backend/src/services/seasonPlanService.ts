@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import { env } from '../config/env';
 import { getFormattedKnowledge } from './knowledgeService';
 import { getWeekStartDate, addDays } from '../utils/dateUtils';
+import { RUNNING_EXPERT_BASELINE } from '../utils/runningExpertBaseline';
 
 const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
@@ -15,7 +16,9 @@ Rules:
 5. For non-goal races: reduce volume 20% that week.
 6. Every workout must include change_reason (one sentence).
 7. Return ONLY valid JSON, no markdown fences. Structure:
-[{ week_number, week_start_date, phase, workouts: [{ day_of_week, date, title, description, distance_miles, pace_guideline, ai_adjustable, change_reason }] }]`;
+[{ week_number, week_start_date, phase, workouts: [{ day_of_week, date, title, description, distance_miles, pace_guideline, ai_adjustable, change_reason }] }]
+
+${RUNNING_EXPERT_BASELINE}`;
 
 function buildUserPrompt(params: any): string {
   const { bot, botWorkouts, athleteProfile, raceCalendar, coachKnowledge, startDate, numWeeks, recentActivities, latestReadiness } = params;

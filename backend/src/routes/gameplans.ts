@@ -16,9 +16,12 @@ const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 const generateSchema = z.object({
   race_name: z.string().min(1),
   race_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  distance: z.string().optional(),
-  lat: z.number().optional(),
-  lon: z.number().optional()
+  distance: z.string().nullish(),
+  lat: z.number().nullish(),
+  lon: z.number().nullish(),
+  goal_time: z.string().max(20).nullish(),
+  has_run_before: z.boolean().nullish(),
+  biggest_concern: z.string().max(300).nullish(),
 });
 
 const approveSchema = z.object({
@@ -35,7 +38,10 @@ async function generateGameplanForAthlete(
   distance?: string,
   lat?: number,
   lon?: number,
-  raceEventId?: string
+  raceEventId?: string,
+  goalTime?: string,
+  hasRunBefore?: boolean,
+  biggestConcern?: string
 ): Promise<string> {
   const now = new Date();
   const day28Ago = new Date(now);
@@ -133,6 +139,22 @@ async function generateGameplanForAthlete(
         : 'Mild seasonal conditions expected. No specific forecast available.';
   }
 
+  // Calculate target pace if goal_time and distance provided
+  let targetPaceInfo = '';
+  if (goalTime && distance) {
+    const distMiles: Record<string, number> = { '5k': 3.107, '10k': 6.214, 'half': 13.1, 'halfmarathon': 13.1, 'marathon': 26.2, 'full': 26.2 };
+    const distKey = distance.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const miles = distMiles[distKey] || distMiles[distance.toLowerCase()] || null;
+    if (miles) {
+      const parts = goalTime.split(':').map(Number);
+      const totalMins = parts.length === 3 ? parts[0]*60 + parts[1] + parts[2]/60 : parts[0] + (parts[1] || 0)/60;
+      const paceMin = totalMins / miles;
+      const paceWhole = Math.floor(paceMin);
+      const paceSec = Math.round((paceMin - paceWhole) * 60);
+      targetPaceInfo = `${paceWhole}:${paceSec.toString().padStart(2,'0')} per mile`;
+    }
+  }
+
   const prompt = {
     athlete: {
       name: athlete?.name,
@@ -141,7 +163,13 @@ async function generateGameplanForAthlete(
       pr_mile: athlete?.pr_mile,
       pr_5k: athlete?.pr_5k
     },
-    race: { name: raceName, date: raceDate, distance: distance ?? 'unknown' },
+    race: {
+      name: raceName, date: raceDate, distance: distance ?? 'unknown',
+      goal_time: goalTime ?? null,
+      target_pace_per_mile: targetPaceInfo || null,
+      has_run_before: hasRunBefore ?? false,
+      biggest_concern: biggestConcern ?? null,
+    },
     recent_activities_last_28_days: actSummary.slice(0, 20),
     injury_risk: riskScore ?? null,
     weather_on_race_day: weatherInfo,
@@ -160,6 +188,20 @@ WEATHER RULES — The athlete's weather_on_race_day field has the actual forecas
 - If wind > 15mph: recommend positioning behind other runners, adjusting perceived effort
 - If rain: recommend anti-chafe precautions, waterproof socks, adjusted footing
 - Give SPECIFIC pace/effort adjustments using the actual temperature number, not vague "it might be warm"
+
+PACING STRATEGY — Generate segment-by-segment breakdown (not just first/middle/last):
+- 5K: miles 1, 2, 3+
+- 10K: miles 1-2, 3-4, 5-6+
+- Half Marathon: miles 1-3, 4-8, 9-11, 12-13.1 with specific target paces
+- Marathon: miles 1-6, 7-13, 14-20, 21-26.2 with specific target paces and gel timing
+- If goal_time provided, use target_pace_per_mile as anchor. First mile 5-10 sec/mi slower than target.
+- If has_run_before=true, reference any course-specific tactics (hills, turns, crowds)
+- Address the athlete's biggest_concern directly in mental_cues
+
+NUTRITION SCALING:
+- 5K/10K: No mid-race nutrition. Pre-race light meal only.
+- Half Marathon: 1-2 gels at miles 5 and 9, water at every station
+- Marathon: gel every 45 minutes starting mile 6, electrolytes every other station
 
 Respond ONLY with valid JSON in this exact structure:`;
 
@@ -199,13 +241,13 @@ router.post(
   requireAthlete,
   validate(generateSchema),
   asyncHandler(async (req: AuthRequest, res) => {
-    const { race_name, race_date, distance, lat, lon } = req.body;
+    const { race_name, race_date, distance, lat, lon, goal_time, has_run_before, biggest_concern } = req.body;
     const athleteId = req.athlete.id;
     const userId = req.user!.id;
 
     let gameplanJson: Record<string, unknown> = {};
     try {
-      const raw = await generateGameplanForAthlete(athleteId, race_name, race_date, distance, lat, lon);
+      const raw = await generateGameplanForAthlete(athleteId, race_name, race_date, distance ?? undefined, lat ?? undefined, lon ?? undefined, undefined, goal_time ?? undefined, has_run_before ?? undefined, biggest_concern ?? undefined);
       gameplanJson = JSON.parse(raw);
     } catch {
       return res.status(400).json({ error: 'Failed to generate gameplan' });

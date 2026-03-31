@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { env } from '../config/env';
 import { getFormattedKnowledge } from './knowledgeService';
+import { RUNNING_EXPERT_BASELINE } from '../utils/runningExpertBaseline';
 
 const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
@@ -44,7 +45,7 @@ export async function respond(params: {
       ? `COACHING PERSONALITY: ${bot.personality_prompt}\n\nYour coaching philosophy and style must reflect the above personality in every response. Never break character.\n\n`
       : '';
 
-    const systemContent = `${personalityBlock}${SYSTEM_PROMPT}`;
+    const systemContent = `${personalityBlock}${SYSTEM_PROMPT}\n\n${RUNNING_EXPERT_BASELINE}`;
 
     const activitiesBlock = recentActivities && recentActivities.length > 0
       ? `\nRECENT ACTIVITIES (last 30 days):\n${recentActivities.slice(0, 15).map((a: any) =>

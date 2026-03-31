@@ -684,9 +684,6 @@ export function SeasonPlan() {
               <h1 className="font-bold text-3xl" style={{ color: 'var(--color-text-primary)' }}>Season Plan</h1>
               <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
                 {season.coach_bots?.name} · {plan.length} weeks
-                {!season.ai_used && (
-                  <span className="ml-2 text-xs font-medium" style={{ color: '#FBBF24' }}>Template fallback</span>
-                )}
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -821,15 +818,16 @@ export function SeasonPlan() {
             <>
               {/* Week selector — horizontal pill tabs with phase color coding */}
               <div className="flex gap-1.5 mb-6 overflow-x-auto pb-2 fade-up-1" style={{ scrollbarWidth: 'none' }}>
-                {plan.map((w: any, i: number) => {
+                {plan.filter((w: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.week_number === w.week_number) === i).map((w: any, i: number, deduped: any[]) => {
+                  const originalIdx = plan.findIndex((x: any) => x.week_number === w.week_number);
                   const isToday = new Date().toISOString().split('T')[0] >= w.week_start_date &&
-                    (i === plan.length - 1 || new Date().toISOString().split('T')[0] < plan[i + 1]?.week_start_date);
+                    (originalIdx === plan.length - 1 || new Date().toISOString().split('T')[0] < plan[originalIdx + 1]?.week_start_date);
                   const phase = w.phase || 'base';
-                  const isActive = i === currentWeek;
+                  const isActive = originalIdx === currentWeek;
                   return (
                     <button
                       key={i}
-                      onClick={() => setCurrentWeek(i)}
+                      onClick={() => setCurrentWeek(plan.findIndex((x: any) => x.week_number === w.week_number))}
                       className="px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-150 shrink-0"
                       style={{ borderRadius: 8, ...PHASE_PILL_STYLE(phase, isActive, isToday) }}
                     >
@@ -853,6 +851,24 @@ export function SeasonPlan() {
                       <Button variant="ghost" size="sm" disabled={currentWeek === plan.length - 1} onClick={() => setCurrentWeek(w => w + 1)}>Next</Button>
                     </div>
                   </div>
+
+                  {/* Week progress bar */}
+                  {(() => {
+                    const totalWorkouts = (week.workouts || []).filter((w: any) => w.distance_miles > 0 || w.title).length;
+                    const today = new Date().toISOString().slice(0, 10);
+                    const completedThisWeek = (week.workouts || []).filter((w: any) => w.date && w.date < today && (w.distance_miles > 0 || w.title)).length;
+                    if (totalWorkouts === 0) return null;
+                    return (
+                      <div className="mb-4 flex items-center gap-3">
+                        <span className="text-xs shrink-0" style={{ color: 'var(--color-text-tertiary)' }}>
+                          {completedThisWeek} of {totalWorkouts} workouts this week
+                        </span>
+                        <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--color-bg-tertiary)' }}>
+                          <div className="h-full rounded-full" style={{ width: `${(completedThisWeek / totalWorkouts) * 100}%`, background: 'linear-gradient(to right, #00b87a, #00E5A0)' }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Calendar grid — dark cards with phase-color left border */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -934,14 +950,29 @@ export function SeasonPlan() {
                     })}
                   </div>
 
-                  <div className="mt-4 flex gap-5 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                    <span>
-                      Total:{' '}
-                      <strong className="font-mono font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                        {week.workouts?.reduce((sum: number, w: any) => sum + (w.distance_miles || 0), 0).toFixed(1)}mi
-                      </strong>
-                    </span>
-                    <span>{week.workouts?.filter((w: any) => w.title).length} workouts</span>
+                  <div className="mt-4 flex items-center justify-between gap-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                    <div className="flex gap-5">
+                      <span>
+                        Total:{' '}
+                        <strong className="font-mono font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                          {week.workouts?.reduce((sum: number, w: any) => sum + (w.distance_miles || 0), 0).toFixed(1)}mi
+                        </strong>
+                      </span>
+                      <span>{week.workouts?.filter((w: any) => w.title).length} workouts</span>
+                    </div>
+                    {currentWeek > 0 && (() => {
+                      const prevWeek = plan[currentWeek - 1];
+                      const thisTotal = week.workouts?.reduce((s: number, w: any) => s + (w.distance_miles || 0), 0) || 0;
+                      const prevTotal = prevWeek?.workouts?.reduce((s: number, w: any) => s + (w.distance_miles || 0), 0) || 0;
+                      if (!prevTotal) return null;
+                      const diff = ((thisTotal - prevTotal) / prevTotal * 100).toFixed(0);
+                      const sign = Number(diff) >= 0 ? '+' : '';
+                      return (
+                        <span className="text-xs" style={{ color: Number(diff) >= 0 ? 'var(--color-accent)' : '#f87171' }}>
+                          Last wk: {prevTotal.toFixed(1)}mi → This wk: {thisTotal.toFixed(1)}mi ({sign}{diff}%)
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               )}

@@ -14,6 +14,7 @@ import { loadAthleteContext, formatContextForPrompt } from '../utils/athleteCont
 import { updateWorkout, reduceWeekIntensity, markRestDay, addInjuryNote, flagCoach } from '../utils/botActions';
 import OpenAI from 'openai';
 import { env } from '../config/env';
+import { RUNNING_EXPERT_BASELINE } from '../utils/runningExpertBaseline';
 
 const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
@@ -604,7 +605,9 @@ Rules:
 3. For injuries: reduce load conservatively. Always recommend professional medical evaluation for significant symptoms.
 4. Use tools when action is needed — don't just suggest changes, make them.
 5. After using tools, tell the athlete exactly what you changed.
-6. Flag the human coach for serious injuries, mental health concerns, or anything requiring human judgment.`;
+6. Flag the human coach for serious injuries, mental health concerns, or anything requiring human judgment.
+
+${RUNNING_EXPERT_BASELINE}`;
 
     // Build conversation messages
     const historyText = (chatHistory || []).slice(-20).map((msg: any) =>

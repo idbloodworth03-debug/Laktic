@@ -81,7 +81,8 @@ export function NutritionPage() {
   // Calculator
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
-  const [durationMin, setDurationMin] = useState('');
+  const [durationHours, setDurationHours] = useState('0');
+  const [durationMinutes, setDurationMinutes] = useState('');
   const [customTempC, setCustomTempC] = useState('');
   const [recommendation, setRecommendation] = useState<FuelRecommendation | null>(null);
   const [calcLoading, setCalcLoading] = useState(false);
@@ -180,7 +181,7 @@ export function NutritionPage() {
   }
 
   async function runCalculator() {
-    const dur = parseInt(durationMin);
+    const dur = parseInt(durationHours) * 60 + parseInt(durationMinutes || '0');
     if (!dur || dur < 1) {
       setAlert({ type: 'error', message: 'Enter a valid duration.' });
       return;
@@ -459,13 +460,29 @@ export function NutritionPage() {
                     Enter your workout duration to get personalised calorie, carb, protein, and hydration targets.
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Input
-                      label="Workout duration (minutes)"
-                      type="number" min={1} max={600}
-                      value={durationMin}
-                      onChange={e => setDurationMin(e.target.value)}
-                      placeholder="e.g. 60"
-                    />
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">Workout Duration</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={durationHours}
+                          onChange={e => setDurationHours(e.target.value)}
+                          className="flex-1 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-btn px-3 py-[10px] text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
+                        >
+                          {Array.from({ length: 13 }, (_, i) => (
+                            <option key={i} value={i}>{i}h</option>
+                          ))}
+                        </select>
+                        <select
+                          value={durationMinutes}
+                          onChange={e => setDurationMinutes(e.target.value)}
+                          className="flex-1 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-btn px-3 py-[10px] text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
+                        >
+                          {[0,5,10,15,20,25,30,35,40,45,50,55].map(m => (
+                            <option key={m} value={m}>{m}min</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                     <Input
                       label="Temperature (°C) — leave blank to use live weather"
                       type="number" min={-30} max={55}
@@ -474,7 +491,7 @@ export function NutritionPage() {
                       placeholder={weather ? `${weather.temp_c}°C (live)` : 'optional'}
                     />
                   </div>
-                  <Button onClick={runCalculator} loading={calcLoading} disabled={!durationMin}>
+                  <Button onClick={runCalculator} loading={calcLoading} disabled={parseInt(durationHours) === 0 && (!durationMinutes || parseInt(durationMinutes) === 0)}>
                     Calculate Fueling Targets
                   </Button>
 
@@ -482,15 +499,15 @@ export function NutritionPage() {
                     <div className="mt-2 flex flex-col gap-3">
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         {[
-                          { label: 'Hydration needed', value: `${recommendation.hydration_ml} ml`, sub: 'during run', color: 'blue' as const },
-                          { label: 'Calories burned', value: recommendation.cals_burned.toLocaleString(), sub: 'estimate', color: 'amber' as const },
-                          { label: 'Post-run target', value: `${recommendation.post_run.calories} kcal`, sub: 'within 30 min', color: 'green' as const },
-                          { label: 'Carbs / Protein', value: `${recommendation.post_run.carbs_g}g / ${recommendation.post_run.protein_g}g`, sub: 'recovery macro', color: 'purple' as const },
+                          { label: 'Hydration needed', value: `${recommendation.hydration_ml} ml`, hint: 'Sip every 15-20 min during your run', color: 'blue' as const },
+                          { label: 'Calories burned', value: recommendation.cals_burned.toLocaleString(), hint: 'Estimated energy used — replenish within 45 min', color: 'amber' as const },
+                          { label: 'Post-run target', value: `${recommendation.post_run.calories} kcal`, hint: 'Recovery meal target — prioritise carbs + protein', color: 'green' as const },
+                          { label: 'Carbs / Protein', value: `${recommendation.post_run.carbs_g}g / ${recommendation.post_run.protein_g}g`, hint: `≈ 2 bagels + banana | 2 eggs + Greek yogurt`, color: 'purple' as const },
                         ].map(s => (
                           <div key={s.label} className="rounded-lg p-3" style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}>
                             <div className="text-xs text-[var(--color-text-tertiary)] mb-1">{s.label}</div>
                             <div className="font-mono text-base font-bold text-[var(--color-text-primary)]">{s.value}</div>
-                            <div className="text-xs text-[var(--color-text-tertiary)]">{s.sub}</div>
+                            <div className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>{s.hint}</div>
                           </div>
                         ))}
                       </div>

@@ -126,9 +126,6 @@ export default function App() {
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/privacy" element={<Privacy />} />
 
-        {/* Referrals — authenticated */}
-        <Route path="/referrals" element={<ReferralsPage />} />
-
         {/* Sprint 2 — AI Features */}
         <Route path="/coach/readiness" element={<RequireCoach><TeamReadiness /></RequireCoach>} />
         <Route path="/coach/recovery" element={<RequireCoach><TeamRecovery /></RequireCoach>} />
@@ -139,10 +136,8 @@ export default function App() {
 
         {/* Sprint 4 — Revenue Expansion */}
         <Route path="/marketplace/plans" element={<TrainingPlansMarketplace />} />
-        <Route path="/athlete/plans" element={<RequireAthlete><MyPlans /></RequireAthlete>} />
         <Route path="/coach/plans" element={<RequireCoach><CoachPlanManage /></RequireCoach>} />
         <Route path="/athlete/analytics" element={<RequireAthlete><AnalyticsDashboard /></RequireAthlete>} />
-        <Route path="/athlete/pro" element={<RequireAthlete><AthletePro /></RequireAthlete>} />
         <Route path="/coach/certification" element={<RequireCoach><CertificationPage /></RequireCoach>} />
         <Route path="/athlete/recruiting" element={<RequireAthlete><RecruitingSettings /></RequireAthlete>} />
         <Route path="/recruiting/signup" element={<RecruiterSignup />} />

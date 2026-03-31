@@ -73,13 +73,21 @@ export function AnalyticsDashboard() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="font-display text-2xl font-bold">Training Analytics</h1>
-            <p className="text-sm text-[var(--muted)] mt-1">ATL · CTL · TSB — Banister impulse-response model</p>
+            <p className="text-sm text-[var(--muted)] mt-1">These metrics show how your training is affecting your body right now.</p>
           </div>
           {!isPro && (
             <Link to="/athlete/pro">
               <Button variant="primary" size="sm">Upgrade to Pro for full history</Button>
             </Link>
           )}
+        </div>
+
+        <div className="mb-6 p-4 rounded-xl text-sm" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-start gap-2"><span className="font-semibold text-orange-400 shrink-0">Fatigue</span><span className="text-[var(--muted)]">How tired your body is from recent training. High fatigue = you need rest.</span></div>
+            <div className="flex items-start gap-2"><span className="font-semibold text-green-400 shrink-0">Fitness</span><span className="text-[var(--muted)]">Your overall training fitness built over time. Higher = more aerobically fit.</span></div>
+            <div className="flex items-start gap-2"><span className="font-semibold text-blue-400 shrink-0">Race Readiness</span><span className="text-[var(--muted)]">How fresh and ready you are to race right now. Positive = good to race.</span></div>
+          </div>
         </div>
 
         {!isPro && (
@@ -98,15 +106,15 @@ export function AnalyticsDashboard() {
             {latest && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                 <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 text-center">
-                  <p className="text-xs text-[var(--muted)] mb-1">ATL (Fatigue)</p>
+                  <p className="text-xs text-[var(--muted)] mb-1">Fatigue</p>
                   <p className="text-2xl font-bold text-orange-400">{latest.atl}</p>
                 </div>
                 <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 text-center">
-                  <p className="text-xs text-[var(--muted)] mb-1">CTL (Fitness)</p>
+                  <p className="text-xs text-[var(--muted)] mb-1">Fitness</p>
                   <p className="text-2xl font-bold text-green-400">{latest.ctl}</p>
                 </div>
                 <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 text-center">
-                  <p className="text-xs text-[var(--muted)] mb-1">TSB (Form)</p>
+                  <p className="text-xs text-[var(--muted)] mb-1">Race Readiness</p>
                   <p className={`text-2xl font-bold ${latest.tsb >= 0 ? 'text-blue-400' : 'text-red-400'}`}>{latest.tsb > 0 ? '+' : ''}{latest.tsb}</p>
                 </div>
                 <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 text-center">
@@ -124,7 +132,7 @@ export function AnalyticsDashboard() {
                   onClick={() => setView(v)}
                   className={`text-sm px-3 py-1.5 rounded-lg border transition-colors ${view === v ? 'bg-brand-600 border-brand-500 text-white' : 'bg-[var(--surface)] border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]'}`}
                 >
-                  {v === 'atl_ctl' ? 'ATL / CTL' : v === 'tsb' ? 'TSB Form' : 'Weekly Volume'}
+                  {v === 'atl_ctl' ? 'Fatigue / Fitness' : v === 'tsb' ? 'Race Readiness' : 'Weekly Volume'}
                 </button>
               ))}
             </div>
@@ -141,8 +149,8 @@ export function AnalyticsDashboard() {
                       labelFormatter={(d: any) => formatDate(d as string)}
                     />
                     <Legend />
-                    <Line type="monotone" dataKey="atl" stroke={TSB_COLORS.atl} dot={false} name="ATL (Fatigue)" strokeWidth={2} />
-                    <Line type="monotone" dataKey="ctl" stroke={TSB_COLORS.ctl} dot={false} name="CTL (Fitness)" strokeWidth={2} />
+                    <Line type="monotone" dataKey="atl" stroke={TSB_COLORS.atl} dot={false} name="Fatigue" strokeWidth={2} />
+                    <Line type="monotone" dataKey="ctl" stroke={TSB_COLORS.ctl} dot={false} name="Fitness" strokeWidth={2} />
                   </LineChart>
                 ) : view === 'tsb' ? (
                   <LineChart data={chartData}>
@@ -154,7 +162,7 @@ export function AnalyticsDashboard() {
                       labelFormatter={(d: any) => formatDate(d as string)}
                     />
                     <Legend />
-                    <Line type="monotone" dataKey="tsb" stroke={TSB_COLORS.tsb} dot={false} name="TSB (Form)" strokeWidth={2} />
+                    <Line type="monotone" dataKey="tsb" stroke={TSB_COLORS.tsb} dot={false} name="Race Readiness" strokeWidth={2} />
                   </LineChart>
                 ) : (
                   <BarChart data={weekly}>
@@ -174,9 +182,9 @@ export function AnalyticsDashboard() {
             </Card>
 
             <div className="mt-4 text-xs text-[var(--muted)] space-y-1">
-              <p><strong className="text-orange-400">ATL</strong> (Acute Training Load) — 7-day fatigue. High ATL = tired.</p>
-              <p><strong className="text-green-400">CTL</strong> (Chronic Training Load) — 42-day fitness. Higher CTL = more fit.</p>
-              <p><strong className="text-blue-400">TSB</strong> (Training Stress Balance) = CTL − ATL. Positive = fresh, ready to race.</p>
+              <p><strong className="text-orange-400">Fatigue</strong> — 7-day training load. High = tired, needs rest days.</p>
+              <p><strong className="text-green-400">Fitness</strong> — 42-day aerobic fitness. Higher = more capacity to handle hard training.</p>
+              <p><strong className="text-blue-400">Race Readiness</strong> = Fitness − Fatigue. Positive means you're fresh and ready to perform.</p>
             </div>
           </>
         )}

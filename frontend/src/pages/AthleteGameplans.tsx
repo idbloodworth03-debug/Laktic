@@ -24,10 +24,13 @@ type GenerateForm = {
   distance: string;
   lat: string;
   lon: string;
+  goal_time: string;
+  has_run_before: boolean;
+  biggest_concern: string;
 };
 
 function emptyForm(): GenerateForm {
-  return { race_name: '', race_date: '', distance: '', lat: '', lon: '' };
+  return { race_name: '', race_date: '', distance: '', lat: '', lon: '', goal_time: '', has_run_before: false, biggest_concern: '' };
 }
 
 function GenerateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
@@ -50,6 +53,9 @@ function GenerateModal({ onClose, onCreated }: { onClose: () => void; onCreated:
       };
       if (form.lat) body.lat = parseFloat(form.lat);
       if (form.lon) body.lon = parseFloat(form.lon);
+      if (form.goal_time) body.goal_time = form.goal_time;
+      body.has_run_before = form.has_run_before;
+      if (form.biggest_concern) body.biggest_concern = form.biggest_concern.trim();
       const result = await apiFetch('/api/gameplans/generate', { method: 'POST', body: JSON.stringify(body) });
       onCreated(result.id);
     } catch (e: any) {
@@ -87,6 +93,22 @@ function GenerateModal({ onClose, onCreated }: { onClose: () => void; onCreated:
             <Input label="Latitude (optional)" type="number" step="any" value={form.lat} onChange={e => setForm(f => ({ ...f, lat: e.target.value }))} placeholder="e.g. 42.35" />
             <Input label="Longitude (optional)" type="number" step="any" value={form.lon} onChange={e => setForm(f => ({ ...f, lon: e.target.value }))} placeholder="e.g. -71.06" />
           </div>
+          <Input label="Goal Finish Time (optional)" value={form.goal_time} onChange={e => setForm(f => ({ ...f, goal_time: e.target.value }))} placeholder="e.g. 1:45:00 or 22:30" />
+          <div className="flex items-center justify-between py-2">
+            <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Have you run this race before?</span>
+            <button
+              type="button"
+              onClick={() => setForm(f => ({ ...f, has_run_before: !f.has_run_before }))}
+              className="px-3 py-1 rounded-lg text-sm font-medium transition-all"
+              style={form.has_run_before
+                ? { background: 'var(--color-accent-dim)', color: 'var(--color-accent)', border: '1px solid var(--color-accent)' }
+                : { background: 'var(--color-bg-tertiary)', color: 'var(--color-text-tertiary)', border: '1px solid var(--color-border)' }
+              }
+            >
+              {form.has_run_before ? 'Yes' : 'No'}
+            </button>
+          </div>
+          <Input label="Biggest race day concern (optional)" value={form.biggest_concern} onChange={e => setForm(f => ({ ...f, biggest_concern: e.target.value }))} placeholder="e.g. going out too fast, hills at mile 20" />
 
           {error && <p className="text-xs" style={{ color: 'var(--color-danger)' }}>{error}</p>}
 
