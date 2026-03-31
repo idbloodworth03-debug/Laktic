@@ -1,7 +1,12 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const BadWordsFilter = require('bad-words');
-
-const filter = new BadWordsFilter();
+let filter: { clean: (t: string) => string } = { clean: (t: string) => t };
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const BadWordsFilter = require('bad-words');
+  filter = new BadWordsFilter();
+} catch (err) {
+  console.error('[contentFilter] bad-words failed to load, falling back to no-op filter:', err);
+}
 
 // Slurs/hate speech that warrant an outright 400 rather than silent cleaning.
 // bad-words handles general profanity; this layer catches targeted hate speech.

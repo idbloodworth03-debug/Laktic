@@ -121,10 +121,16 @@ app.use('/api', gdprRouter);
 
 app.use(errorHandler);
 
-app.listen(env.PORT, () => {
+try {
+  app.listen(env.PORT, () => {
+    // eslint-disable-next-line no-console
+    console.log(`Laktic backend running on port ${env.PORT}`);
+  });
+} catch (err) {
   // eslint-disable-next-line no-console
-  console.log(`Laktic backend running on port ${env.PORT}`);
-});
+  console.error('[startup] Fatal error starting server:', err);
+  process.exit(1);
+}
 
 // ── Scheduled jobs ────────────────────────────────────────────────────────────
 // Race countdown notifications — runs daily at 7:00 AM UTC
