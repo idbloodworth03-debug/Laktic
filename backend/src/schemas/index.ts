@@ -80,6 +80,7 @@ export const athleteProfileUpdateSchema = z.object({
   has_target_race: z.boolean().nullish(),
   target_race_name: z.string().max(200).nullish(),
   target_race_date: z.string().nullish(),
+  avatar_url: z.string().url().max(2000).nullish(),
 });
 
 export const chatMessageSchema = z.object({

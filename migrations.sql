@@ -1995,3 +1995,55 @@ ALTER TABLE public.team_feed ALTER COLUMN team_id DROP NOT NULL;
 -- ════════════════════════════════════════════════════════════════════
 -- END Migration 027
 -- ════════════════════════════════════════════════════════════════════
+
+
+-- ════════════════════════════════════════════════════════════════════
+-- Migration 028 — Profile picture (avatar_url) support
+-- Adds avatar_url TEXT column to both profile tables.
+-- Also creates the public 'avatars' storage bucket and its policies.
+-- Run the full block below in the Supabase SQL editor.
+-- ════════════════════════════════════════════════════════════════════
+
+ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE public.coach_profiles   ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+
+-- Storage bucket (idempotent via INSERT ... ON CONFLICT)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'avatars', 'avatars', true,
+  5242880,  -- 5 MB
+  ARRAY['image/jpeg', 'image/png', 'image/webp']
+)
+ON CONFLICT (id) DO UPDATE SET
+  public            = true,
+  file_size_limit   = 5242880,
+  allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp'];
+
+-- Storage RLS: authenticated users can upload/update their own avatar
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "avatars_insert_own" ON storage.objects;
+  CREATE POLICY "avatars_insert_own" ON storage.objects
+    FOR INSERT WITH CHECK (
+      bucket_id = 'avatars'
+      AND auth.uid()::text = (string_to_array(name, '/'))[1]
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] avatars_insert_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "avatars_update_own" ON storage.objects;
+  CREATE POLICY "avatars_update_own" ON storage.objects
+    FOR UPDATE USING (
+      bucket_id = 'avatars'
+      AND auth.uid()::text = (string_to_array(name, '/'))[1]
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] avatars_update_own: %', SQLERRM; END $$;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "avatars_select_public" ON storage.objects;
+  CREATE POLICY "avatars_select_public" ON storage.objects
+    FOR SELECT USING (bucket_id = 'avatars');
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] avatars_select_public: %', SQLERRM; END $$;
+
+-- ════════════════════════════════════════════════════════════════════
+-- END Migration 028
+-- ════════════════════════════════════════════════════════════════════

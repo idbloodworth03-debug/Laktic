@@ -10,7 +10,7 @@ router.get('/athlete/:username', asyncHandler(async (req, res) => {
 
   const { data: athlete } = await supabase
     .from('athlete_profiles')
-    .select('id, name, username, primary_events, weekly_volume_miles, pr_mile, pr_5k, public_sections')
+    .select('id, name, username, primary_events, weekly_volume_miles, pr_mile, pr_5k, public_sections, avatar_url')
     .eq('username', username)
     .single();
 
@@ -107,7 +107,7 @@ router.get('/coach/:username', asyncHandler(async (req, res) => {
 
   const { data: coach } = await supabase
     .from('coach_profiles')
-    .select('id, name, username, specialization, philosophy, license_type')
+    .select('id, name, username, specialization, philosophy, license_type, avatar_url')
     .eq('username', username)
     .single();
 

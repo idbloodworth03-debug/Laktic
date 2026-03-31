@@ -51,7 +51,7 @@ router.patch(
   auth,
   requireCoach,
   asyncHandler(async (req: AuthRequest, res) => {
-    const allowedFields = ['name', 'school_or_org', 'username', 'license_type'];
+    const allowedFields = ['name', 'school_or_org', 'username', 'license_type', 'avatar_url'];
     const update: Record<string, unknown> = {};
     for (const f of allowedFields) {
       if (req.body[f] !== undefined) update[f] = req.body[f];

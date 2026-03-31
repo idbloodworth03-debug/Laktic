@@ -4,6 +4,7 @@ import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
 import { AppLayout, Button, Spinner, Input } from '../components/ui';
+import { UserAvatar } from '../components/UserAvatar';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const METRIC_LABELS: Record<string, string> = {
@@ -67,18 +68,6 @@ function DotsIcon() {
   );
 }
 
-// ── Avatar ────────────────────────────────────────────────────────────────────
-function Avatar({ name, size = 40 }: { name: string; size?: number }) {
-  return (
-    <div className="shrink-0 flex items-center justify-center font-bold select-none" style={{
-      width: size, height: size, borderRadius: '50%',
-      background: 'rgba(0,229,160,0.15)', border: '1px solid rgba(0,229,160,0.25)',
-      color: '#00E5A0', fontSize: size <= 32 ? 11 : size <= 40 ? 14 : 16,
-    }}>
-      {(name || 'A').charAt(0).toUpperCase()}
-    </div>
-  );
-}
 
 // ── ActionBtn ─────────────────────────────────────────────────────────────────
 function ActionBtn({ children, onClick, active, disabled, title }: {
@@ -177,7 +166,7 @@ function CommentThread({ postId, onCommentAdded }: { postId: string; onCommentAd
           <div className="space-y-3 mb-3">
             {comments.map(c => (
               <div key={c.id} className="flex gap-2.5 items-start">
-                <Avatar name={c.author_name} size={28} />
+                <UserAvatar name={c.author_name} size="sm" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2">
                     <span className="text-xs font-semibold" style={{ color: '#FFFFFF' }}>{c.author_name}</span>
@@ -299,7 +288,11 @@ function PostCard({
       <div className="p-5">
         {/* Header */}
         <div className="flex items-start gap-3 mb-3">
-          <Avatar name={name} size={40} />
+          <UserAvatar
+            url={isCoachPost ? post.coach_profiles?.avatar_url : post.athlete_profiles?.avatar_url}
+            name={name}
+            size="md"
+          />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-sm" style={{ color: '#FFFFFF' }}>{name}</span>
@@ -425,7 +418,7 @@ function ComposerBar({ name, onClick }: { name: string; onClick: () => void }) {
     <div className="flex items-center gap-3 px-4 py-3 mb-4 cursor-pointer transition-all duration-150"
       style={{ background: '#111111', border: `1px solid ${hov ? 'rgba(0,229,160,0.30)' : 'rgba(255,255,255,0.07)'}`, borderRadius: 16 }}
       onClick={onClick} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>
-      <Avatar name={name || 'A'} size={36} />
+      <UserAvatar name={name || 'A'} size="md" />
       <span className="text-sm flex-1" style={{ color: 'rgba(255,255,255,0.30)' }}>
         Share your training, race results, or a win…
       </span>
@@ -848,7 +841,7 @@ function TopAthletesSidebar() {
               style={{ color: i === 0 ? '#FCD34D' : i === 1 ? '#D1D5DB' : i === 2 ? '#D97706' : 'rgba(255,255,255,0.3)' }}>
               {i + 1}
             </span>
-            <Avatar name={athlete.name} size={30} />
+            <UserAvatar name={athlete.name} size="sm" />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold truncate" style={{ color: '#FFFFFF' }}>{athlete.name}</p>
               <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{athlete.weekly_miles} mi this week</p>

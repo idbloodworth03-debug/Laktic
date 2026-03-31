@@ -5,6 +5,7 @@ import { apiFetch } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
 import { AppLayout, Card, Button, Alert, Badge, Spinner, Input } from '../components/ui';
 import { useNotifications } from '../hooks/useNotifications';
+import { AvatarUpload } from '../components/AvatarUpload';
 
 export function CoachSettings() {
   const { profile, clearAuth } = useAuthStore();
@@ -63,6 +64,14 @@ export function CoachSettings() {
         )}
 
         <Card title="Public Profile" className="mb-6">
+          <div className="mb-6 flex justify-center">
+            <AvatarUpload
+              currentUrl={(profile as any)?.avatar_url}
+              name={profile?.name ?? ''}
+              role="coach"
+              onUpload={() => {}}
+            />
+          </div>
           <p className="text-sm text-[var(--color-text-tertiary)] mb-4">
             Set a username to get a public profile at <strong className="text-[var(--color-text-primary)]">laktic.com/coach/[username]</strong>
           </p>

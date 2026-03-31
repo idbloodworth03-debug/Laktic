@@ -239,20 +239,42 @@ export function EmptyState({ title, message, action }: EmptyStateProps) {
 }
 
 // ── ChatBubble ─────────────────────────────────────────────────────────────────
-interface ChatBubbleProps { role: 'athlete' | 'bot' | 'coach'; content: string; planUpdated?: boolean; label?: string; }
-export function ChatBubble({ role, content, planUpdated, label }: ChatBubbleProps) {
-  const isRight = role === 'athlete';
+interface ChatBubbleProps {
+  role: 'athlete' | 'bot' | 'coach';
+  content: string;
+  planUpdated?: boolean;
+  label?: string;
+  avatarUrl?: string | null;
+  avatarName?: string;
+}
+export function ChatBubble({ role, content, planUpdated, label, avatarUrl, avatarName }: ChatBubbleProps) {
+  const [imgErr, setImgErr] = React.useState(false);
+  const isRight   = role === 'athlete';
   const leftLabel = label ?? (role === 'coach' ? 'Your Coach' : 'Coach Bot');
+  const initial   = ((avatarName || leftLabel || 'A').charAt(0)).toUpperCase();
+
+  const AvatarCircle = (
+    <div className="shrink-0 mt-0.5">
+      {avatarUrl && !imgErr ? (
+        <img src={avatarUrl} alt={avatarName || ''} onError={() => setImgErr(true)}
+          className="rounded-full object-cover"
+          style={{ width: 28, height: 28, border: '1.5px solid rgba(0,229,160,0.30)' }}
+        />
+      ) : (
+        <div className="rounded-full flex items-center justify-center text-[10px] font-bold select-none"
+          style={{ width: 28, height: 28, background: 'rgba(0,229,160,0.15)', border: '1.5px solid rgba(0,229,160,0.25)', color: '#00E5A0' }}>
+          {initial}
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div className={`flex ${isRight ? 'justify-end' : 'justify-start'} mb-3`}>
+    <div className={`flex items-start gap-2 ${isRight ? 'justify-end' : 'justify-start'} mb-3`}>
+      {!isRight && AvatarCircle}
       <div className={`max-w-[78%] ${isRight ? 'items-end flex flex-col' : ''}`}>
         {!isRight && (
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <div className="w-4 h-4 rounded-full bg-[var(--color-accent-dim)] border border-[var(--color-accent)]/20 flex items-center justify-center shrink-0">
-              <span className="block w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]" />
-            </div>
-            <span className="text-xs text-[var(--color-text-tertiary)] font-medium">{leftLabel}</span>
-          </div>
+          <span className="text-xs text-[var(--color-text-tertiary)] font-medium mb-1.5 block">{leftLabel}</span>
         )}
         <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${isRight ? 'bg-[var(--color-accent)] text-black font-medium rounded-tr-sm' : 'bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded-tl-sm'}`}>
           {content}
@@ -264,6 +286,7 @@ export function ChatBubble({ role, content, planUpdated, label }: ChatBubbleProp
           </span>
         )}
       </div>
+      {isRight && AvatarCircle}
     </div>
   );
 }

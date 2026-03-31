@@ -53,6 +53,7 @@ function MessageInput({
 
 // ── Bot chat tab ──────────────────────────────────────────────────────────────
 function BotChat() {
+  const { profile } = useAuthStore();
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -188,7 +189,14 @@ function BotChat() {
         )}
 
         {messages.map((msg, i) => (
-          <ChatBubble key={msg.id || i} role={msg.role} content={msg.content} planUpdated={msg.plan_was_updated} />
+          <ChatBubble
+            key={msg.id || i}
+            role={msg.role}
+            content={msg.content}
+            planUpdated={msg.plan_was_updated}
+            avatarUrl={msg.role === 'athlete' ? (profile as any)?.avatar_url : undefined}
+            avatarName={msg.role === 'athlete' ? profile?.name : undefined}
+          />
         ))}
         {sending && <TypingIndicator />}
         <div ref={bottomRef} />
@@ -213,6 +221,7 @@ function BotChat() {
 
 // ── Direct coach chat tab ─────────────────────────────────────────────────────
 function DirectChat() {
+  const { profile } = useAuthStore();
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -297,6 +306,8 @@ function DirectChat() {
             key={m.id || i}
             role={m.sender_role === 'athlete' ? 'athlete' : 'coach'}
             content={m.content}
+            avatarUrl={m.sender_role === 'athlete' ? (profile as any)?.avatar_url : undefined}
+            avatarName={m.sender_role === 'athlete' ? profile?.name : undefined}
           />
         ))}
         {sending && <TypingIndicator />}

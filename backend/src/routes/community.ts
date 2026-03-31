@@ -61,8 +61,8 @@ router.get(
       .from('team_feed')
       .select(`
         id, feed_type, body, scope, image_url, created_at, team_id, athlete_id, coach_id,
-        athlete_profiles!athlete_id (id, name),
-        coach_profiles!coach_id (id, name),
+        athlete_profiles!athlete_id (id, name, avatar_url),
+        coach_profiles!coach_id (id, name, avatar_url),
         feed_kudos (id, athlete_id, coach_id),
         post_comments (id)
       `, { count: 'exact' })

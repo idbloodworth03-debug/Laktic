@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { Badge, Spinner } from '../components/ui';
+import { UserAvatar } from '../components/UserAvatar';
 
 type PublicCoach = {
   id: string;
   name: string;
   username: string;
+  avatar_url: string | null;
   specialization: string;
   philosophy: string | null;
   license_type: string;
@@ -86,9 +88,7 @@ export function CoachPublicProfile() {
         {/* Header */}
         <div className="mb-8 fade-up">
           <div className="flex items-start gap-4 mb-4">
-            <div className="w-16 h-16 rounded-full bg-[var(--color-accent-dim)] border border-[var(--color-accent)]/20 flex items-center justify-center text-2xl font-bold text-[var(--color-accent)] shrink-0">
-              {coach.name[0]?.toUpperCase()}
-            </div>
+            <UserAvatar url={coach.avatar_url} name={coach.name} size="lg" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1">
                 <h1 className="text-3xl font-bold">{coach.name}</h1>

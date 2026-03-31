@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabaseClient';
 import { AppLayout, Card, Button, Badge, Spinner, Alert, Input } from '../components/ui';
 import { StravaConnectButton } from '../components/StravaConnectButton';
 import { useNotifications } from '../hooks/useNotifications';
+import { AvatarUpload } from '../components/AvatarUpload';
 
 interface StravaStatus {
   connected: boolean;
@@ -160,6 +161,14 @@ export function AthleteSettings() {
         )}
 
         <Card title="Public Profile" className="mb-6">
+          <div className="mb-6 flex justify-center">
+            <AvatarUpload
+              currentUrl={(profile as any)?.avatar_url}
+              name={profile?.name ?? ''}
+              role="athlete"
+              onUpload={() => {}}
+            />
+          </div>
           <p className="text-sm text-[var(--color-text-tertiary)] mb-4">
             Set a username to get a public profile at <strong className="text-[var(--color-text-primary)]">laktic.com/athlete/[username]</strong>
           </p>
