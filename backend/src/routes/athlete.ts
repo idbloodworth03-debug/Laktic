@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { supabase } from '../db/supabase';
 import { auth, requireAthlete, AuthRequest } from '../middleware/auth';
 import { generate } from '../services/seasonPlanService';
-import { respond } from '../services/chatService';
 import { getWeekStartDate } from '../utils/dateUtils';
 import { asyncHandler } from '../utils/asyncHandler';
 import { filterText, containsSevereProfanity } from '../utils/contentFilter';
@@ -11,6 +10,12 @@ import { aiLimiter } from '../middleware/rateLimit';
 import { athleteProfileSchema, athleteProfileUpdateSchema, chatMessageSchema, racesSchema, directMessageSchema } from '../schemas';
 import { sendAthleteWelcomeEmail } from '../services/emailService';
 import { notifyPlanReady } from '../services/notificationService';
+import { loadAthleteContext, formatContextForPrompt } from '../utils/athleteContext';
+import { updateWorkout, reduceWeekIntensity, markRestDay, addInjuryNote, flagCoach } from '../utils/botActions';
+import OpenAI from 'openai';
+import { env } from '../config/env';
+
+const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
 const router = Router();
 
@@ -467,6 +472,86 @@ router.get(
   })
 );
 
+// ── Agent tools definition ────────────────────────────────────────────────────
+
+const AGENT_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
+  {
+    type: 'function',
+    function: {
+      name: 'update_workout',
+      description: 'Update a specific workout in the athlete\'s training plan by date. Use this to change distance, pace, title, or description of a single workout.',
+      parameters: {
+        type: 'object',
+        properties: {
+          date: { type: 'string', description: 'Workout date in YYYY-MM-DD format' },
+          title: { type: 'string', description: 'New workout title (optional)' },
+          description: { type: 'string', description: 'New workout description (optional)' },
+          distance_miles: { type: 'number', description: 'New distance in miles (optional)' },
+          pace_guideline: { type: 'string', description: 'New pace guideline, e.g. "8:30/mi easy" (optional)' },
+          change_reason: { type: 'string', description: 'One sentence explaining why the change is being made' },
+        },
+        required: ['date', 'change_reason'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'reduce_week_intensity',
+      description: 'Reduce the distance of all remaining workouts this week by a percentage. Use when the athlete is fatigued, sick, or recovering.',
+      parameters: {
+        type: 'object',
+        properties: {
+          percentage: { type: 'number', description: 'Percentage to reduce (e.g. 25 reduces all workouts by 25%). Max 80.' },
+        },
+        required: ['percentage'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'mark_rest_day',
+      description: 'Replace a workout with a complete rest day. Use for injury, illness, or extreme fatigue on a specific date.',
+      parameters: {
+        type: 'object',
+        properties: {
+          date: { type: 'string', description: 'Date to mark as rest in YYYY-MM-DD format' },
+        },
+        required: ['date'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_injury_note',
+      description: 'Record an injury or physical limitation to the athlete\'s profile. Use when the athlete mentions pain, injury, or a persistent physical issue.',
+      parameters: {
+        type: 'object',
+        properties: {
+          note: { type: 'string', description: 'Description of the injury or limitation to record' },
+        },
+        required: ['note'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'flag_coach',
+      description: 'Send an alert email to the athlete\'s coach. Use for serious injuries, mental health concerns, or situations that require human coach judgment.',
+      parameters: {
+        type: 'object',
+        properties: {
+          message: { type: 'string', description: 'The alert message to send to the coach' },
+        },
+        required: ['message'],
+      },
+    },
+  },
+];
+
 // POST /api/athlete/chat
 router.post(
   '/chat',
@@ -482,16 +567,10 @@ router.post(
     const season = await getActiveSeasonForTeam(
       req.athlete.id,
       req.athlete.active_team_id ?? null,
-      '*, coach_bots!bot_id(*)'
+      'id'
     );
 
     if (!season) return res.status(404).json({ error: 'No active season. Subscribe to a coaching bot first.' });
-
-    const bot = (season as any).coach_bots;
-    if (!bot) {
-      console.error('[chat] season', season.id, 'has no coach_bots join — bot_id:', season.bot_id);
-      return res.status(500).json({ error: 'Coaching bot not found. Please contact support.' });
-    }
 
     const { data: chatHistory } = await supabase
       .from('chat_messages')
@@ -499,80 +578,141 @@ router.post(
       .eq('season_id', season.id)
       .order('created_at', { ascending: true });
 
-    // Fetch context for richer bot responses
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const [{ data: recentActivities }, { data: latestReadiness }] = await Promise.all([
-      supabase.from('athlete_activities')
-        .select('start_date, activity_type, distance_miles, pace, duration')
-        .eq('athlete_id', req.athlete.id)
-        .gte('start_date', thirtyDaysAgo)
-        .order('start_date', { ascending: false })
-        .limit(20),
-      supabase.from('daily_readiness')
-        .select('score, label, recommended_intensity')
-        .eq('athlete_id', req.athlete.id)
-        .order('date', { ascending: false })
-        .limit(1)
-        .single()
-    ]);
+    // Load full athlete context
+    const ctx = await loadAthleteContext(req.athlete.id, req.athlete.active_team_id ?? null);
 
-    const { botReply, planUpdates } = await respond({
-      bot,
-      athleteProfile: req.athlete,
-      raceCalendar: season.race_calendar || [],
-      seasonPlan: season.season_plan || [],
-      chatHistory: chatHistory || [],
-      newMessage: message,
-      recentActivities: recentActivities || [],
-      latestReadiness: latestReadiness ?? null,
-    });
+    if (!ctx.coachBot) {
+      return res.status(500).json({ error: 'Coaching bot not found. Please contact support.' });
+    }
+
+    // Build system prompt
+    const personalityBlock = ctx.coachBot.personality_prompt
+      ? `COACHING PERSONALITY:\n${ctx.coachBot.personality_prompt}\n\nRespond in this coaching voice at all times.\n\n`
+      : '';
+
+    const systemPrompt = `${personalityBlock}You are a real coaching agent with access to tools that can modify this athlete's training plan and alert their coach.
+
+COACH PHILOSOPHY:
+${ctx.coachBot.philosophy || ''}
+
+COACH KNOWLEDGE:
+${ctx.coachKnowledge}
+
+Rules:
+1. Respond in the coach's voice — warm, direct, expert.
+2. You can only modify workouts within the next 14 days. For larger changes, tell the athlete to use Regenerate Plan.
+3. For injuries: reduce load conservatively. Always recommend professional medical evaluation for significant symptoms.
+4. Use tools when action is needed — don't just suggest changes, make them.
+5. After using tools, tell the athlete exactly what you changed.
+6. Flag the human coach for serious injuries, mental health concerns, or anything requiring human judgment.`;
+
+    // Build conversation messages
+    const historyText = (chatHistory || []).slice(-20).map((msg: any) =>
+      `${msg.role === 'athlete' ? 'ATHLETE' : 'COACH BOT'}: ${msg.content}`
+    ).join('\n');
+
+    const contextBlock = formatContextForPrompt(ctx);
+
+    const userContent = `${contextBlock}
+
+CONVERSATION HISTORY:
+${historyText}
+
+ATHLETE: ${message}`;
+
+    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userContent },
+    ];
+
+    // ── Tool-calling agent loop ───────────────────────────────────────────────
+    let botReply = '';
+    let planUpdated = false;
+    const updatedDays: string[] = [];
+    const MAX_LOOPS = 6;
+
+    for (let loop = 0; loop < MAX_LOOPS; loop++) {
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages,
+        tools: AGENT_TOOLS,
+        tool_choice: 'auto',
+      });
+
+      const choice = response.choices[0];
+      messages.push(choice.message);
+
+      if (choice.finish_reason !== 'tool_calls' || !choice.message.tool_calls?.length) {
+        botReply = choice.message.content ?? '';
+        break;
+      }
+
+      // Execute each tool call
+      for (const tc of choice.message.tool_calls) {
+        if (tc.type !== 'function') continue;
+        let result: { ok: boolean; message: string };
+        try {
+          const args = JSON.parse(tc.function.arguments);
+          const toolName = tc.function.name;
+          switch (toolName) {
+            case 'update_workout':
+              result = await updateWorkout(req.athlete.id, args.date, {
+                title: args.title,
+                description: args.description,
+                distance_miles: args.distance_miles,
+                pace_guideline: args.pace_guideline,
+                change_reason: args.change_reason,
+              });
+              if (result.ok) { planUpdated = true; if (args.date) updatedDays.push(args.date); }
+              break;
+            case 'reduce_week_intensity':
+              result = await reduceWeekIntensity(req.athlete.id, args.percentage);
+              if (result.ok) planUpdated = true;
+              break;
+            case 'mark_rest_day':
+              result = await markRestDay(req.athlete.id, args.date);
+              if (result.ok) { planUpdated = true; if (args.date) updatedDays.push(args.date); }
+              break;
+            case 'add_injury_note':
+              result = await addInjuryNote(req.athlete.id, args.note);
+              break;
+            case 'flag_coach':
+              result = await flagCoach(req.athlete.id, args.message);
+              break;
+            default:
+              result = { ok: false, message: `Unknown tool: ${toolName}` };
+          }
+        } catch (toolErr: any) {
+          result = { ok: false, message: toolErr.message || 'Tool execution failed' };
+        }
+
+        messages.push({
+          role: 'tool',
+          tool_call_id: tc.id,
+          content: JSON.stringify(result),
+        });
+      }
+    }
+
+    if (!botReply) botReply = 'Sorry, I ran into a technical issue. Your plan has not been changed.';
 
     // Save athlete message
     await supabase.from('chat_messages').insert({
       season_id: season.id,
       role: 'athlete',
       content: message,
-      plan_was_updated: false
+      plan_was_updated: false,
     });
-
-    const planWasUpdated = planUpdates !== null && planUpdates.length > 0;
 
     // Save bot reply
     await supabase.from('chat_messages').insert({
       season_id: season.id,
       role: 'bot',
       content: botReply,
-      plan_was_updated: planWasUpdated
+      plan_was_updated: planUpdated,
     });
 
-    // Apply plan updates
-    if (planWasUpdated && planUpdates) {
-      const updatedPlan = [...(season.season_plan || [])];
-      for (const update of planUpdates) {
-        const weekIdx = updatedPlan.findIndex((w: any) => w.week_number === update.week_number);
-        if (weekIdx === -1) continue;
-        const dayIdx = updatedPlan[weekIdx].workouts.findIndex(
-          (wo: any) => wo.day_of_week === update.day_of_week
-        );
-        if (dayIdx === -1) continue;
-        const existing = updatedPlan[weekIdx].workouts[dayIdx];
-        updatedPlan[weekIdx].workouts[dayIdx] = {
-          ...existing,
-          title: update.title ?? existing.title,
-          description: update.description ?? existing.description,
-          distance_miles: update.distance_miles ?? existing.distance_miles,
-          pace_guideline: update.pace_guideline ?? existing.pace_guideline,
-          change_reason: update.change_reason ?? existing.change_reason
-        };
-      }
-      await supabase
-        .from('athlete_seasons')
-        .update({ season_plan: updatedPlan, updated_at: new Date().toISOString() })
-        .eq('id', season.id);
-    }
-
-    const updatedDays = planUpdates?.map((u: any) => u.date) || [];
-    res.json({ botReply, planUpdated: planWasUpdated, updatedDays });
+    res.json({ botReply, planUpdated, updatedDays });
   })
 );
 

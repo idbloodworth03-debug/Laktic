@@ -563,6 +563,17 @@ export function SeasonPlan() {
 
   useEffect(() => { loadSeason(); }, []);
 
+  // Auto-refetch when the coaching agent updates the plan via tool calls
+  useEffect(() => {
+    const channel = supabase
+      .channel('season-plan-changes')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'athlete_seasons' }, () => {
+        loadSeason();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   useEffect(() => {
     apiFetch('/api/milestones/check', { method: 'POST' })
       .then(({ unshared }) => setMilestones(unshared || []))
