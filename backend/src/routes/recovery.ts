@@ -102,96 +102,136 @@ router.post(
   requireAthlete,
   validate(logReadinessSchema),
   asyncHandler(async (req: AuthRequest, res) => {
-    const athleteId = req.athlete.id;
-    const { sleep_hours, sleep_quality, mood, soreness, energy, hrv_ms, resting_hr, notes: rawNotes, date } = req.body;
-    if (rawNotes && containsSevereProfanity(rawNotes)) return res.status(400).json({ error: 'Your message contains inappropriate content' });
-    const notes = rawNotes ? filterText(rawNotes) : rawNotes;
-
-    const today = date ?? new Date().toISOString().slice(0, 10);
-
-    // Compute ACWR for this athlete
-    const now = new Date();
-    const day28Ago = new Date(now);
-    day28Ago.setDate(day28Ago.getDate() - 28);
-    const { data: activities } = await supabase
-      .from('athlete_activities')
-      .select('start_date, distance_miles')
-      .eq('athlete_id', athleteId)
-      .gte('start_date', day28Ago.toISOString());
-
-    const weekMiles = [0, 0, 0, 0];
-    for (const act of activities ?? []) {
-      const daysAgo = Math.floor((now.getTime() - new Date(act.start_date).getTime()) / 86400000);
-      const wk = Math.floor(daysAgo / 7);
-      if (wk < 4) weekMiles[wk] += act.distance_miles ?? 0;
-    }
-    const acute = weekMiles[0];
-    const chronic = (weekMiles[0] + weekMiles[1] + weekMiles[2] + weekMiles[3]) / 4;
-    const acwr = chronic > 0 ? Math.min(acute / chronic, 2.0) : 0;
-
-    const factors: ReadinessFactors = { sleep_hours, sleep_quality, mood, soreness, energy, hrv_ms, resting_hr, acwr };
-    const { score, penalties } = computeReadinessScore(factors);
-    const label = getReadinessLabel(score);
-    const recommended_intensity = score >= 80 ? 'hard' : score >= 60 ? 'moderate' : score >= 40 ? 'easy' : 'rest';
-
-    // GPT one-liner
-    let explanation: string | null = null;
     try {
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a sports performance coach. In exactly ONE short sentence (max 20 words), tell the athlete what their readiness score means for today\'s training. Be direct and specific.'
-          },
-          {
-            role: 'user',
-            content: JSON.stringify({ score, label, penalties, factors })
+      const athleteId = req.athlete.id;
+      const { sleep_hours, sleep_quality, mood, soreness, energy, hrv_ms, resting_hr, notes: rawNotes, date } = req.body;
+      if (rawNotes && containsSevereProfanity(rawNotes)) return res.status(400).json({ error: 'Your message contains inappropriate content' });
+      const cleanNotes = rawNotes ? filterText(rawNotes) : null;
+
+      const today = date ?? new Date().toISOString().slice(0, 10);
+
+      // Compute ACWR for this athlete
+      const now = new Date();
+      const day28Ago = new Date(now);
+      day28Ago.setDate(day28Ago.getDate() - 28);
+      const { data: activities } = await supabase
+        .from('athlete_activities')
+        .select('start_date, distance_miles')
+        .eq('athlete_id', athleteId)
+        .gte('start_date', day28Ago.toISOString());
+
+      const weekMiles = [0, 0, 0, 0];
+      for (const act of activities ?? []) {
+        const daysAgo = Math.floor((now.getTime() - new Date(act.start_date).getTime()) / 86400000);
+        const wk = Math.floor(daysAgo / 7);
+        if (wk < 4) weekMiles[wk] += act.distance_miles ?? 0;
+      }
+      const acute = weekMiles[0];
+      const chronic = (weekMiles[0] + weekMiles[1] + weekMiles[2] + weekMiles[3]) / 4;
+      const acwr = chronic > 0 ? Math.min(acute / chronic, 2.0) : 0;
+
+      const factors: ReadinessFactors = { sleep_hours, sleep_quality, mood, soreness, energy, hrv_ms, resting_hr, acwr };
+      const { score, penalties } = computeReadinessScore(factors);
+      const label = getReadinessLabel(score);
+      const recommended_intensity = score >= 80 ? 'hard' : score >= 60 ? 'moderate' : score >= 40 ? 'easy' : 'rest';
+
+      // GPT one-liner
+      let explanation: string | null = null;
+      try {
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a sports performance coach. In exactly ONE short sentence (max 20 words), tell the athlete what their readiness score means for today\'s training. Be direct and specific.'
+            },
+            {
+              role: 'user',
+              content: JSON.stringify({ score, label, penalties, factors })
+            }
+          ],
+          max_tokens: 60
+        });
+        explanation = completion.choices[0].message.content?.trim() ?? null;
+      } catch {
+        // GPT failed — use label
+        explanation = `Your readiness is ${label.toLowerCase()} — adjust today's effort accordingly.`;
+      }
+
+      // Upsert daily_readiness (one row per athlete per date)
+      const { data: readiness, error } = await supabase
+        .from('daily_readiness')
+        .upsert({
+          athlete_id: athleteId,
+          date: today,
+          score,
+          label,
+          recommended_intensity,
+          sleep_hours: sleep_hours ?? null,
+          sleep_quality: sleep_quality ?? null,
+          mood: mood ?? null,
+          soreness: soreness ?? null,
+          energy: energy ?? null,
+          hrv_ms: hrv_ms ?? null,
+          resting_hr: resting_hr ?? null,
+          notes: cleanNotes,
+          explanation,
+          factors: penalties
+        }, { onConflict: 'athlete_id,date' })
+        .select()
+        .single();
+
+      if (error) return res.status(400).json({ error: error.message });
+
+      // Upsert recovery_profiles with latest values
+      await supabase
+        .from('recovery_profiles')
+        .upsert({
+          athlete_id: athleteId,
+          avg_readiness_7d: score, // simplified: will be recalculated below
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'athlete_id' });
+
+      // Low readiness trigger: if score <= 40, reduce next workout intensity
+      if (score <= 40) {
+        try {
+          const { data: seasonRow } = await supabase
+            .from('athlete_seasons')
+            .select('id, season_plan')
+            .eq('athlete_id', athleteId)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (seasonRow?.season_plan) {
+            const plan = (seasonRow.season_plan as any[]).map(w => ({ ...w }));
+            const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+            let modified = false;
+            outer: for (const week of plan) {
+              for (const wo of week.workouts) {
+                if ((wo.date === today || wo.date === tomorrow) && wo.ai_adjustable !== false) {
+                  wo.distance_miles = wo.distance_miles ? Math.round(wo.distance_miles * 0.75 * 10) / 10 : wo.distance_miles;
+                  wo.description = `[Low readiness — intensity auto-reduced] ${wo.description || ''}`.trim();
+                  wo.change_reason = `Readiness score ${score}/100: auto-reduced to protect recovery`;
+                  modified = true;
+                  break outer;
+                }
+              }
+            }
+            if (modified) {
+              await supabase.from('athlete_seasons')
+                .update({ season_plan: plan, updated_at: new Date().toISOString() })
+                .eq('id', seasonRow.id);
+            }
           }
-        ],
-        max_tokens: 60
-      });
-      explanation = completion.choices[0].message.content?.trim() ?? null;
-    } catch {
-      // GPT failed — use label
-      explanation = `Your readiness is ${label.toLowerCase()} — adjust today's effort accordingly.`;
+        } catch { /* non-blocking */ }
+      }
+
+      return res.status(201).json({ ...readiness, explanation });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || 'Failed to log readiness' });
     }
-
-    // Upsert daily_readiness (one row per athlete per date)
-    const { data: readiness, error } = await supabase
-      .from('daily_readiness')
-      .upsert({
-        athlete_id: athleteId,
-        date: today,
-        score,
-        label,
-        recommended_intensity,
-        sleep_hours: sleep_hours ?? null,
-        sleep_quality: sleep_quality ?? null,
-        mood: mood ?? null,
-        soreness: soreness ?? null,
-        energy: energy ?? null,
-        hrv_ms: hrv_ms ?? null,
-        resting_hr: resting_hr ?? null,
-        notes: notes ?? null,
-        explanation,
-        factors: penalties
-      }, { onConflict: 'athlete_id,date' })
-      .select()
-      .single();
-
-    if (error) return res.status(400).json({ error: error.message });
-
-    // Upsert recovery_profiles with latest values
-    await supabase
-      .from('recovery_profiles')
-      .upsert({
-        athlete_id: athleteId,
-        avg_readiness_7d: score, // simplified: will be recalculated below
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'athlete_id' });
-
-    return res.status(201).json({ ...readiness, explanation });
   })
 );
 

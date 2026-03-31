@@ -2047,3 +2047,18 @@ EXCEPTION WHEN others THEN RAISE NOTICE '[policy] avatars_select_public: %', SQL
 -- ════════════════════════════════════════════════════════════════════
 -- END Migration 028
 -- ════════════════════════════════════════════════════════════════════
+
+-- ════════════════════════════════════════════════════════════════════
+-- Migration 029 — Extended athlete profile for personalized plans
+-- ════════════════════════════════════════════════════════════════════
+
+ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS current_weekly_mileage NUMERIC;
+ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS pr_10k TEXT;
+ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS pr_half_marathon TEXT;
+ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS pr_marathon TEXT;
+ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS experience_level TEXT;
+ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS long_run_distance NUMERIC;
+
+-- ════════════════════════════════════════════════════════════════════
+-- END Migration 029
+-- ════════════════════════════════════════════════════════════════════

@@ -21,7 +21,8 @@ const CHALLENGE_OPTIONS = ['Consistency', 'Recovery', 'Speed', 'Endurance', 'Mot
 const STEPS = [
   { n: 1, label: 'Connect Strava' },
   { n: 2, label: 'Sport Profile' },
-  { n: 3, label: 'Join Team' },
+  { n: 3, label: 'Your Fitness' },
+  { n: 4, label: 'Join Team' },
 ];
 
 function StepIndicator({ current }: { current: number }) {
@@ -246,7 +247,18 @@ export function AthleteOnboarding() {
   const [targetRaceDate, setTargetRaceDate] = useState('');
   const [savingPrefs, setSavingPrefs] = useState(false);
 
-  // Step 3 — Join team
+  // Step 3 — Fitness Details
+  const [currentMileage, setCurrentMileage] = useState('');
+  const [longRunDistance, setLongRunDistance] = useState('');
+  const [experienceLevel, setExperienceLevel] = useState('');
+  const [prMile, setPrMile] = useState('');
+  const [pr5k, setPr5k] = useState('');
+  const [pr10k, setPr10k] = useState('');
+  const [prHalf, setPrHalf] = useState('');
+  const [prMarathon, setPrMarathon] = useState('');
+  const [savingFitness, setSavingFitness] = useState(false);
+
+  // Step 4 — Join team
   const [code, setCode] = useState('');
   const [joining, setJoining] = useState(false);
   const [joined, setJoined] = useState<{ teamName: string } | null>(null);
@@ -303,7 +315,30 @@ export function AthleteOnboarding() {
     finally { setSavingPrefs(false); }
   };
 
-  // ── Step 3: Join team ──────────────────────────────────────────────────────
+  // ── Step 3: Save fitness details ───────────────────────────────────────────
+  const saveFitness = async () => {
+    setSavingFitness(true); setError('');
+    try {
+      const updated = await apiFetch('/api/athlete/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          current_weekly_mileage: currentMileage ? parseFloat(currentMileage) : null,
+          long_run_distance: longRunDistance ? parseFloat(longRunDistance) : null,
+          experience_level: experienceLevel || null,
+          pr_mile: prMile.trim() || null,
+          pr_5k: pr5k.trim() || null,
+          pr_10k: pr10k.trim() || null,
+          pr_half_marathon: prHalf.trim() || null,
+          pr_marathon: prMarathon.trim() || null,
+        }),
+      });
+      setAuth(session, 'athlete', { ...profile, ...updated });
+      next();
+    } catch (e: any) { setError(e.message || 'Failed to save fitness details'); }
+    finally { setSavingFitness(false); }
+  };
+
+  // ── Step 4: Join team ──────────────────────────────────────────────────────
   const handleJoin = async () => {
     const trimmed = code.trim().toUpperCase();
     if (!trimmed) { setError('Enter an invite code'); return; }
@@ -471,6 +506,70 @@ export function AthleteOnboarding() {
   if (step === 3) return (
     <Shell
       step={3}
+      onBack={back}
+      onNext={saveFitness}
+      nextLoading={savingFitness}
+      onSkip={next}
+    >
+      <h2 className="font-display text-xl font-bold mb-1">Your Fitness</h2>
+      <p className="text-sm text-[var(--muted)] mb-6">
+        These details help your coaching bot build a plan perfectly scaled to your current fitness. Skip if you're not sure — you can update these anytime.
+      </p>
+      {renderError()}
+
+      <div className="flex flex-col gap-5">
+
+        <div>
+          <SectionLabel>Current weekly mileage (miles/week)</SectionLabel>
+          <Input
+            type="number"
+            value={currentMileage}
+            onChange={e => setCurrentMileage(e.target.value)}
+            placeholder="e.g. 25"
+            min={0}
+            max={200}
+          />
+        </div>
+
+        <div>
+          <SectionLabel>Longest comfortable long run (miles)</SectionLabel>
+          <Input
+            type="number"
+            value={longRunDistance}
+            onChange={e => setLongRunDistance(e.target.value)}
+            placeholder="e.g. 10"
+            min={0}
+            max={50}
+          />
+        </div>
+
+        <div>
+          <SectionLabel>Experience level</SectionLabel>
+          <ChipGroup
+            options={['Beginner', 'Intermediate', 'Advanced']}
+            selected={experienceLevel}
+            onToggle={v => setExperienceLevel(prev => prev === v ? '' : v)}
+          />
+        </div>
+
+        <div>
+          <SectionLabel>Personal records <span className="normal-case font-normal">(optional)</span></SectionLabel>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Mile PR" value={prMile} onChange={e => setPrMile(e.target.value)} placeholder="e.g. 5:30" />
+            <Input label="5K PR" value={pr5k} onChange={e => setPr5k(e.target.value)} placeholder="e.g. 22:30" />
+            <Input label="10K PR" value={pr10k} onChange={e => setPr10k(e.target.value)} placeholder="e.g. 48:00" />
+            <Input label="Half Marathon PR" value={prHalf} onChange={e => setPrHalf(e.target.value)} placeholder="e.g. 1:50:00" />
+            <Input label="Marathon PR" value={prMarathon} onChange={e => setPrMarathon(e.target.value)} placeholder="e.g. 4:00:00" />
+          </div>
+        </div>
+
+      </div>
+    </Shell>
+  );
+
+  if (step === 4) return (
+    <Shell
+      step={4}
       onBack={back}
       onNext={joined ? finish : handleJoin}
       nextLabel={joined ? 'Go to Dashboard →' : 'Join Team'}

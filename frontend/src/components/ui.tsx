@@ -5,6 +5,7 @@ import {
   Calendar, ShoppingBag, Award, BarChart2, BookOpen, Shield, RefreshCw,
   Menu, X, Utensils, Globe, Store,
 } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
 
 // ── Button ─────────────────────────────────────────────────────────────────────
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -373,6 +374,30 @@ const COACH_NAV: NavItem[]   = [...COACH_PRIMARY, ...COACH_MORE];
 const PRIMARY_ATHLETE = ATHLETE_PRIMARY;
 const PRIMARY_COACH   = COACH_PRIMARY;
 
+// ── SidebarAvatar ──────────────────────────────────────────────────────────────
+function SidebarAvatar({ name }: { name: string }) {
+  const { profile } = useAuthStore();
+  const avatarUrl = (profile as any)?.avatar_url ?? null;
+  const [imgErr, setImgErr] = React.useState(false);
+  const initial = (name || 'A').charAt(0).toUpperCase();
+  if (avatarUrl && !imgErr) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        onError={() => setImgErr(true)}
+        className="w-5 h-5 rounded-full object-cover shrink-0"
+        style={{ border: '1px solid rgba(0,229,160,0.30)' }}
+      />
+    );
+  }
+  return (
+    <div className="w-5 h-5 rounded-full bg-[var(--color-accent-dim)] border border-[var(--color-accent)]/20 flex items-center justify-center shrink-0">
+      <span className="text-[9px] font-semibold text-[var(--color-accent)]">{initial}</span>
+    </div>
+  );
+}
+
 // ── SidebarContent (shared rendering) ─────────────────────────────────────────
 interface SidebarContentProps { role?: string; name?: string; onLogout?: () => void; collapsed: boolean; onToggle: () => void; }
 function SidebarContent({ role, name, onLogout, collapsed, onToggle }: SidebarContentProps) {
@@ -422,9 +447,7 @@ function SidebarContent({ role, name, onLogout, collapsed, onToggle }: SidebarCo
         <a href={settingsHref} title={collapsed ? name : undefined}
           className="flex items-center gap-3 px-3 py-2.5 rounded-btn text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-all duration-150 mb-0.5"
         >
-          <div className="w-5 h-5 rounded-full bg-[var(--color-accent-dim)] border border-[var(--color-accent)]/20 flex items-center justify-center shrink-0">
-            <span className="text-[9px] font-semibold text-[var(--color-accent)]">{name?.charAt(0).toUpperCase()}</span>
-          </div>
+          <SidebarAvatar name={name || ''} />
           {!collapsed && <span className="text-[13px] font-medium truncate flex-1">{name}</span>}
           {!collapsed && <Settings size={12} className="shrink-0 opacity-50" />}
         </a>

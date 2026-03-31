@@ -19,8 +19,9 @@ Rules:
 export async function respond(params: {
   bot: any; athleteProfile: any; raceCalendar: any[];
   seasonPlan: any[]; chatHistory: any[]; newMessage: string;
+  recentActivities?: any[]; latestReadiness?: { score: number; label: string; recommended_intensity?: string } | null;
 }): Promise<{ botReply: string; planUpdates: any[] | null }> {
-  const { bot, athleteProfile, raceCalendar, seasonPlan, chatHistory, newMessage } = params;
+  const { bot, athleteProfile, raceCalendar, seasonPlan, chatHistory, newMessage, recentActivities, latestReadiness } = params;
 
   if (!bot) {
     console.error('[chat] respond() called with null bot');
@@ -45,6 +46,16 @@ export async function respond(params: {
 
     const systemContent = `${personalityBlock}${SYSTEM_PROMPT}`;
 
+    const activitiesBlock = recentActivities && recentActivities.length > 0
+      ? `\nRECENT ACTIVITIES (last 30 days):\n${recentActivities.slice(0, 15).map((a: any) =>
+          `- ${(a.start_date || '').slice(0, 10)}: ${a.activity_type || 'Run'} ${a.distance_miles ? a.distance_miles + ' mi' : ''} ${a.pace ? '@ ' + a.pace + '/mi' : ''}`
+        ).join('\n')}`
+      : '';
+
+    const readinessBlock = latestReadiness
+      ? `\nTODAY'S READINESS: ${latestReadiness.score}/100 — ${latestReadiness.label}${latestReadiness.recommended_intensity ? ` (Recommended: ${latestReadiness.recommended_intensity})` : ''}`
+      : '';
+
     const userContent = `COACH PHILOSOPHY:
 ${bot.philosophy}
 
@@ -53,6 +64,9 @@ ${coachKnowledge}
 
 ATHLETE PROFILE:
 Name: ${athleteProfile.name} | Mileage: ${athleteProfile.weekly_volume_miles}/wk | Events: ${(athleteProfile.primary_events || []).join(', ')} | PR Mile: ${athleteProfile.pr_mile || 'N/A'} | PR 5K: ${athleteProfile.pr_5k || 'N/A'}
+
+ATHLETE CONTEXT:
+${activitiesBlock}${readinessBlock}
 
 RACE CALENDAR:
 ${JSON.stringify(raceCalendar)}

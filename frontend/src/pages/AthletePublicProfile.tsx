@@ -36,6 +36,15 @@ type PublicAthlete = {
     earned_at: string;
   }>;
   public_sections: { races: boolean; stats: boolean; milestones: boolean };
+  activities: Array<{
+    id: string;
+    activity_type: string | null;
+    name: string | null;
+    distance_miles: number | null;
+    duration: number | null;
+    pace: string | null;
+    start_date: string;
+  }>;
 };
 
 function MiniStatCard({ label, value }: { label: string; value: string | number }) {
@@ -190,6 +199,44 @@ export function AthletePublicProfile() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Recent Activities */}
+        {athlete.activities && athlete.activities.length > 0 && (
+          <div className="mb-8 fade-up-3">
+            <h2 className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-3">Recent Activities</h2>
+            <div className="flex flex-col gap-2">
+              {athlete.activities.map(a => (
+                <div key={a.id} className="flex items-center justify-between bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl px-4 py-3 hover:border-[var(--color-border-light)] transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-[var(--color-text-primary)] leading-snug text-sm">
+                      {a.name || a.activity_type || 'Run'}
+                    </div>
+                    <div className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
+                      {new Date(a.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {a.activity_type && a.activity_type !== (a.name || '') && ` · ${a.activity_type}`}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0 text-right">
+                    {a.distance_miles != null && (
+                      <span className="font-mono text-sm font-semibold text-[var(--color-accent)]">
+                        {a.distance_miles.toFixed(1)} mi
+                      </span>
+                    )}
+                    {a.pace && (
+                      <span className="text-xs text-[var(--color-text-tertiary)]">{a.pace}/mi</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {athlete.activities && athlete.activities.length === 0 && (
+          <div className="mb-8">
+            <h2 className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-3">Recent Activities</h2>
+            <p className="text-sm text-[var(--color-text-tertiary)] text-center py-4">No activities yet.</p>
           </div>
         )}
 

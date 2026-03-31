@@ -84,6 +84,16 @@ router.get('/athlete/:username', asyncHandler(async (req, res) => {
     milestones = data ?? [];
   }
 
+  // Recent activities (always public — just last 10)
+  const actSince = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: recentActivities } = await supabase
+    .from('athlete_activities')
+    .select('id, activity_type, name, distance_miles, duration, pace, start_date')
+    .eq('athlete_id', athlete.id)
+    .gte('start_date', actSince)
+    .order('start_date', { ascending: false })
+    .limit(10);
+
   return res.json({
     id: athlete.id,
     name: athlete.name,
@@ -97,6 +107,8 @@ router.get('/athlete/:username', asyncHandler(async (req, res) => {
     races,
     stats,
     milestones,
+    activities: recentActivities ?? [],
+    avatar_url: athlete.avatar_url ?? null,
     public_sections: sections,
   });
 }));

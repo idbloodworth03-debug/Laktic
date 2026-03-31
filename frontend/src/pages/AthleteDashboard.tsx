@@ -4,6 +4,7 @@ import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
 import { AppLayout, Card, Badge, Button, ReadinessRing, ProgressBar, Spinner, StatCard } from '../components/ui';
+import { UserAvatar } from '../components/UserAvatar';
 import { ArrowRight, ChevronRight, TrendingUp, TrendingDown, Minus, X } from 'lucide-react';
 
 interface ReadinessData {
@@ -41,8 +42,8 @@ interface CommunityPost {
   created_at: string;
   kudo_count: number;
   comment_count: number;
-  athlete_profiles: { name: string } | null;
-  coach_profiles: { name: string } | null;
+  athlete_profiles: { name: string; avatar_url?: string | null } | null;
+  coach_profiles: { name: string; avatar_url?: string | null } | null;
 }
 
 interface SeasonSummary {
@@ -277,9 +278,7 @@ export function AthleteDashboard() {
             {/* Create post bar */}
             <Link to="/community">
               <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card px-4 py-3 flex items-center gap-3 hover:border-[var(--color-border-light)] transition-all duration-150 cursor-pointer group">
-                <div className="w-7 h-7 rounded-full bg-[var(--color-accent-dim)] border border-[var(--color-accent)]/20 flex items-center justify-center shrink-0">
-                  <span className="text-[10px] font-semibold text-[var(--color-accent)]">{profile?.name?.charAt(0)}</span>
-                </div>
+                <UserAvatar url={(profile as any)?.avatar_url} name={profile?.name || ''} size="sm" />
                 <span className="text-sm text-[var(--color-text-tertiary)] group-hover:text-[var(--color-text-secondary)] transition-colors">Share a workout, race result, or update...</span>
               </div>
             </Link>
@@ -295,11 +294,11 @@ export function AthleteDashboard() {
                   <div key={post.id} className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-4 hover:border-[var(--color-border-light)] transition-all duration-150">
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] flex items-center justify-center shrink-0">
-                          <span className="text-[10px] font-semibold text-[var(--color-text-secondary)]">
-                            {(post.athlete_profiles?.name ?? post.coach_profiles?.name ?? '?').charAt(0)}
-                          </span>
-                        </div>
+                        <UserAvatar
+                          url={post.athlete_profiles?.avatar_url ?? post.coach_profiles?.avatar_url ?? null}
+                          name={post.athlete_profiles?.name ?? post.coach_profiles?.name ?? '?'}
+                          size="sm"
+                        />
                         <p className="text-[13px] font-medium text-[var(--color-text-primary)] leading-tight">
                           {post.athlete_profiles?.name ?? post.coach_profiles?.name ?? 'Unknown'}
                         </p>

@@ -176,4 +176,65 @@ cron.schedule('0 2 * * *', async () => {
   }
 });
 
+// Weekly adaptive plan refresh — every Monday at 6:00 AM UTC
+// Re-generates future weeks for athletes whose plans are active
+cron.schedule('0 6 * * 1', async () => {
+  console.log('[weekly-plan-cron] Starting weekly adaptive plan refresh');
+  try {
+    const { supabase: db } = await import('./db/supabase');
+    const { generate } = await import('./services/seasonPlanService');
+
+    // Get all active seasons
+    const { data: activeSeasonsRaw } = await db
+      .from('athlete_seasons')
+      .select('id, athlete_id, bot_id, season_plan, race_calendar')
+      .eq('status', 'active');
+
+    for (const season of activeSeasonsRaw ?? []) {
+      try {
+        const [{ data: bot }, { data: athleteProfile }, { data: botWorkouts }] = await Promise.all([
+          db.from('coach_bots').select('*').eq('id', season.bot_id).single(),
+          db.from('athlete_profiles').select('*').eq('id', season.athlete_id).single(),
+          db.from('bot_workouts').select('*').eq('bot_id', season.bot_id).order('day_of_week'),
+        ]);
+
+        if (!bot || !athleteProfile) continue;
+
+        // Fetch context
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const [{ data: recentActivities }, { data: latestReadiness }] = await Promise.all([
+          db.from('athlete_activities').select('start_date, activity_type, distance_miles, pace, duration')
+            .eq('athlete_id', season.athlete_id).gte('start_date', thirtyDaysAgo).order('start_date', { ascending: false }).limit(20),
+          db.from('daily_readiness').select('score, label, recommended_intensity')
+            .eq('athlete_id', season.athlete_id).order('date', { ascending: false }).limit(1).single(),
+        ]);
+
+        const today = new Date().toISOString().split('T')[0];
+        const existingWeeks = (season.season_plan || []).filter((w: any) => w.week_start_date < today);
+
+        const { plan, aiUsed } = await generate({
+          athleteProfile,
+          bot,
+          botWorkouts: botWorkouts || [],
+          raceCalendar: season.race_calendar || [],
+          existingWeeks,
+          recentActivities: recentActivities || [],
+          latestReadiness: latestReadiness ?? null,
+        });
+
+        await db.from('athlete_seasons')
+          .update({ season_plan: plan, ai_used: aiUsed, updated_at: new Date().toISOString() })
+          .eq('id', season.id);
+
+        console.log(`[weekly-plan-cron] Refreshed plan for athlete ${season.athlete_id} (aiUsed=${aiUsed})`);
+      } catch (err: any) {
+        console.error(`[weekly-plan-cron] Failed for athlete ${season.athlete_id}:`, err.message);
+      }
+    }
+    console.log('[weekly-plan-cron] Done');
+  } catch (err) {
+    console.error('[weekly-plan-cron] Fatal error:', err);
+  }
+});
+
 export default app;

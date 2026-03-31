@@ -214,12 +214,31 @@ router.post(
     const userId: string = req.user!.id;
     const startDate = getWeekStartDate();
 
+    // Fetch activity context for personalized plan generation
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const [{ data: recentActivities }, { data: latestReadiness }] = await Promise.all([
+      supabase.from('athlete_activities')
+        .select('start_date, activity_type, distance_miles, pace, duration')
+        .eq('athlete_id', req.athlete.id)
+        .gte('start_date', thirtyDaysAgo)
+        .order('start_date', { ascending: false })
+        .limit(20),
+      supabase.from('daily_readiness')
+        .select('score, label, recommended_intensity')
+        .eq('athlete_id', req.athlete.id)
+        .order('date', { ascending: false })
+        .limit(1)
+        .single()
+    ]);
+
     const generatePromise = generate({
       athleteProfile: req.athlete,
       bot,
       botWorkouts: botWorkouts || [],
       raceCalendar: [],
-      startDate
+      startDate,
+      recentActivities: recentActivities || [],
+      latestReadiness: latestReadiness ?? null,
     });
 
     // Helper: persist completed plan and mark job done
@@ -354,13 +373,32 @@ router.post(
     const seasonId: string = season.id;
     const startDate = getWeekStartDate();
 
+    // Fetch activity context for personalized plan generation
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const [{ data: recentActivities }, { data: latestReadiness }] = await Promise.all([
+      supabase.from('athlete_activities')
+        .select('start_date, activity_type, distance_miles, pace, duration')
+        .eq('athlete_id', req.athlete.id)
+        .gte('start_date', thirtyDaysAgo)
+        .order('start_date', { ascending: false })
+        .limit(20),
+      supabase.from('daily_readiness')
+        .select('score, label, recommended_intensity')
+        .eq('athlete_id', req.athlete.id)
+        .order('date', { ascending: false })
+        .limit(1)
+        .single()
+    ]);
+
     const generatePromise = generate({
       athleteProfile: req.athlete,
       bot,
       botWorkouts: botWorkouts || [],
       raceCalendar: season.race_calendar || [],
       startDate,
-      existingWeeks: season.season_plan || []
+      existingWeeks: season.season_plan || [],
+      recentActivities: recentActivities || [],
+      latestReadiness: latestReadiness ?? null,
     });
 
     const savePlan = async (plan: any[], aiUsed: boolean): Promise<void> => {
@@ -461,13 +499,32 @@ router.post(
       .eq('season_id', season.id)
       .order('created_at', { ascending: true });
 
+    // Fetch context for richer bot responses
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const [{ data: recentActivities }, { data: latestReadiness }] = await Promise.all([
+      supabase.from('athlete_activities')
+        .select('start_date, activity_type, distance_miles, pace, duration')
+        .eq('athlete_id', req.athlete.id)
+        .gte('start_date', thirtyDaysAgo)
+        .order('start_date', { ascending: false })
+        .limit(20),
+      supabase.from('daily_readiness')
+        .select('score, label, recommended_intensity')
+        .eq('athlete_id', req.athlete.id)
+        .order('date', { ascending: false })
+        .limit(1)
+        .single()
+    ]);
+
     const { botReply, planUpdates } = await respond({
       bot,
       athleteProfile: req.athlete,
       raceCalendar: season.race_calendar || [],
       seasonPlan: season.season_plan || [],
       chatHistory: chatHistory || [],
-      newMessage: message
+      newMessage: message,
+      recentActivities: recentActivities || [],
+      latestReadiness: latestReadiness ?? null,
     });
 
     // Save athlete message
