@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { apiFetch } from '../lib/api';
 import { Navbar, Card, Button, Spinner, Badge } from '../components/ui';
@@ -33,7 +32,6 @@ export function AnalyticsDashboard() {
   const { profile, role } = useAuthStore();
   const [loads, setLoads] = useState<LoadPoint[]>([]);
   const [weekly, setWeekly] = useState<WeeklyPoint[]>([]);
-  const [isPro, setIsPro] = useState(false);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'atl_ctl' | 'tsb' | 'weekly'>('atl_ctl');
   const logout = async () => { const { supabase } = await import('../lib/supabaseClient'); await supabase.auth.signOut(); useAuthStore.getState().clearAuth(); };
@@ -44,7 +42,6 @@ export function AnalyticsDashboard() {
       apiFetch('/api/training-analytics/weekly'),
     ]).then(([loadsRes, weeklyRes]) => {
       setLoads(loadsRes.loads ?? []);
-      setIsPro(loadsRes.is_pro ?? false);
       setWeekly(weeklyRes);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
@@ -75,11 +72,6 @@ export function AnalyticsDashboard() {
             <h1 className="font-display text-2xl font-bold">Training Analytics</h1>
             <p className="text-sm text-[var(--muted)] mt-1">These metrics show how your training is affecting your body right now.</p>
           </div>
-          {!isPro && (
-            <Link to="/athlete/pro">
-              <Button variant="primary" size="sm">Upgrade to Pro for full history</Button>
-            </Link>
-          )}
         </div>
 
         <div className="mb-6 p-4 rounded-xl text-sm" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -89,12 +81,6 @@ export function AnalyticsDashboard() {
             <div className="flex items-start gap-2"><span className="font-semibold text-blue-400 shrink-0">Race Readiness</span><span className="text-[var(--muted)]">How fresh and ready you are to race right now. Positive = good to race.</span></div>
           </div>
         </div>
-
-        {!isPro && (
-          <div className="mb-6 bg-amber-950/30 border border-amber-800/40 rounded-xl p-4 text-sm text-amber-300">
-            Free tier shows last 30 days. <Link to="/athlete/pro" className="underline font-medium">Upgrade to Pro</Link> for full 12-month history.
-          </div>
-        )}
 
         {loading ? (
           <div className="flex justify-center py-16"><Spinner /></div>

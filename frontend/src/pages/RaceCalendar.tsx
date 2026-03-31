@@ -7,7 +7,7 @@ import { AppLayout, Button, Input, Card, Toggle, Alert, Badge } from '../compone
 import { ShareMomentModal } from '../components/ShareMomentModal';
 import type { ShareCardData } from '../components/ShareCardCanvas';
 
-type Race = { name: string; date: string; is_goal_race: boolean; notes: string; distance?: string; goal_time?: string; };
+type Race = { name: string; date: string; is_goal_race: boolean; notes: string; distance?: string; goal_time?: string; location?: string; };
 type RaceResult = {
   id: string;
   race_name: string;
@@ -33,7 +33,7 @@ type ResultForm = {
   notes: string;
 };
 
-function emptyRace(): Race { return { name: '', date: '', is_goal_race: false, notes: '', distance: '', goal_time: '' }; }
+function emptyRace(): Race { return { name: '', date: '', is_goal_race: false, notes: '', distance: '', goal_time: '', location: '' }; }
 
 const daysUntil = (date: string) => {
   const diff = new Date(date + 'T00:00:00').getTime() - new Date().setHours(0,0,0,0);
@@ -290,6 +290,8 @@ export function RaceCalendar() {
   const [error, setError] = useState('');
   const [newRace, setNewRace] = useState<Race>(emptyRace());
   const [addingRace, setAddingRace] = useState(false);
+  const [lookingUp, setLookingUp] = useState(false);
+  const [autoFilled, setAutoFilled] = useState(false);
   const [loggingResult, setLoggingResult] = useState<number | null>(null);
   const [resultForm, setResultForm] = useState<ResultForm>(emptyResult());
   const [savingResult, setSavingResult] = useState(false);
@@ -316,6 +318,29 @@ export function RaceCalendar() {
       setShowBanner(true);
     } catch (e: any) { setError(e.message); }
     finally { setSaving(false); }
+  };
+
+  const lookupRace = async (name: string) => {
+    if (!name || name.trim().length < 3) return;
+    setLookingUp(true);
+    setAutoFilled(false);
+    try {
+      const result = await apiFetch('/api/athlete/races/lookup', {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      });
+      const updates: Partial<Race> = {};
+      if (result.distance_label && !newRace.distance) updates.distance = result.distance_label;
+      if (result.location && !newRace.location) updates.location = result.location;
+      if (Object.keys(updates).length > 0) {
+        setNewRace(r => ({ ...r, ...updates }));
+        setAutoFilled(true);
+      }
+    } catch {
+      // silently fail — lookup is best-effort
+    } finally {
+      setLookingUp(false);
+    }
   };
 
   const addRace = async () => {
@@ -581,17 +606,30 @@ export function RaceCalendar() {
                 <h4 className="text-sm font-semibold text-[var(--text)] mb-3">Add Race</h4>
                 <div className="flex flex-col gap-3">
                   <div className="grid grid-cols-2 gap-3">
-                    <Input label="Race name" value={newRace.name} onChange={e => setNewRace(r => ({ ...r, name: e.target.value }))} placeholder="e.g. State Championships" />
+                    <div>
+                      <Input
+                        label="Race name"
+                        value={newRace.name}
+                        onChange={e => { setNewRace(r => ({ ...r, name: e.target.value })); setAutoFilled(false); }}
+                        onBlur={e => lookupRace(e.target.value)}
+                        placeholder="e.g. Boston Marathon"
+                      />
+                      {lookingUp && <p className="text-[10px] text-[var(--muted)] mt-1">Looking up race info...</p>}
+                      {autoFilled && !lookingUp && <p className="text-[10px] text-green-400 mt-1">✓ Auto-filled from race name</p>}
+                    </div>
                     <Input label="Date" type="date" value={newRace.date} onChange={e => setNewRace(r => ({ ...r, date: e.target.value }))} />
                   </div>
-                  <Input label="Notes (optional)" value={newRace.notes} onChange={e => setNewRace(r => ({ ...r, notes: e.target.value }))} placeholder="e.g. conference meet, need to peak" />
                   <div className="grid grid-cols-2 gap-3">
                     <Input label="Distance" value={newRace.distance || ''} onChange={e => setNewRace(r => ({ ...r, distance: e.target.value }))} placeholder="e.g. Half Marathon, 5K" />
+                    <Input label="Location (optional)" value={newRace.location || ''} onChange={e => setNewRace(r => ({ ...r, location: e.target.value }))} placeholder="e.g. Boston, MA" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
                     <Input label="Goal Time (optional)" value={newRace.goal_time || ''} onChange={e => setNewRace(r => ({ ...r, goal_time: e.target.value }))} placeholder="e.g. 1:45:00" />
+                    <Input label="Notes (optional)" value={newRace.notes} onChange={e => setNewRace(r => ({ ...r, notes: e.target.value }))} placeholder="e.g. conference meet" />
                   </div>
                   <Toggle checked={newRace.is_goal_race} onChange={v => setNewRace(r => ({ ...r, is_goal_race: v }))} label="This is a goal race (full taper)" />
                   <div className="flex gap-2 justify-end">
-                    <Button variant="ghost" size="sm" onClick={() => { setAddingRace(false); setNewRace(emptyRace()); }}>Cancel</Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setAddingRace(false); setNewRace(emptyRace()); setAutoFilled(false); }}>Cancel</Button>
                     <Button size="sm" loading={saving} onClick={addRace}>Add Race</Button>
                   </div>
                 </div>

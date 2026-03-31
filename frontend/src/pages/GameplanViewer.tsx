@@ -5,11 +5,21 @@ import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
 import { AppLayout, Button, Badge, Spinner, Card } from '../components/ui';
 
+type PacingSegment = {
+  label: string;
+  target_pace: string;
+  note?: string;
+};
+
 type PacingStrategy = {
-  first_mile: string;
-  middle_miles: string;
-  final_mile: string;
+  target_pace?: string;
+  temp_adjusted_pace?: string;
+  segments?: PacingSegment[];
   explanation?: string;
+  // Legacy fields
+  first_mile?: string;
+  middle_miles?: string;
+  final_mile?: string;
 };
 
 type WarmupStep = {
@@ -155,18 +165,42 @@ export function GameplanViewer() {
               {/* Pacing Strategy */}
               {gameplan.pacing_strategy && (
                 <Card title="Pacing Strategy">
-                  <div className="grid grid-cols-3 gap-4 mb-4">
-                    {[
-                      { label: 'First Mile', value: gameplan.pacing_strategy.first_mile },
-                      { label: 'Middle Miles', value: gameplan.pacing_strategy.middle_miles },
-                      { label: 'Final Mile', value: gameplan.pacing_strategy.final_mile },
-                    ].map(col => (
-                      <div key={col.label} className="text-center rounded-xl p-4" style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}>
-                        <div className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-1.5">{col.label}</div>
-                        <div className="font-semibold text-[var(--color-text-primary)] text-sm leading-snug">{col.value}</div>
-                      </div>
-                    ))}
-                  </div>
+                  {gameplan.pacing_strategy.target_pace && (
+                    <div className="mb-5 text-center">
+                      <div className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-1">Target Pace</div>
+                      <div className="text-4xl font-bold font-mono text-[var(--color-accent)]">{gameplan.pacing_strategy.target_pace}</div>
+                      {gameplan.pacing_strategy.temp_adjusted_pace && (
+                        <div className="text-xs text-[var(--color-text-tertiary)] mt-1">Heat-adjusted: {gameplan.pacing_strategy.temp_adjusted_pace}</div>
+                      )}
+                    </div>
+                  )}
+                  {gameplan.pacing_strategy.segments && gameplan.pacing_strategy.segments.length > 0 ? (
+                    <div
+                      className="grid gap-3 mb-4"
+                      style={{ gridTemplateColumns: `repeat(${Math.min(gameplan.pacing_strategy.segments.length, 3)}, 1fr)` }}
+                    >
+                      {gameplan.pacing_strategy.segments.map((seg, i) => (
+                        <div key={i} className="text-center rounded-xl p-4" style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}>
+                          <div className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-1.5">{seg.label}</div>
+                          <div className="text-2xl font-bold font-mono text-[var(--color-accent)] mb-1">{seg.target_pace}</div>
+                          {seg.note && <div className="text-xs text-[var(--color-text-tertiary)] leading-snug">{seg.note}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (gameplan.pacing_strategy.first_mile || gameplan.pacing_strategy.middle_miles || gameplan.pacing_strategy.final_mile) ? (
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                      {[
+                        { label: 'First Mile', value: gameplan.pacing_strategy.first_mile },
+                        { label: 'Middle Miles', value: gameplan.pacing_strategy.middle_miles },
+                        { label: 'Final Mile', value: gameplan.pacing_strategy.final_mile },
+                      ].filter(col => col.value).map(col => (
+                        <div key={col.label} className="text-center rounded-xl p-4" style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}>
+                          <div className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-1.5">{col.label}</div>
+                          <div className="font-semibold text-[var(--color-text-primary)] text-sm leading-snug">{col.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                   {gameplan.pacing_strategy.explanation && (
                     <p className="text-sm text-[var(--color-text-tertiary)] leading-relaxed">{gameplan.pacing_strategy.explanation}</p>
                   )}

@@ -6,6 +6,10 @@ import { validate } from '../middleware/validate';
 import { raceResultSchema, raceResultUpdateSchema, weeklyQuerySchema, directMessageSchema } from '../schemas';
 import { computeAllWeeks } from '../services/progressService';
 import { buildAthletePdf, buildTeamPdf } from '../services/pdfService';
+import OpenAI from 'openai';
+import { env } from '../config/env';
+
+const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
 const router = Router();
 
@@ -38,12 +42,13 @@ router.get(
 
     const { data: activities } = await supabase
       .from('athlete_activities')
-      .select('start_date, distance_miles, duration, pace, activity_type')
+      .select('start_date, distance_meters, moving_time_seconds, activity_type, name')
       .eq('athlete_id', athleteId)
       .gte('start_date', since90.toISOString())
       .order('start_date', { ascending: true });
 
     const acts = activities || [];
+    console.log(`[progress] athlete=${athleteId} found ${acts.length} activities since ${since90.toISOString().slice(0,10)}`);
 
     // Build week buckets for the last N weeks
     const weekMap: Record<string, { week_start: string; miles: number; run_count: number; duration_secs: number; longest: number; pace_sum: number; pace_count: number }> = {};
@@ -59,18 +64,19 @@ router.get(
     const weekSinceStr = weekSince.toISOString().slice(0, 10);
 
     for (const act of acts) {
+      const miles = (act.distance_meters || 0) / 1609.344;
+      const durationSecs = act.moving_time_seconds || 0;
       const wk = getMonday(new Date(act.start_date));
       if (wk < weekSinceStr || !weekMap[wk]) continue;
-      weekMap[wk].miles += act.distance_miles || 0;
+      weekMap[wk].miles += miles;
       weekMap[wk].run_count += 1;
-      if ((act.distance_miles || 0) > weekMap[wk].longest) weekMap[wk].longest = act.distance_miles || 0;
-      if (act.duration) weekMap[wk].duration_secs += act.duration;
-      if (act.pace) {
-        const parts = act.pace.split(':');
-        if (parts.length === 2) {
-          const secs = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-          if (secs > 0) { weekMap[wk].pace_sum += secs; weekMap[wk].pace_count += 1; }
-        }
+      if (miles > weekMap[wk].longest) weekMap[wk].longest = miles;
+      weekMap[wk].duration_secs += durationSecs;
+      // Compute pace: seconds per mile from distance and moving time
+      if (miles > 0 && durationSecs > 0) {
+        const paceSecsPerMile = durationSecs / miles;
+        weekMap[wk].pace_sum += paceSecsPerMile;
+        weekMap[wk].pace_count += 1;
       }
     }
 
@@ -97,9 +103,9 @@ router.get(
     const ytdStart = `${now.getFullYear()}-01-01T00:00:00Z`;
     const ytdActs = acts.filter(a => a.start_date >= ytdStart);
     const ytd = {
-      total_miles: Math.round(ytdActs.reduce((s, a) => s + (a.distance_miles || 0), 0) * 10) / 10,
+      total_miles: Math.round(ytdActs.reduce((s, a) => s + (a.distance_meters || 0) / 1609.344, 0) * 10) / 10,
       total_runs: ytdActs.length,
-      total_hours: Math.round(ytdActs.reduce((s, a) => s + ((a.duration || 0) / 3600), 0) * 10) / 10,
+      total_hours: Math.round(ytdActs.reduce((s, a) => s + ((a.moving_time_seconds || 0) / 3600), 0) * 10) / 10,
     };
 
     // Streak: consecutive active days going back from today
@@ -114,7 +120,29 @@ router.get(
       else break;
     }
 
-    res.json({ summaries, ytd, streak });
+    // Recent activities list (last 30 days) for daily view
+    const since30 = new Date(now);
+    since30.setDate(since30.getDate() - 30);
+    const recentActs = acts
+      .filter(a => a.start_date >= since30.toISOString())
+      .slice()
+      .reverse()
+      .map(a => {
+        const miles = Math.round((a.distance_meters || 0) / 1609.344 * 100) / 100;
+        const secs = a.moving_time_seconds || 0;
+        const paceSecsPerMile = miles > 0 && secs > 0 ? secs / miles : 0;
+        const paceMin = Math.floor(paceSecsPerMile / 60);
+        const paceSec = Math.round(paceSecsPerMile % 60);
+        return {
+          date: a.start_date.slice(0, 10),
+          name: a.name || 'Run',
+          distance_miles: miles,
+          duration_minutes: Math.round(secs / 60),
+          pace: paceSecsPerMile > 0 ? `${paceMin}:${paceSec.toString().padStart(2, '0')}` : null,
+        };
+      });
+
+    res.json({ summaries, ytd, streak, recent_activities: recentActs });
   })
 );
 
@@ -204,6 +232,51 @@ router.delete(
 
     if (error) return res.status(400).json({ error: error.message });
     res.json({ ok: true });
+  })
+);
+
+// POST /api/athlete/races/lookup — AI auto-fill race details from name
+router.post(
+  '/races/lookup',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { name } = req.body;
+    if (!name || typeof name !== 'string' || name.trim().length < 2) {
+      return res.status(400).json({ error: 'Race name required.' });
+    }
+
+    try {
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a running race database. Return facts about well-known races. If the race is not well-known or you are uncertain, make reasonable estimates based on the name. Always respond with valid JSON only.',
+          },
+          {
+            role: 'user',
+            content: `Race name: "${name.trim()}"\n\nReturn JSON:\n{\n  "distance_miles": number or null,\n  "distance_label": "e.g. 5K, 10K, Half Marathon, Marathon" or null,\n  "location": "City, State/Country" or null,\n  "is_major_race": boolean\n}`,
+          },
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: 150,
+      });
+
+      const text = completion.choices[0].message.content ?? '{}';
+      let result: any = {};
+      try { result = JSON.parse(text); } catch { /* return empty */ }
+
+      res.json({
+        distance_miles: result.distance_miles ?? null,
+        distance_label: result.distance_label ?? null,
+        location: result.location ?? null,
+        is_major_race: result.is_major_race ?? false,
+      });
+    } catch (err: any) {
+      console.error('[races/lookup] OpenAI error:', err?.message);
+      res.json({ distance_miles: null, distance_label: null, location: null, is_major_race: false });
+    }
   })
 );
 

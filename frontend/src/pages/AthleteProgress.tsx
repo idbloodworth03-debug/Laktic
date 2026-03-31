@@ -116,10 +116,19 @@ function weekLabel(weekStart: string): string {
 export function AthleteProgress() {
   const { profile, clearAuth } = useAuthStore();
   const nav = useNavigate();
+  type RecentActivity = {
+    date: string;
+    name: string;
+    distance_miles: number;
+    duration_minutes: number;
+    pace: string | null;
+  };
+
   const [summaries, setSummaries] = useState<WeeklySummary[]>([]);
   const [ytd, setYtd] = useState<YTD | null>(null);
   const [streak, setStreak] = useState<number>(0);
   const [races, setRaces] = useState<RaceResult[]>([]);
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
@@ -135,6 +144,7 @@ export function AthleteProgress() {
         setSummaries(weekly.summaries || []);
         setYtd(weekly.ytd || null);
         setStreak(weekly.streak || 0);
+        setRecentActivities(weekly.recent_activities || []);
         setRaces(raceResults);
       })
       .catch(e => setError(e.message))
@@ -273,7 +283,29 @@ export function AthleteProgress() {
               </Card>
             )}
 
-            {summaries.length === 0 && races.length === 0 && (
+            {recentActivities.length > 0 && (
+              <Card title="Recent Activities">
+                <div className="flex flex-col gap-2">
+                  {recentActivities.map((act, i) => (
+                    <div key={i} className="flex items-center justify-between py-2 border-b border-[var(--color-border)]/50 last:border-0">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-[var(--color-text-primary)] truncate">{act.name}</div>
+                        <div className="text-xs text-[var(--color-text-tertiary)]">
+                          {new Date(act.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm font-mono shrink-0">
+                        <span className="text-[var(--color-accent)] font-bold">{act.distance_miles.toFixed(2)} mi</span>
+                        {act.pace && <span className="text-[var(--color-text-tertiary)]">{act.pace}/mi</span>}
+                        <span className="text-[var(--color-text-tertiary)]">{act.duration_minutes} min</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {summaries.length === 0 && races.length === 0 && recentActivities.length === 0 && (
               <Card>
                 <div className="text-center py-8">
                   <p className="text-sm text-[var(--color-text-tertiary)] mb-5 leading-relaxed">

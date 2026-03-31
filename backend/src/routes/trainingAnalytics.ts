@@ -50,14 +50,12 @@ router.get('/loads', auth, async (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
   const { data: profile } = await supabase
     .from('athlete_profiles')
-    .select('id, subscription_tier')
+    .select('id')
     .eq('user_id', userId)
     .single();
   if (!profile) return res.status(403).json({ error: 'Athlete only' });
 
-  const cutoff = profile.subscription_tier === 'pro'
-    ? new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   const { data: activities, error } = await supabase
     .from('activities')
@@ -74,7 +72,7 @@ router.get('/loads', auth, async (req: AuthRequest, res: Response) => {
   }));
 
   const loads = computeLoads(withLoad);
-  res.json({ loads, is_pro: profile.subscription_tier === 'pro' });
+  res.json({ loads });
 });
 
 router.get('/weekly', auth, async (req: AuthRequest, res: Response) => {

@@ -10,13 +10,13 @@ const SYSTEM_PROMPT = `You are an expert distance running coach AI. Generate a c
 
 Rules:
 1. Use the coach's philosophy and uploaded knowledge to guide every decision.
-2. Use the weekly template as the base structure each week.
-3. For workouts where ai_adjustable is true: scale distance and pace to the athlete's fitness. For workouts where ai_adjustable is false: copy exactly as written.
-4. Periodize around the race calendar: build volume in base weeks, taper the 2 weeks before each goal race.
-5. For non-goal races: reduce volume 20% that week.
-6. Every workout must include change_reason (one sentence).
-7. Return ONLY valid JSON, no markdown fences. Structure:
-[{ week_number, week_start_date, phase, workouts: [{ day_of_week, date, title, description, distance_miles, pace_guideline, ai_adjustable, change_reason }] }]
+2. EVERY WEEK MUST BE DIFFERENT. Do NOT copy workouts from one week to the next. Each week has unique titles, distances, and descriptions that reflect the training phase, week number, and progressive overload. Week 1 is conservative base building. Each subsequent week adds volume or intensity progressively. Never repeat the same workout title two weeks in a row.
+3. PROGRESSIVE OVERLOAD: Volume and intensity must increase week-over-week during build phases. Week 1 = athlete's current mileage or conservative base. Add 5-10% per week during build. Every 4th week is a RECOVERY week: reduce volume 30-40%, easy efforts only, no workouts, phase = "recovery". Week 5 restarts the build from ~90% of week 3.
+4. For workouts where ai_adjustable is true: actively vary the workout type each week (easy runs, tempo, long run, intervals, fartlek, strides, progression runs). Do not repeat workout types in adjacent weeks unless structurally required (e.g. the long run). For workouts where ai_adjustable is false: copy exactly as written.
+5. Periodize around the race calendar: build volume in base weeks, taper the final 2 weeks before each goal race (reduce volume 20% then 40%, phase = "taper").
+6. For non-goal races: reduce volume 20% that week only.
+7. Every workout must include change_reason (one sentence explaining why this specific workout this week).
+8. Return ONLY valid JSON, no markdown fences. Wrap the array in an object: { "plan": [{ week_number, week_start_date, phase, workouts: [{ day_of_week, date, title, description, distance_miles, pace_guideline, ai_adjustable, change_reason }] }] }
 
 ${RUNNING_EXPERT_BASELINE}`;
 
@@ -55,24 +55,53 @@ function buildUserPrompt(params: any): string {
     ? `\nCURRENT READINESS: ${latestReadiness.score}/100 — ${latestReadiness.label}. ${latestReadiness.score <= 40 ? 'Start conservatively this week.' : latestReadiness.score >= 80 ? 'Athlete is well-rested — can handle full load.' : ''}`
     : '';
 
-  return `COACH PHILOSOPHY:\n${bot.philosophy}\n\nCOACH KNOWLEDGE:\n${coachKnowledge}\n\nCOACH WEEKLY TEMPLATE:\n${JSON.stringify(botWorkouts)}\n\nATHLETE PROFILE:\n${profileLines}\n${activitiesBlock}${readinessBlock}\n\nIMPORTANT: Tailor the plan specifically to this athlete's fitness level, available training days, goal, and any injuries. A beginner training 3 days/week with knee issues needs a fundamentally different plan than an elite athlete training 6 days/week.\n\nRACE CALENDAR:\n${JSON.stringify(raceCalendar)}\n\nTODAY: ${todayDate} | GENERATE FROM: ${startDate} | TOTAL WEEKS: ${numWeeks}\n\nGenerate the full season plan now. Return ONLY valid JSON array.`;
+  return `COACH PHILOSOPHY:\n${bot.philosophy}\n\nCOACH KNOWLEDGE:\n${coachKnowledge}\n\nCOACH TEMPLATE WORKOUTS (for ai_adjustable=false days only — do NOT copy these to every week. Vary all ai_adjustable workouts based on the training phase and week number):\n${JSON.stringify(botWorkouts)}\n\nATHLETE PROFILE:\n${profileLines}\n${activitiesBlock}${readinessBlock}\n\nIMPORTANT: Tailor the plan specifically to this athlete's fitness level, available training days, goal, and any injuries. Every week must have different workouts from the previous week. Apply progressive overload — start conservative, build each week, recover every 4th week.\n\nRACE CALENDAR:\n${JSON.stringify(raceCalendar)}\n\nTODAY: ${todayDate} | GENERATE FROM: ${startDate} | TOTAL WEEKS: ${numWeeks}\n\nGenerate the full ${numWeeks}-week season plan now. Return ONLY valid JSON: { "plan": [...] }`;
 }
 
 function fallbackPlan(botWorkouts: any[], startDate: string, numWeeks: number): any[] {
   const weeks = [];
+  const phases = ['base', 'build', 'build', 'recovery'];
+  const volumeMultipliers = [1.0, 1.08, 1.15, 0.75]; // progressive then recover every 4th
+
   for (let w = 0; w < numWeeks; w++) {
     const weekStart = addDays(startDate, w * 7);
-    const workouts = (botWorkouts || []).map((wo: any) => ({
-      day_of_week: wo.day_of_week,
-      date: addDays(weekStart, wo.day_of_week - 1),
-      title: wo.title,
-      description: wo.description || '',
-      distance_miles: wo.distance_miles || 0,
-      pace_guideline: wo.pace_guideline || '',
-      ai_adjustable: wo.ai_adjustable,
-      change_reason: 'Delivered as written by coach.'
-    }));
-    weeks.push({ week_number: w + 1, week_start_date: weekStart, phase: 'base', workouts });
+    const phaseIdx = w % 4;
+    const phase = phases[phaseIdx];
+    const multiplier = volumeMultipliers[phaseIdx];
+    const weekNum = w + 1;
+
+    const workouts = (botWorkouts || []).map((wo: any) => {
+      const baseDist = wo.distance_miles || 0;
+      const scaledDist = wo.ai_adjustable ? Math.round(baseDist * multiplier * 10) / 10 : baseDist;
+
+      // Vary titles for ai_adjustable workouts based on week/phase
+      let title = wo.title;
+      if (wo.ai_adjustable && phase !== 'recovery') {
+        const variants: Record<number, string[]> = {
+          1: ['Easy Base Run', 'Recovery Run', 'Comfortable Run', 'Easy Aerobic'],
+          2: ['Tempo Effort', 'Progression Run', 'Steady State', 'Aerobic Threshold'],
+          3: ['Long Run', 'Extended Long Run', 'Distance Build', 'Long Effort'],
+        };
+        const dayVariants = variants[wo.day_of_week] || [wo.title];
+        title = dayVariants[(Math.floor(w / 4)) % dayVariants.length];
+      } else if (phase === 'recovery') {
+        title = wo.ai_adjustable ? 'Easy Recovery Run' : wo.title;
+      }
+
+      return {
+        day_of_week: wo.day_of_week,
+        date: addDays(weekStart, wo.day_of_week - 1),
+        title,
+        description: phase === 'recovery' ? 'Recovery week — keep it very easy, no hard efforts.' : wo.description || '',
+        distance_miles: scaledDist,
+        pace_guideline: phase === 'recovery' ? 'Very easy, conversational pace' : wo.pace_guideline || '',
+        ai_adjustable: wo.ai_adjustable,
+        change_reason: phase === 'recovery'
+          ? `Week ${weekNum} recovery — reduce load to absorb training adaptations.`
+          : `Week ${weekNum} ${phase} — ${multiplier > 1 ? `+${Math.round((multiplier - 1) * 100)}% volume progression` : 'establishing base fitness'}.`
+      };
+    });
+    weeks.push({ week_number: weekNum, week_start_date: weekStart, phase, workouts });
   }
   return weeks;
 }
