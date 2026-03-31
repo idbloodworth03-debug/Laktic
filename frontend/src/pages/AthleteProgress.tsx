@@ -8,11 +8,9 @@ import { AppLayout, Button, Card, Badge, Spinner, Alert } from '../components/ui
 const API_BASE = import.meta.env.VITE_API_URL as string || 'http://localhost:3001';
 
 type WeeklySummary = {
-  id: string;
   week_start: string;
   total_distance_miles: number;
   total_duration_minutes: number;
-  total_elevation_feet: number;
   run_count: number;
   avg_pace_per_mile: string;
   avg_heartrate: number | null;
@@ -20,6 +18,8 @@ type WeeklySummary = {
   intensity_score: number | null;
   compliance_pct: number | null;
 };
+
+type YTD = { total_miles: number; total_runs: number; total_hours: number };
 
 type RaceResult = {
   id: string;
@@ -117,40 +117,31 @@ export function AthleteProgress() {
   const { profile, clearAuth } = useAuthStore();
   const nav = useNavigate();
   const [summaries, setSummaries] = useState<WeeklySummary[]>([]);
+  const [ytd, setYtd] = useState<YTD | null>(null);
+  const [streak, setStreak] = useState<number>(0);
   const [races, setRaces] = useState<RaceResult[]>([]);
   const [loading, setLoading] = useState(true);
-  const [computing, setComputing] = useState(false);
   const [error, setError] = useState('');
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
-  useEffect(() => {
+  const loadData = () => {
+    setLoading(true);
+    setError('');
     Promise.all([
       apiFetch('/api/athlete/progress/weekly?weeks=12'),
       apiFetch('/api/athlete/races/results')
     ])
-      .then(([weeklies, raceResults]) => {
-        setSummaries(weeklies);
+      .then(([weekly, raceResults]) => {
+        setSummaries(weekly.summaries || []);
+        setYtd(weekly.ytd || null);
+        setStreak(weekly.streak || 0);
         setRaces(raceResults);
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
-
-  const recompute = async () => {
-    setComputing(true);
-    setError('');
-    try {
-      const { summaries: updated } = await apiFetch('/api/athlete/progress/compute', {
-        method: 'POST',
-        body: JSON.stringify({ weeks: 12 })
-      });
-      setSummaries(updated);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setComputing(false);
-    }
   };
+
+  useEffect(() => { loadData(); }, []);
 
   const downloadReport = async () => {
     try {
@@ -194,7 +185,7 @@ export function AthleteProgress() {
           <div className="flex gap-2">
             <Link to="/athlete/plan"><Button variant="ghost" size="sm">Plan</Button></Link>
             <Link to="/athlete/races"><Button variant="ghost" size="sm">Races</Button></Link>
-            <Button variant="secondary" size="sm" onClick={recompute} loading={computing}>Refresh Data</Button>
+            <Button variant="secondary" size="sm" onClick={loadData} loading={loading}>Refresh</Button>
             <Button variant="secondary" size="sm" onClick={downloadReport}>Download Report</Button>
           </div>
         </div>
@@ -205,13 +196,33 @@ export function AthleteProgress() {
           <div className="flex items-center justify-center py-20"><Spinner size="lg" /></div>
         ) : (
           <div className="flex flex-col gap-5 fade-up-1">
+
+            {/* YTD + Streak Banner */}
+            {(ytd || streak > 0) && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {ytd && (
+                  <>
+                    <StatBox label="Year-to-Date Miles" value={`${ytd.total_miles} mi`} accent />
+                    <StatBox label="Runs This Year" value={String(ytd.total_runs)} />
+                    <StatBox label="Hours This Year" value={`${ytd.total_hours} hr`} />
+                  </>
+                )}
+                {streak > 0 && (
+                  <div className="rounded-lg p-3 border" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)' }}>
+                    <div className="text-[10px] text-amber-400 uppercase tracking-wide mb-1">Active Streak</div>
+                    <div className="text-lg font-bold font-mono text-amber-300">{streak} {streak === 1 ? 'day' : 'days'} 🔥</div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {currentWeek && (
               <Card title="This Week">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <StatBox label="Distance" value={`${currentWeek.total_distance_miles.toFixed(1)} mi`} accent />
                   <StatBox label="Runs" value={String(currentWeek.run_count)} />
                   <StatBox label="Avg Pace" value={currentWeek.avg_pace_per_mile || '--'} />
-                  <StatBox label="Avg HR" value={currentWeek.avg_heartrate ? `${currentWeek.avg_heartrate} bpm` : '--'} />
+                  <StatBox label="Longest Run" value={currentWeek.longest_run_miles > 0 ? `${currentWeek.longest_run_miles} mi` : '--'} />
                 </div>
                 {currentWeek.compliance_pct !== null && (
                   <div className="mt-4 flex items-center gap-3">
@@ -231,7 +242,7 @@ export function AthleteProgress() {
               </Card>
             )}
 
-            {volumeData.length > 0 && (
+            {volumeData.length > 0 && volumeData.some(d => d.value > 0) && (
               <Card title="Weekly Volume (miles)">
                 <BarChart data={volumeData} label="" />
               </Card>
@@ -266,9 +277,9 @@ export function AthleteProgress() {
               <Card>
                 <div className="text-center py-8">
                   <p className="text-sm text-[var(--color-text-tertiary)] mb-5 leading-relaxed">
-                    No progress data yet. Connect Strava and sync activities, then click Refresh Data.
+                    No activity data yet. Connect Strava or log activities to see your progress here.
                   </p>
-                  <Button onClick={recompute} loading={computing}>Compute Weekly Summaries</Button>
+                  <Link to="/athlete/activities"><Button>View Activities</Button></Link>
                 </div>
               </Card>
             )}

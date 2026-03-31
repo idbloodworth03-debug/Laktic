@@ -4,6 +4,10 @@ import { auth, requireAthlete, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
 import { validate } from '../middleware/validate';
 import { bodyMetricsSchema, fuelLogEntrySchema, fuelCalculatorSchema } from '../schemas';
+import OpenAI from 'openai';
+import { env } from '../config/env';
+
+const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
 const router = Router();
 
@@ -160,6 +164,81 @@ router.get(
           : 'Aim for a balanced snack with carbs and protein within 30 minutes.'
       }
     });
+  })
+);
+
+// ── AI Nutrition Advice ───────────────────────────────────────────────────────
+
+// GET /api/athlete/nutrition/advice — AI-generated pre/during/post advice for next workout
+router.get(
+  '/nutrition/advice',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const athleteId = req.athlete.id;
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Load body metrics + next workout in parallel
+    const [{ data: metrics }, { data: season }] = await Promise.all([
+      supabase.from('athlete_body_metrics').select('weight_kg, height_cm, sweat_rate_ml_per_hr').eq('athlete_id', athleteId).single(),
+      supabase.from('athlete_seasons').select('season_plan').eq('athlete_id', athleteId).eq('status', 'active').order('created_at', { ascending: false }).limit(1).single(),
+    ]);
+
+    // Find next upcoming non-rest workout
+    let nextWorkout: any = null;
+    if (season?.season_plan) {
+      outer: for (const week of (season.season_plan as any[])) {
+        for (const wo of (week.workouts || [])) {
+          if (wo.date >= today && (wo.distance_miles || 0) > 0 && !wo.is_rest_day) {
+            nextWorkout = { ...wo, week_phase: week.phase };
+            break outer;
+          }
+        }
+      }
+    }
+
+    if (!nextWorkout) return res.json({ workout: null, advice: null });
+
+    const weightKg = metrics?.weight_kg ?? 68;
+    const sweatRate = metrics?.sweat_rate_ml_per_hr ?? 500;
+    const estimatedMinutes = Math.round((nextWorkout.distance_miles || 5) * 10); // rough 10 min/mile
+    const needsMidFuel = estimatedMinutes > 60;
+
+    const metricsLine = metrics
+      ? `Weight ${weightKg}kg, Height ${metrics.height_cm ?? 'unknown'}cm, Sweat rate ${sweatRate}ml/hr`
+      : 'No body metrics on file — use typical 68kg runner defaults';
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an elite running nutritionist. Give precise, specific nutrition advice for a runner\'s next workout. Name real foods with exact amounts. Never say "eat carbs" — say "2 slices of sourdough with honey". Respond only with valid JSON matching the structure provided.',
+        },
+        {
+          role: 'user',
+          content: `Next workout: ${nextWorkout.title} — ${nextWorkout.distance_miles} miles on ${nextWorkout.date}${nextWorkout.pace_guideline ? ` @ ${nextWorkout.pace_guideline}/mi` : ''}${nextWorkout.description ? `. ${nextWorkout.description}` : ''}.
+Training phase: ${nextWorkout.week_phase || 'base'}.
+Athlete: ${metricsLine}.
+Estimated duration: ~${estimatedMinutes} minutes.
+
+Respond with JSON:
+{
+  "night_before": "specific dinner recommendation with foods and portions",
+  "morning_of": "timed eating plan e.g. '2h before: X. 30min before: Y. 10min before: Z'",
+  "during": ${needsMidFuel ? '"what to carry and when — specific gels, chews, or real food with mile markers"' : 'null'},
+  "after": "recovery meal within 30 min with specific foods, then a real meal within 2 hours — give examples"
+}`,
+        },
+      ],
+      response_format: { type: 'json_object' },
+      max_tokens: 700,
+    });
+
+    let advice: any = null;
+    try { advice = JSON.parse(completion.choices[0].message.content ?? '{}'); } catch { /* use null */ }
+
+    res.json({ workout: nextWorkout, advice, generated_at: new Date().toISOString() });
   })
 );
 

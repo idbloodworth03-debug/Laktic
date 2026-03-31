@@ -11,7 +11,7 @@ const router = Router();
 
 // ── Athlete Weekly Summaries ────────────────────────────────────────────────
 
-// GET /api/athlete/progress/weekly — Get weekly summaries (last 12 weeks)
+// GET /api/athlete/progress/weekly — Live-compute from athlete_activities (last N weeks)
 router.get(
   '/progress/weekly',
   auth,
@@ -19,16 +19,102 @@ router.get(
   asyncHandler(async (req: AuthRequest, res) => {
     const parsed = weeklyQuerySchema.safeParse(req.query);
     const weeks = parsed.success ? parsed.data.weeks : 12;
+    const athleteId = req.athlete.id;
+    const now = new Date();
 
-    const { data, error } = await supabase
-      .from('weekly_summaries')
-      .select('*')
-      .eq('athlete_id', req.athlete.id)
-      .order('week_start', { ascending: false })
-      .limit(weeks);
+    const getMonday = (d: Date): string => {
+      const date = new Date(d);
+      const day = date.getUTCDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      date.setUTCDate(date.getUTCDate() + diff);
+      return date.toISOString().slice(0, 10);
+    };
 
-    if (error) return res.status(400).json({ error: error.message });
-    res.json((data || []).reverse()); // oldest first for charting
+    const currentMonday = getMonday(now);
+
+    // Fetch 90 days of activities for streak + fetch N-week window for chart
+    const since90 = new Date(now);
+    since90.setDate(since90.getDate() - 90);
+
+    const { data: activities } = await supabase
+      .from('athlete_activities')
+      .select('start_date, distance_miles, duration, pace, activity_type')
+      .eq('athlete_id', athleteId)
+      .gte('start_date', since90.toISOString())
+      .order('start_date', { ascending: true });
+
+    const acts = activities || [];
+
+    // Build week buckets for the last N weeks
+    const weekMap: Record<string, { week_start: string; miles: number; run_count: number; duration_secs: number; longest: number; pace_sum: number; pace_count: number }> = {};
+    for (let i = 0; i < weeks; i++) {
+      const d = new Date(currentMonday + 'T00:00:00Z');
+      d.setUTCDate(d.getUTCDate() - i * 7);
+      const wk = d.toISOString().slice(0, 10);
+      weekMap[wk] = { week_start: wk, miles: 0, run_count: 0, duration_secs: 0, longest: 0, pace_sum: 0, pace_count: 0 };
+    }
+
+    const weekSince = new Date(currentMonday + 'T00:00:00Z');
+    weekSince.setUTCDate(weekSince.getUTCDate() - (weeks - 1) * 7);
+    const weekSinceStr = weekSince.toISOString().slice(0, 10);
+
+    for (const act of acts) {
+      const wk = getMonday(new Date(act.start_date));
+      if (wk < weekSinceStr || !weekMap[wk]) continue;
+      weekMap[wk].miles += act.distance_miles || 0;
+      weekMap[wk].run_count += 1;
+      if ((act.distance_miles || 0) > weekMap[wk].longest) weekMap[wk].longest = act.distance_miles || 0;
+      if (act.duration) weekMap[wk].duration_secs += act.duration;
+      if (act.pace) {
+        const parts = act.pace.split(':');
+        if (parts.length === 2) {
+          const secs = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+          if (secs > 0) { weekMap[wk].pace_sum += secs; weekMap[wk].pace_count += 1; }
+        }
+      }
+    }
+
+    const summaries = Object.values(weekMap)
+      .sort((a, b) => a.week_start.localeCompare(b.week_start))
+      .map(w => {
+        const avgSecs = w.pace_count > 0 ? Math.round(w.pace_sum / w.pace_count) : 0;
+        const m = Math.floor(avgSecs / 60);
+        const s = avgSecs % 60;
+        return {
+          week_start: w.week_start,
+          total_distance_miles: Math.round(w.miles * 10) / 10,
+          run_count: w.run_count,
+          avg_pace_per_mile: avgSecs > 0 ? `${m}:${s.toString().padStart(2, '0')}` : '--',
+          total_duration_minutes: Math.round(w.duration_secs / 60),
+          longest_run_miles: Math.round(w.longest * 10) / 10,
+          avg_heartrate: null,
+          intensity_score: null,
+          compliance_pct: null,
+        };
+      });
+
+    // YTD totals
+    const ytdStart = `${now.getFullYear()}-01-01T00:00:00Z`;
+    const ytdActs = acts.filter(a => a.start_date >= ytdStart);
+    const ytd = {
+      total_miles: Math.round(ytdActs.reduce((s, a) => s + (a.distance_miles || 0), 0) * 10) / 10,
+      total_runs: ytdActs.length,
+      total_hours: Math.round(ytdActs.reduce((s, a) => s + ((a.duration || 0) / 3600), 0) * 10) / 10,
+    };
+
+    // Streak: consecutive active days going back from today
+    const actDates = new Set(acts.map(a => a.start_date.slice(0, 10)));
+    let streak = 0;
+    const todayStr = now.toISOString().slice(0, 10);
+    const cursor = new Date(actDates.has(todayStr) ? now : new Date(now.getTime() - 86400000));
+    cursor.setHours(0, 0, 0, 0);
+    while (true) {
+      const ds = cursor.toISOString().slice(0, 10);
+      if (actDates.has(ds)) { streak++; cursor.setDate(cursor.getDate() - 1); }
+      else break;
+    }
+
+    res.json({ summaries, ytd, streak });
   })
 );
 

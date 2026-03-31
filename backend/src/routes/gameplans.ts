@@ -74,7 +74,7 @@ async function generateGameplanForAthlete(
   // Fetch athlete profile + their bot's personality
   const { data: athlete } = await supabase
     .from('athlete_profiles')
-    .select('name, weekly_volume_miles, primary_events, pr_mile, pr_5k')
+    .select('name, weekly_volume_miles, current_weekly_mileage, primary_events, pr_mile, pr_5k, pr_10k, pr_half_marathon, pr_marathon, experience_level, primary_goal')
     .eq('id', athleteId)
     .single();
 
@@ -158,10 +158,15 @@ async function generateGameplanForAthlete(
   const prompt = {
     athlete: {
       name: athlete?.name,
-      weekly_volume_miles: athlete?.weekly_volume_miles,
+      weekly_volume_miles: athlete?.current_weekly_mileage ?? athlete?.weekly_volume_miles,
+      experience_level: athlete?.experience_level,
+      primary_goal: athlete?.primary_goal,
       primary_events: athlete?.primary_events,
       pr_mile: athlete?.pr_mile,
-      pr_5k: athlete?.pr_5k
+      pr_5k: athlete?.pr_5k,
+      pr_10k: athlete?.pr_10k,
+      pr_half_marathon: athlete?.pr_half_marathon,
+      pr_marathon: athlete?.pr_marathon,
     },
     race: {
       name: raceName, date: raceDate, distance: distance ?? 'unknown',
@@ -189,14 +194,23 @@ WEATHER RULES — The athlete's weather_on_race_day field has the actual forecas
 - If rain: recommend anti-chafe precautions, waterproof socks, adjusted footing
 - Give SPECIFIC pace/effort adjustments using the actual temperature number, not vague "it might be warm"
 
-PACING STRATEGY — Generate segment-by-segment breakdown (not just first/middle/last):
-- 5K: miles 1, 2, 3+
-- 10K: miles 1-2, 3-4, 5-6+
-- Half Marathon: miles 1-3, 4-8, 9-11, 12-13.1 with specific target paces
-- Marathon: miles 1-6, 7-13, 14-20, 21-26.2 with specific target paces and gel timing
-- If goal_time provided, use target_pace_per_mile as anchor. First mile 5-10 sec/mi slower than target.
-- If has_run_before=true, reference any course-specific tactics (hills, turns, crowds)
-- Address the athlete's biggest_concern directly in mental_cues
+PACING STRATEGY — Generate mile-by-mile or segment splits using target_pace_per_mile as the anchor:
+- Calculate each segment's target pace relative to the anchor pace
+- 5K: segment 1 (mi 1): anchor+10s, segment 2 (mi 2): anchor, segment 3 (mi 3+): anchor-5s to finish
+- 10K: segment 1 (mi 1-2): anchor+10s, segment 2 (mi 3-4): anchor, segment 3 (mi 5-6+): anchor-5s
+- Half Marathon: segment 1 (mi 1-3): anchor+10s conservative, segment 2 (mi 4-9): anchor, segment 3 (mi 10-11): evaluate, segment 4 (mi 12-13.1): push -5 to -10s
+- Marathon: segment 1 (mi 1-6): anchor+20s, segment 2 (mi 7-13): anchor+10s, segment 3 (mi 14-20): anchor, segment 4 (mi 21-26.2): survive and push
+- If goal_time not provided, use experience level and PRs to estimate a realistic target pace
+- If has_run_before=true, reference course-specific tactics
+
+TEMPERATURE ADJUSTMENTS — Apply these to the anchor pace before generating segments:
+- Under 45°F: subtract 0-5 sec/mile from target (cold = faster + extra warmup needed)
+- 45-60°F: ideal, no adjustment
+- 60-70°F: add 5-10 sec/mile to target
+- Over 70°F: add 15-30 sec/mile to target, extra hydration critical
+- Always state the adjusted pace explicitly in the pacing explanation
+
+MENTAL CUES — Must reference the athlete's ACTUAL goal time, their specific PRs, and their biggest_concern directly. Never give generic cues like "stay focused" — say "When you hit the wall at mile 20, remember you negative-split your last half in [PR time]".
 
 NUTRITION SCALING:
 - 5K/10K: No mid-race nutrition. Pre-race light meal only.
@@ -212,7 +226,15 @@ Respond ONLY with valid JSON in this exact structure:`;
         role: 'system',
         content: `${gameplanSystemPrompt}
 {
-  "pacing_strategy": { "first_mile": "...", "middle_miles": "...", "final_mile": "...", "explanation": "..." },
+  "pacing_strategy": {
+    "target_pace": "X:XX/mi",
+    "temp_adjusted_pace": "X:XX/mi",
+    "segments": [
+      { "label": "Miles 1-3", "target_pace": "X:XX/mi", "note": "..." },
+      { "label": "Miles 4-9", "target_pace": "X:XX/mi", "note": "..." }
+    ],
+    "explanation": "..."
+  },
   "warmup_routine": [{ "step": "...", "duration": "...", "intensity": "..." }],
   "nutrition_timing": [{ "time_before_race": "...", "what": "...", "why": "..." }],
   "weather_conditions": { "temp_f": 0, "wind_mph": 0, "description": "..." },

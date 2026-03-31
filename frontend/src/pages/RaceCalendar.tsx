@@ -348,6 +348,7 @@ export function RaceCalendar() {
 
   const isPastRace = (date: string) => new Date(date + 'T23:59:59') < new Date();
   const hasResult = (race: Race) => results.some(r => r.race_name === race.name && r.race_date === race.date);
+  const getResult = (race: Race) => results.find(r => r.race_name === race.name && r.race_date === race.date);
 
   const startLogResult = (idx: number) => {
     setLoggingResult(idx);
@@ -478,33 +479,66 @@ export function RaceCalendar() {
             ) : (
               <>
                 <div className="flex flex-col gap-2.5 mb-4">
-                  {races.map((race, idx) => (
-                    <div key={idx} className={`p-4 rounded-xl border transition-colors ${
-                      race.is_goal_race
-                        ? 'border-purple-800/50 bg-purple-950/20 border-l-2 border-l-purple-500'
-                        : 'border-[var(--border)] bg-[var(--surface2)] hover:border-[var(--border2)]'
-                    }`}>
+                  {races.map((race, idx) => {
+                    const past = isPastRace(race.date);
+                    const result = getResult(race);
+                    return (
+                    <div key={idx} className="p-4 rounded-xl border transition-colors" style={
+                      past ? {
+                        border: '1px solid var(--border)',
+                        borderLeft: '4px solid #4B5563',
+                        background: 'rgba(0,0,0,0.15)',
+                        opacity: 0.85,
+                      } : race.is_goal_race ? {
+                        border: '1px solid rgba(168,85,247,0.4)',
+                        borderLeft: '4px solid #a855f7',
+                        background: 'rgba(88,28,135,0.15)',
+                      } : {
+                        border: '1px solid var(--border)',
+                        background: 'var(--surface2)',
+                      }
+                    }>
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <span className="font-medium text-sm text-[var(--text)]">{race.name}</span>
-                            {race.is_goal_race && (
+                          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                            <span className="font-medium text-sm" style={{ color: past ? 'var(--muted)' : 'var(--text)' }}>{race.name}</span>
+                            {past ? (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{ background: 'rgba(107,114,128,0.2)', color: '#9ca3af', border: '1px solid rgba(107,114,128,0.3)' }}>
+                                Completed
+                              </span>
+                            ) : race.is_goal_race && (
                               <span className="text-xs text-purple-400 font-medium">★ Goal Race</span>
                             )}
-                            {hasResult(race) && <Badge label="Result Logged" color="green" dot />}
+                            {result && <Badge label="Result Logged" color="green" dot />}
                           </div>
                           <div className="text-xs text-[var(--muted)]">
                             {new Date(race.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                           </div>
                           {race.distance && <div className="text-xs text-[var(--muted)] mt-0.5">{race.distance}{race.goal_time ? ` · Goal: ${race.goal_time}` : ''}</div>}
-                          {!isPastRace(race.date) && <div className="text-xs font-medium mt-0.5" style={{ color: 'var(--color-accent)' }}>{daysUntil(race.date)} days away</div>}
+                          {past ? (
+                            <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
+                              Ran on {new Date(race.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </div>
+                          ) : (
+                            <div className="text-xs font-medium mt-0.5" style={{ color: 'var(--color-accent)' }}>{daysUntil(race.date)} days away</div>
+                          )}
+                          {result && (
+                            <div className="mt-1.5 font-mono text-base font-bold" style={{ color: 'var(--color-accent)' }}>
+                              {result.finish_time}
+                              {result.pace_per_mile && <span className="text-xs font-normal ml-2" style={{ color: 'var(--muted)' }}>{result.pace_per_mile}/mi</span>}
+                              {result.is_pr && <span className="ml-2 text-xs font-bold text-amber-400">PR</span>}
+                            </div>
+                          )}
                           {race.notes && <div className="text-xs text-[var(--muted)] mt-0.5 italic">{race.notes}</div>}
                         </div>
-                        <div className="flex items-center gap-2.5 shrink-0">
-                          {isPastRace(race.date) && !hasResult(race) && (
-                            <Button variant="secondary" size="sm" onClick={() => startLogResult(idx)}>Log Result</Button>
+                        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                          {past && result && (
+                            <Button variant="secondary" size="sm" onClick={() => setSelectedResult(result)}>View Result</Button>
                           )}
-                          <Toggle checked={race.is_goal_race} onChange={() => toggleGoal(idx)} label="Goal" />
+                          {past && !result && (
+                            <Button size="sm" onClick={() => startLogResult(idx)}>Log Result</Button>
+                          )}
+                          {!past && <Toggle checked={race.is_goal_race} onChange={() => toggleGoal(idx)} label="Goal" />}
                           <Button variant="ghost" size="sm" onClick={() => removeRace(idx)} className="!text-red-400">Remove</Button>
                         </div>
                       </div>
@@ -532,7 +566,8 @@ export function RaceCalendar() {
                         </div>
                       )}
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
 
                 {!addingRace && (

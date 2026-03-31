@@ -2,23 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { apiFetch } from '../lib/api';
-import { AppLayout, Card, Button, Input, Textarea, Alert, Spinner, Badge } from '../components/ui';
+import { AppLayout, Card, Button, Input, Alert, Spinner } from '../components/ui';
 import { supabase } from '../lib/supabaseClient';
 
 type BodyMetrics = {
   weight_kg: number | null;
   height_cm: number | null;
   sweat_rate_ml_per_hr: number | null;
-};
-
-type FuelEntry = {
-  id: string;
-  logged_at: string;
-  calories: number | null;
-  carbs_g: number | null;
-  protein_g: number | null;
-  hydration_ml: number | null;
-  notes: string | null;
 };
 
 type WeatherData = {
@@ -43,13 +33,13 @@ type FuelRecommendation = {
   };
 };
 
-type Tab = 'metrics' | 'log' | 'calculator';
+type NutritionAdvice = {
+  workout: { title: string; date: string; distance_miles: number; pace_guideline?: string } | null;
+  advice: { night_before: string; morning_of: string; during: string | null; after: string } | null;
+  generated_at: string;
+};
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', weekday: 'short'
-  });
-}
+type Tab = 'metrics' | 'advice' | 'calculator';
 
 export function NutritionPage() {
   const { role, profile, clearAuth } = useAuthStore();
@@ -63,20 +53,11 @@ export function NutritionPage() {
   const [metrics, setMetrics] = useState<BodyMetrics>({ weight_kg: null, height_cm: null, sweat_rate_ml_per_hr: null });
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [metricsSaving, setMetricsSaving] = useState(false);
+  const [metricsView, setMetricsView] = useState<'form' | 'card'>('form');
 
-  // Fuel log
-  const [fuelLog, setFuelLog] = useState<FuelEntry[]>([]);
-  const [logLoading, setLogLoading] = useState(false);
-  const [showAddEntry, setShowAddEntry] = useState(false);
-  const [newEntry, setNewEntry] = useState({
-    logged_at: new Date().toISOString().slice(0, 10),
-    calories: '',
-    carbs_g: '',
-    protein_g: '',
-    hydration_ml: '',
-    notes: ''
-  });
-  const [addingEntry, setAddingEntry] = useState(false);
+  // AI Nutrition advice
+  const [adviceData, setAdviceData] = useState<NutritionAdvice | null>(null);
+  const [adviceLoading, setAdviceLoading] = useState(false);
 
   // Calculator
   const [weather, setWeather] = useState<WeatherData | null>(null);
@@ -93,7 +74,7 @@ export function NutritionPage() {
   }, []);
 
   useEffect(() => {
-    if (tab === 'log' && fuelLog.length === 0) loadFuelLog();
+    if (tab === 'advice' && !adviceData) loadAdvice();
     if (tab === 'calculator' && !weather) loadWeather();
   }, [tab]);
 
@@ -101,9 +82,12 @@ export function NutritionPage() {
     setMetricsLoading(true);
     try {
       const data = await apiFetch('/api/athlete/body-metrics');
-      if (data) setMetrics(data);
+      if (data && data.weight_kg != null) {
+        setMetrics(data);
+        setMetricsView('card');
+      }
     } catch {
-      // no metrics yet — fine
+      // no metrics yet
     } finally {
       setMetricsLoading(false);
     }
@@ -117,6 +101,7 @@ export function NutritionPage() {
       if (metrics.height_cm != null) payload.height_cm = metrics.height_cm;
       if (metrics.sweat_rate_ml_per_hr != null) payload.sweat_rate_ml_per_hr = metrics.sweat_rate_ml_per_hr;
       await apiFetch('/api/athlete/body-metrics', { method: 'PUT', body: JSON.stringify(payload) });
+      setMetricsView('card');
       setAlert({ type: 'success', message: 'Body metrics saved.' });
     } catch (e: any) {
       setAlert({ type: 'error', message: e.message || 'Failed to save.' });
@@ -125,46 +110,15 @@ export function NutritionPage() {
     }
   }
 
-  async function loadFuelLog() {
-    setLogLoading(true);
+  async function loadAdvice() {
+    setAdviceLoading(true);
     try {
-      const data = await apiFetch('/api/athlete/fuel-log?days=30');
-      setFuelLog(data);
+      const data = await apiFetch('/api/athlete/nutrition/advice');
+      setAdviceData(data);
     } catch {
-      setFuelLog([]);
+      setAdviceData(null);
     } finally {
-      setLogLoading(false);
-    }
-  }
-
-  async function addFuelEntry() {
-    setAddingEntry(true);
-    try {
-      const body: any = { logged_at: newEntry.logged_at };
-      if (newEntry.calories) body.calories = parseInt(newEntry.calories);
-      if (newEntry.carbs_g) body.carbs_g = parseFloat(newEntry.carbs_g);
-      if (newEntry.protein_g) body.protein_g = parseFloat(newEntry.protein_g);
-      if (newEntry.hydration_ml) body.hydration_ml = parseInt(newEntry.hydration_ml);
-      if (newEntry.notes.trim()) body.notes = newEntry.notes.trim();
-
-      const entry = await apiFetch('/api/athlete/fuel-log', { method: 'POST', body: JSON.stringify(body) });
-      setFuelLog(prev => [entry, ...prev]);
-      setNewEntry({ logged_at: new Date().toISOString().slice(0, 10), calories: '', carbs_g: '', protein_g: '', hydration_ml: '', notes: '' });
-      setShowAddEntry(false);
-      setAlert({ type: 'success', message: 'Entry logged.' });
-    } catch (e: any) {
-      setAlert({ type: 'error', message: e.message || 'Failed to add entry.' });
-    } finally {
-      setAddingEntry(false);
-    }
-  }
-
-  async function deleteEntry(id: string) {
-    try {
-      await apiFetch(`/api/athlete/fuel-log/${id}`, { method: 'DELETE' });
-      setFuelLog(prev => prev.filter(e => e.id !== id));
-    } catch (e: any) {
-      setAlert({ type: 'error', message: e.message || 'Failed to delete.' });
+      setAdviceLoading(false);
     }
   }
 
@@ -198,18 +152,21 @@ export function NutritionPage() {
     }
   }
 
-  // 7-day totals for fuel log
-  const last7 = fuelLog.filter(e => {
-    const d = new Date(e.logged_at + 'T00:00:00');
-    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 7);
-    return d >= cutoff;
-  });
-  const totals7 = {
-    calories: last7.reduce((s, e) => s + (e.calories || 0), 0),
-    carbs_g: last7.reduce((s, e) => s + (e.carbs_g || 0), 0),
-    protein_g: last7.reduce((s, e) => s + (e.protein_g || 0), 0),
-    hydration_ml: last7.reduce((s, e) => s + (e.hydration_ml || 0), 0)
-  };
+  // Computed metrics for the stats card
+  const bmi = (metrics.weight_kg && metrics.height_cm)
+    ? Math.round((metrics.weight_kg / Math.pow(metrics.height_cm / 100, 2)) * 10) / 10
+    : null;
+  const waterPerHour = metrics.sweat_rate_ml_per_hr
+    ? Math.round((metrics.sweat_rate_ml_per_hr / 1000) * 10) / 10
+    : null;
+  const dailyBaseline = metrics.weight_kg
+    ? Math.round(metrics.weight_kg * 0.033 * 10) / 10
+    : null;
+  const raceDayTarget = dailyBaseline
+    ? Math.round(dailyBaseline * 1.5 * 10) / 10
+    : null;
+
+  const TAB_LABELS: Record<Tab, string> = { metrics: 'Body Metrics', advice: 'AI Nutrition', calculator: 'Calculator' };
 
   return (
     <AppLayout role={role ?? 'athlete'} name={profile?.name} onLogout={logout}>
@@ -227,7 +184,7 @@ export function NutritionPage() {
 
           {/* Tabs */}
           <div className="flex gap-1 mb-6 p-1 rounded-xl" style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
-            {(['metrics', 'log', 'calculator'] as Tab[]).map(t => (
+            {(['metrics', 'advice', 'calculator'] as Tab[]).map(t => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -237,19 +194,76 @@ export function NutritionPage() {
                   : { color: 'var(--color-text-tertiary)' }
                 }
               >
-                {t === 'metrics' ? 'Body Metrics' : t === 'log' ? 'Fuel Log' : 'Calculator'}
+                {TAB_LABELS[t]}
               </button>
             ))}
           </div>
 
           {/* ── Body Metrics ─────────────────────────────────── */}
           {tab === 'metrics' && (
-            <Card title="Body Metrics">
-              {metricsLoading ? (
-                <div className="flex justify-center py-8"><Spinner /></div>
-              ) : (
+            metricsLoading ? (
+              <div className="flex justify-center py-16"><Spinner /></div>
+            ) : metricsView === 'card' && metrics.weight_kg != null ? (
+              <Card>
                 <div className="flex flex-col gap-5">
-                  <p className="text-sm text-[var(--color-text-tertiary)]">
+                  {/* Icon + heading */}
+                  <div className="flex items-center gap-3">
+                    <div className="text-4xl" style={{ color: 'var(--color-accent)' }}>🏃</div>
+                    <div>
+                      <div className="font-bold text-lg" style={{ color: 'var(--color-text-primary)' }}>Your Body Profile</div>
+                      <div className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Used to personalise all fueling recommendations</div>
+                    </div>
+                  </div>
+
+                  {/* Stats grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      { label: 'Weight', value: `${metrics.weight_kg} kg` },
+                      { label: 'Height', value: metrics.height_cm ? `${metrics.height_cm} cm` : '—' },
+                      { label: 'BMI', value: bmi ? String(bmi) : '—' },
+                      { label: 'Sweat Rate', value: metrics.sweat_rate_ml_per_hr ? `${metrics.sweat_rate_ml_per_hr} ml/hr` : '—' },
+                    ].map(s => (
+                      <div key={s.label} className="rounded-lg p-3" style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}>
+                        <div className="text-[10px] uppercase tracking-wide mb-1" style={{ color: 'var(--color-text-tertiary)' }}>{s.label}</div>
+                        <div className="font-mono text-base font-bold" style={{ color: 'var(--color-text-primary)' }}>{s.value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Hydration profile */}
+                  <div className="rounded-xl p-4" style={{ background: 'rgba(0,229,160,0.05)', border: '1px solid rgba(0,229,160,0.15)' }}>
+                    <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--color-accent)' }}>Your Hydration Profile</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {waterPerHour != null && (
+                        <div>
+                          <div className="font-mono text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{waterPerHour} L/hr</div>
+                          <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>Water per hour running</div>
+                        </div>
+                      )}
+                      {dailyBaseline != null && (
+                        <div>
+                          <div className="font-mono text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{dailyBaseline} L</div>
+                          <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>Daily baseline hydration</div>
+                        </div>
+                      )}
+                      {raceDayTarget != null && (
+                        <div>
+                          <div className="font-mono text-xl font-bold" style={{ color: 'var(--color-accent)' }}>{raceDayTarget} L</div>
+                          <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>Race day target</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button variant="ghost" size="sm" onClick={() => setMetricsView('form')}>Edit Metrics</Button>
+                  </div>
+                </div>
+              </Card>
+            ) : (
+              <Card title="Body Metrics">
+                <div className="flex flex-col gap-5">
+                  <p className="text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
                     These metrics personalise your hydration and fueling recommendations.
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -279,7 +293,7 @@ export function NutritionPage() {
                     />
                   </div>
                   <div className="text-xs rounded-lg p-3" style={{ color: 'var(--color-text-secondary)', background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}>
-                    <strong className="text-[var(--color-text-primary)]">Tip:</strong> Average sweat rate is 400–1,000 ml/hr.
+                    <strong style={{ color: 'var(--color-text-primary)' }}>Tip:</strong> Average sweat rate is 400–1,000 ml/hr.
                     If you finish runs feeling very thirsty with visible salt on skin, try 800–1,200.
                     If you rarely feel thirsty, use 300–500.
                   </div>
@@ -287,186 +301,120 @@ export function NutritionPage() {
                     <Button onClick={saveMetrics} loading={metricsSaving}>Save Metrics</Button>
                   </div>
                 </div>
-              )}
-            </Card>
+              </Card>
+            )
           )}
 
-          {/* ── Fuel Log ─────────────────────────────────────── */}
-          {tab === 'log' && (
+          {/* ── AI Nutrition Advice ───────────────────────────── */}
+          {tab === 'advice' && (
             <div className="flex flex-col gap-4">
-              {/* 7-day totals */}
-              {last7.length > 0 && (
-                <Card title="Last 7 Days">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {[
-                      { label: 'Calories', value: totals7.calories.toLocaleString(), unit: 'kcal' },
-                      { label: 'Carbs', value: totals7.carbs_g.toFixed(0), unit: 'g' },
-                      { label: 'Protein', value: totals7.protein_g.toFixed(0), unit: 'g' },
-                      { label: 'Hydration', value: (totals7.hydration_ml / 1000).toFixed(1), unit: 'L' },
-                    ].map(s => (
-                      <div key={s.label} className="rounded-lg p-3" style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}>
-                        <div className="text-xs text-[var(--color-text-tertiary)] mb-1">{s.label}</div>
-                        <div className="font-mono text-lg font-bold text-[var(--color-text-primary)]">
-                          {s.value}<span className="text-xs font-normal text-[var(--color-text-tertiary)] ml-1">{s.unit}</span>
-                        </div>
-                      </div>
-                    ))}
+              {adviceLoading ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <Spinner size="lg" />
+                  <p className="text-sm" style={{ color: 'var(--color-text-tertiary)' }}>Generating your nutrition plan…</p>
+                </div>
+              ) : !adviceData?.workout ? (
+                <Card>
+                  <div className="text-center py-10">
+                    <div className="text-4xl mb-3">🥗</div>
+                    <p className="text-sm mb-1 font-medium" style={{ color: 'var(--color-text-primary)' }}>No upcoming workout found</p>
+                    <p className="text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
+                      Add a training plan to get personalised nutrition advice for your next run.
+                    </p>
                   </div>
                 </Card>
-              )}
-
-              <Card title="Fuel Log (Last 30 Days)">
-                <div className="flex justify-between items-center mb-4">
-                  <p className="text-sm text-[var(--color-text-tertiary)]">Log your daily nutrition to track patterns over time.</p>
-                  <Button size="sm" onClick={() => setShowAddEntry(v => !v)}>
-                    {showAddEntry ? 'Cancel' : '+ Log Entry'}
-                  </Button>
-                </div>
-
-                {showAddEntry && (
-                  <div className="mb-5 p-4 rounded-lg flex flex-col gap-3" style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      <Input
-                        label="Date"
-                        type="date"
-                        value={newEntry.logged_at}
-                        onChange={e => setNewEntry(n => ({ ...n, logged_at: e.target.value }))}
-                      />
-                      <Input
-                        label="Calories (kcal)"
-                        type="number" min={0} max={10000}
-                        value={newEntry.calories}
-                        onChange={e => setNewEntry(n => ({ ...n, calories: e.target.value }))}
-                        placeholder="e.g. 350"
-                      />
-                      <Input
-                        label="Carbs (g)"
-                        type="number" min={0} step={0.5}
-                        value={newEntry.carbs_g}
-                        onChange={e => setNewEntry(n => ({ ...n, carbs_g: e.target.value }))}
-                        placeholder="e.g. 60"
-                      />
-                      <Input
-                        label="Protein (g)"
-                        type="number" min={0} step={0.5}
-                        value={newEntry.protein_g}
-                        onChange={e => setNewEntry(n => ({ ...n, protein_g: e.target.value }))}
-                        placeholder="e.g. 20"
-                      />
-                      <Input
-                        label="Hydration (ml)"
-                        type="number" min={0}
-                        value={newEntry.hydration_ml}
-                        onChange={e => setNewEntry(n => ({ ...n, hydration_ml: e.target.value }))}
-                        placeholder="e.g. 600"
-                      />
-                    </div>
-                    <Textarea
-                      label="Notes (optional)"
-                      rows={2}
-                      value={newEntry.notes}
-                      onChange={e => setNewEntry(n => ({ ...n, notes: e.target.value }))}
-                      placeholder="e.g. Post-run smoothie, gel mid-race..."
-                    />
-                    <div className="flex justify-end">
-                      <Button size="sm" onClick={addFuelEntry} loading={addingEntry}
-                        disabled={!newEntry.logged_at}>
-                        Save Entry
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {logLoading ? (
-                  <div className="flex justify-center py-8"><Spinner /></div>
-                ) : fuelLog.length === 0 ? (
-                  <p className="text-sm text-[var(--color-text-tertiary)] text-center py-8">No entries yet. Log your first entry above.</p>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {fuelLog.map(entry => (
-                      <div key={entry.id} className="flex items-start justify-between gap-3 py-3 border-b border-[var(--color-border)] last:border-0">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs text-[var(--color-text-tertiary)] mb-1">{formatDate(entry.logged_at)}</div>
-                          <div className="flex flex-wrap gap-2">
-                            {entry.calories != null && (
-                              <Badge label={`${entry.calories} kcal`} color="amber" />
-                            )}
-                            {entry.carbs_g != null && (
-                              <Badge label={`${entry.carbs_g}g carbs`} color="blue" />
-                            )}
-                            {entry.protein_g != null && (
-                              <Badge label={`${entry.protein_g}g protein`} color="purple" />
-                            )}
-                            {entry.hydration_ml != null && (
-                              <Badge label={`${entry.hydration_ml}ml`} color="green" />
-                            )}
-                          </div>
-                          {entry.notes && (
-                            <p className="text-xs text-[var(--color-text-tertiary)] mt-1 truncate">{entry.notes}</p>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => deleteEntry(entry.id)}
-                          className="text-xs transition-colors shrink-0"
-                          style={{ color: 'var(--color-text-tertiary)' }}
-                          onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-danger)')}
-                          onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-text-tertiary)')}
-                        >
-                          ✕
-                        </button>
+              ) : (
+                <>
+                  {/* Next workout header */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs uppercase tracking-wide mb-0.5" style={{ color: 'var(--color-text-tertiary)' }}>Next Workout</div>
+                      <div className="font-bold text-base" style={{ color: 'var(--color-text-primary)' }}>
+                        {adviceData.workout.title} — {adviceData.workout.distance_miles} mi
                       </div>
-                    ))}
+                      <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>
+                        {new Date(adviceData.workout.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                        {adviceData.workout.pace_guideline && ` · ${adviceData.workout.pace_guideline}/mi`}
+                      </div>
+                    </div>
+                    <Button variant="secondary" size="sm" onClick={() => { setAdviceData(null); loadAdvice(); }}>
+                      Regenerate
+                    </Button>
                   </div>
-                )}
-              </Card>
+
+                  {adviceData.advice && (
+                    <div className="flex flex-col gap-3">
+                      {[
+                        { key: 'night_before', label: 'Night Before', icon: '🌙', text: adviceData.advice.night_before },
+                        { key: 'morning_of', label: 'Morning Of', icon: '☀️', text: adviceData.advice.morning_of },
+                        ...(adviceData.advice.during ? [{ key: 'during', label: 'During the Run', icon: '🏃', text: adviceData.advice.during }] : []),
+                        { key: 'after', label: 'Recovery After', icon: '💪', text: adviceData.advice.after },
+                      ].map(section => (
+                        <div
+                          key={section.key}
+                          className="rounded-xl p-4"
+                          style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border-light)' }}
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-base">{section.icon}</span>
+                            <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-accent)' }}>{section.label}</span>
+                          </div>
+                          <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{section.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="text-[10px] text-center" style={{ color: 'var(--color-text-tertiary)' }}>
+                    Generated {new Date(adviceData.generated_at).toLocaleTimeString()} · Based on your body metrics and training plan
+                  </p>
+                </>
+              )}
             </div>
           )}
 
           {/* ── Fueling Calculator ────────────────────────────── */}
           {tab === 'calculator' && (
             <div className="flex flex-col gap-4">
-              {/* Weather */}
               <Card title="Current Conditions">
                 {weatherLoading ? (
                   <div className="flex justify-center py-4"><Spinner /></div>
                 ) : weather ? (
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="font-mono text-2xl font-bold text-[var(--color-text-primary)]">
+                      <div className="font-mono text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
                         {weather.temp_c}°C
                       </div>
-                      <div className="text-sm text-[var(--color-text-tertiary)]">{weather.description}</div>
+                      <div className="text-sm" style={{ color: 'var(--color-text-tertiary)' }}>{weather.description}</div>
                       {weather.location_name && (
-                        <div className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{weather.location_name}</div>
+                        <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>{weather.location_name}</div>
                       )}
                     </div>
-                    <div className="text-right text-sm text-[var(--color-text-tertiary)]">
-                      <div>Wind: {weather.windspeed_kmh} km/h</div>
-                      {weather.temp_c > 25 && (
-                        <span className="mt-1"><Badge label="Hot — hydrate extra" color="amber" /></span>
-                      )}
+                    <div className="text-right text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
+                      Wind: {weather.windspeed_kmh} km/h
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-[var(--color-text-tertiary)]">
-                    No location data yet. Weather is pulled from your team's practice location once your coach adds a GPS-tagged event.
+                  <p className="text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
+                    No location data yet. Weather is pulled from your team's practice location.
                   </p>
                 )}
               </Card>
 
               <Card title="Post-Run Fueling Calculator">
                 <div className="flex flex-col gap-4">
-                  <p className="text-sm text-[var(--color-text-tertiary)]">
+                  <p className="text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
                     Enter your workout duration to get personalised calorie, carb, protein, and hydration targets.
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">Workout Duration</label>
+                      <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-tertiary)' }}>Workout Duration</label>
                       <div className="flex gap-2">
                         <select
                           value={durationHours}
                           onChange={e => setDurationHours(e.target.value)}
-                          className="flex-1 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-btn px-3 py-[10px] text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
+                          className="flex-1 outline-none text-sm"
+                          style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '10px 12px', color: 'var(--color-text-primary)' }}
                         >
                           {Array.from({ length: 13 }, (_, i) => (
                             <option key={i} value={i}>{i}h</option>
@@ -475,7 +423,8 @@ export function NutritionPage() {
                         <select
                           value={durationMinutes}
                           onChange={e => setDurationMinutes(e.target.value)}
-                          className="flex-1 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-btn px-3 py-[10px] text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
+                          className="flex-1 outline-none text-sm"
+                          style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '10px 12px', color: 'var(--color-text-primary)' }}
                         >
                           {[0,5,10,15,20,25,30,35,40,45,50,55].map(m => (
                             <option key={m} value={m}>{m}min</option>
@@ -499,14 +448,14 @@ export function NutritionPage() {
                     <div className="mt-2 flex flex-col gap-3">
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         {[
-                          { label: 'Hydration needed', value: `${recommendation.hydration_ml} ml`, hint: 'Sip every 15-20 min during your run', color: 'blue' as const },
-                          { label: 'Calories burned', value: recommendation.cals_burned.toLocaleString(), hint: 'Estimated energy used — replenish within 45 min', color: 'amber' as const },
-                          { label: 'Post-run target', value: `${recommendation.post_run.calories} kcal`, hint: 'Recovery meal target — prioritise carbs + protein', color: 'green' as const },
-                          { label: 'Carbs / Protein', value: `${recommendation.post_run.carbs_g}g / ${recommendation.post_run.protein_g}g`, hint: `≈ 2 bagels + banana | 2 eggs + Greek yogurt`, color: 'purple' as const },
+                          { label: 'Hydration needed', value: `${recommendation.hydration_ml} ml`, hint: 'Sip every 15-20 min during your run' },
+                          { label: 'Calories burned', value: recommendation.cals_burned.toLocaleString(), hint: 'Estimated energy used — replenish within 45 min' },
+                          { label: 'Post-run target', value: `${recommendation.post_run.calories} kcal`, hint: 'Recovery meal target — prioritise carbs + protein' },
+                          { label: 'Carbs / Protein', value: `${recommendation.post_run.carbs_g}g / ${recommendation.post_run.protein_g}g`, hint: '≈ 2 bagels + banana | 2 eggs + Greek yogurt' },
                         ].map(s => (
                           <div key={s.label} className="rounded-lg p-3" style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}>
-                            <div className="text-xs text-[var(--color-text-tertiary)] mb-1">{s.label}</div>
-                            <div className="font-mono text-base font-bold text-[var(--color-text-primary)]">{s.value}</div>
+                            <div className="text-xs mb-1" style={{ color: 'var(--color-text-tertiary)' }}>{s.label}</div>
+                            <div className="font-mono text-base font-bold" style={{ color: 'var(--color-text-primary)' }}>{s.value}</div>
                             <div className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>{s.hint}</div>
                           </div>
                         ))}
