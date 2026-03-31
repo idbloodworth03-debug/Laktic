@@ -14,15 +14,15 @@ const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
 const logReadinessSchema = z.object({
-  sleep_hours: z.number().min(0).max(24).optional(),
-  sleep_quality: z.number().int().min(1).max(5).optional(),
-  mood: z.number().int().min(1).max(5).optional(),
-  soreness: z.number().int().min(0).max(10).optional(),
-  energy: z.number().int().min(1).max(5).optional(),
-  hrv_ms: z.number().positive().optional(),
-  resting_hr: z.number().positive().optional(),
-  notes: z.string().max(500).optional(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()
+  sleep_hours: z.number().min(0).max(24).nullish(),
+  sleep_quality: z.number().int().min(1).max(5).nullish(),
+  mood: z.number().int().min(1).max(5).nullish(),
+  soreness: z.number().int().min(0).max(10).nullish(),
+  energy: z.number().int().min(1).max(5).nullish(),
+  hrv_ms: z.number().positive().nullish(),
+  resting_hr: z.number().positive().nullish(),
+  notes: z.string().max(500).nullish(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish()
 });
 
 // ── Core readiness algorithm ──────────────────────────────────────────────────
@@ -103,8 +103,12 @@ router.post(
   validate(logReadinessSchema),
   asyncHandler(async (req: AuthRequest, res) => {
     try {
+      console.log('[POST /recovery/readiness] body:', JSON.stringify(req.body));
       const athleteId = req.athlete.id;
       const { sleep_hours, sleep_quality, mood, soreness, energy, hrv_ms, resting_hr, notes: rawNotes, date } = req.body;
+
+      console.log('[POST /recovery/readiness] athleteId:', athleteId, '| mood:', mood, '| energy:', energy, '| notes:', rawNotes);
+
       if (rawNotes && containsSevereProfanity(rawNotes)) return res.status(400).json({ error: 'Your message contains inappropriate content' });
       const cleanNotes = rawNotes ? filterText(rawNotes) : null;
 
@@ -130,10 +134,12 @@ router.post(
       const chronic = (weekMiles[0] + weekMiles[1] + weekMiles[2] + weekMiles[3]) / 4;
       const acwr = chronic > 0 ? Math.min(acute / chronic, 2.0) : 0;
 
-      const factors: ReadinessFactors = { sleep_hours, sleep_quality, mood, soreness, energy, hrv_ms, resting_hr, acwr };
+      const factors: ReadinessFactors = { sleep_hours: sleep_hours ?? undefined, sleep_quality: sleep_quality ?? undefined, mood: mood ?? undefined, soreness: soreness ?? undefined, energy: energy ?? undefined, hrv_ms: hrv_ms ?? undefined, resting_hr: resting_hr ?? undefined, acwr };
       const { score, penalties } = computeReadinessScore(factors);
       const label = getReadinessLabel(score);
       const recommended_intensity = score >= 80 ? 'hard' : score >= 60 ? 'moderate' : score >= 40 ? 'easy' : 'rest';
+
+      console.log('[POST /recovery/readiness] score:', score, '| label:', label, '| recommended_intensity:', recommended_intensity);
 
       // GPT one-liner
       let explanation: string | null = null;
@@ -166,7 +172,7 @@ router.post(
           date: today,
           score,
           label,
-          recommended_intensity,
+          recommended_intensity: recommended_intensity ?? 'moderate',
           sleep_hours: sleep_hours ?? null,
           sleep_quality: sleep_quality ?? null,
           mood: mood ?? null,
@@ -181,7 +187,15 @@ router.post(
         .select()
         .single();
 
-      if (error) return res.status(400).json({ error: error.message });
+      if (error) {
+        console.error('[POST /recovery/readiness] upsert error:', error.message, error.code, error.details);
+        return res.status(400).json({ error: error.message });
+      }
+      if (!readiness) {
+        console.error('[POST /recovery/readiness] upsert returned no data');
+        return res.status(500).json({ error: 'Readiness saved but could not retrieve the record' });
+      }
+      console.log('[POST /recovery/readiness] upsert ok, id:', readiness.id);
 
       // Upsert recovery_profiles with latest values
       await supabase
