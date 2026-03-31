@@ -165,27 +165,32 @@ router.post(
       }
 
       // Upsert daily_readiness (one row per athlete per date)
+      const upsertPayload = {
+        athlete_id: athleteId,
+        date: today,
+        score,
+        label,
+        recommended_intensity,
+        sleep_hours: sleep_hours ?? null,
+        sleep_quality: sleep_quality ?? null,
+        mood: mood ?? null,
+        soreness: soreness ?? null,
+        energy: energy ?? null,
+        hrv_ms: hrv_ms ?? null,
+        resting_hr: resting_hr ?? null,
+        notes: cleanNotes,
+        explanation,
+        factors: penalties
+      };
+      console.log('[readiness] upserting:', JSON.stringify(upsertPayload));
+
       const { data: readiness, error } = await supabase
         .from('daily_readiness')
-        .upsert({
-          athlete_id: athleteId,
-          date: today,
-          score,
-          label,
-          recommended_intensity: recommended_intensity ?? 'moderate',
-          sleep_hours: sleep_hours ?? null,
-          sleep_quality: sleep_quality ?? null,
-          mood: mood ?? null,
-          soreness: soreness ?? null,
-          energy: energy ?? null,
-          hrv_ms: hrv_ms ?? null,
-          resting_hr: resting_hr ?? null,
-          notes: cleanNotes,
-          explanation,
-          factors: penalties
-        }, { onConflict: 'athlete_id,date' })
+        .upsert(upsertPayload, { onConflict: 'athlete_id,date' })
         .select()
         .single();
+
+      console.log('[readiness] result:', JSON.stringify(readiness), 'error:', error ? JSON.stringify(error) : null);
 
       if (error) {
         console.error('[POST /recovery/readiness] upsert error:', error.message, error.code, error.details);

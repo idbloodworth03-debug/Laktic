@@ -6,10 +6,6 @@ import { validate } from '../middleware/validate';
 import { raceResultSchema, raceResultUpdateSchema, weeklyQuerySchema, directMessageSchema } from '../schemas';
 import { computeAllWeeks } from '../services/progressService';
 import { buildAthletePdf, buildTeamPdf } from '../services/pdfService';
-import OpenAI from 'openai';
-import { env } from '../config/env';
-
-const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
 const router = Router();
 
@@ -232,51 +228,6 @@ router.delete(
 
     if (error) return res.status(400).json({ error: error.message });
     res.json({ ok: true });
-  })
-);
-
-// POST /api/athlete/races/lookup — AI auto-fill race details from name
-router.post(
-  '/races/lookup',
-  auth,
-  requireAthlete,
-  asyncHandler(async (req: AuthRequest, res) => {
-    const { name } = req.body;
-    if (!name || typeof name !== 'string' || name.trim().length < 2) {
-      return res.status(400).json({ error: 'Race name required.' });
-    }
-
-    try {
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a running race database. Return facts about well-known races. If the race is not well-known or you are uncertain, make reasonable estimates based on the name. Always respond with valid JSON only.',
-          },
-          {
-            role: 'user',
-            content: `Race name: "${name.trim()}"\n\nReturn JSON:\n{\n  "distance_miles": number or null,\n  "distance_label": "e.g. 5K, 10K, Half Marathon, Marathon" or null,\n  "location": "City, State/Country" or null,\n  "is_major_race": boolean\n}`,
-          },
-        ],
-        response_format: { type: 'json_object' },
-        max_tokens: 150,
-      });
-
-      const text = completion.choices[0].message.content ?? '{}';
-      let result: any = {};
-      try { result = JSON.parse(text); } catch { /* return empty */ }
-
-      res.json({
-        distance_miles: result.distance_miles ?? null,
-        distance_label: result.distance_label ?? null,
-        location: result.location ?? null,
-        is_major_race: result.is_major_race ?? false,
-      });
-    } catch (err: any) {
-      console.error('[races/lookup] OpenAI error:', err?.message);
-      res.json({ distance_miles: null, distance_label: null, location: null, is_major_race: false });
-    }
   })
 );
 

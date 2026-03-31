@@ -290,8 +290,6 @@ export function RaceCalendar() {
   const [error, setError] = useState('');
   const [newRace, setNewRace] = useState<Race>(emptyRace());
   const [addingRace, setAddingRace] = useState(false);
-  const [lookingUp, setLookingUp] = useState(false);
-  const [autoFilled, setAutoFilled] = useState(false);
   const [loggingResult, setLoggingResult] = useState<number | null>(null);
   const [resultForm, setResultForm] = useState<ResultForm>(emptyResult());
   const [savingResult, setSavingResult] = useState(false);
@@ -318,29 +316,6 @@ export function RaceCalendar() {
       setShowBanner(true);
     } catch (e: any) { setError(e.message); }
     finally { setSaving(false); }
-  };
-
-  const lookupRace = async (name: string) => {
-    if (!name || name.trim().length < 3) return;
-    setLookingUp(true);
-    setAutoFilled(false);
-    try {
-      const result = await apiFetch('/api/athlete/races/lookup', {
-        method: 'POST',
-        body: JSON.stringify({ name }),
-      });
-      const updates: Partial<Race> = {};
-      if (result.distance_label && !newRace.distance) updates.distance = result.distance_label;
-      if (result.location && !newRace.location) updates.location = result.location;
-      if (Object.keys(updates).length > 0) {
-        setNewRace(r => ({ ...r, ...updates }));
-        setAutoFilled(true);
-      }
-    } catch {
-      // silently fail — lookup is best-effort
-    } finally {
-      setLookingUp(false);
-    }
   };
 
   const addRace = async () => {
@@ -606,21 +581,26 @@ export function RaceCalendar() {
                 <h4 className="text-sm font-semibold text-[var(--text)] mb-3">Add Race</h4>
                 <div className="flex flex-col gap-3">
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Input
-                        label="Race name"
-                        value={newRace.name}
-                        onChange={e => { setNewRace(r => ({ ...r, name: e.target.value })); setAutoFilled(false); }}
-                        onBlur={e => lookupRace(e.target.value)}
-                        placeholder="e.g. Boston Marathon"
-                      />
-                      {lookingUp && <p className="text-[10px] text-[var(--muted)] mt-1">Looking up race info...</p>}
-                      {autoFilled && !lookingUp && <p className="text-[10px] text-green-400 mt-1">✓ Auto-filled from race name</p>}
-                    </div>
+                    <Input label="Race name" value={newRace.name} onChange={e => setNewRace(r => ({ ...r, name: e.target.value }))} placeholder="e.g. Boston Marathon" />
                     <Input label="Date" type="date" value={newRace.date} onChange={e => setNewRace(r => ({ ...r, date: e.target.value }))} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <Input label="Distance" value={newRace.distance || ''} onChange={e => setNewRace(r => ({ ...r, distance: e.target.value }))} placeholder="e.g. Half Marathon, 5K" />
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">Distance</label>
+                      <select
+                        value={newRace.distance || ''}
+                        onChange={e => setNewRace(r => ({ ...r, distance: e.target.value }))}
+                        className="bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-btn px-[14px] py-[10px] text-sm text-[var(--color-text-primary)] outline-none transition-all duration-150 focus:border-[var(--color-accent)] focus:shadow-[0_0_0_3px_var(--color-accent-dim)]"
+                      >
+                        <option value="">Select distance</option>
+                        <option value="5K">5K</option>
+                        <option value="10K">10K</option>
+                        <option value="Half Marathon">Half Marathon</option>
+                        <option value="Marathon">Marathon</option>
+                        <option value="Ultra">Ultra</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
                     <Input label="Location (optional)" value={newRace.location || ''} onChange={e => setNewRace(r => ({ ...r, location: e.target.value }))} placeholder="e.g. Boston, MA" />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -629,7 +609,7 @@ export function RaceCalendar() {
                   </div>
                   <Toggle checked={newRace.is_goal_race} onChange={v => setNewRace(r => ({ ...r, is_goal_race: v }))} label="This is a goal race (full taper)" />
                   <div className="flex gap-2 justify-end">
-                    <Button variant="ghost" size="sm" onClick={() => { setAddingRace(false); setNewRace(emptyRace()); setAutoFilled(false); }}>Cancel</Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setAddingRace(false); setNewRace(emptyRace()); }}>Cancel</Button>
                     <Button size="sm" loading={saving} onClick={addRace}>Add Race</Button>
                   </div>
                 </div>

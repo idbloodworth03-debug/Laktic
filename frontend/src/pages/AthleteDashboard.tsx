@@ -92,6 +92,7 @@ export function AthleteDashboard() {
   const [readinessNotes, setReadinessNotes] = useState('');
   const [savingReadiness, setSavingReadiness] = useState(false);
   const [readinessSuccess, setReadinessSuccess] = useState(false);
+  const [readinessError, setReadinessError] = useState('');
 
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
@@ -129,17 +130,21 @@ export function AthleteDashboard() {
   const submitReadiness = async () => {
     if (readinessRating === null) return;
     setSavingReadiness(true);
+    setReadinessError('');
     try {
       // Map 1-10 overall feeling to mood/energy (1-5 scale)
       const factor = Math.ceil(readinessRating / 2);
+      const payload = {
+        mood: factor,
+        energy: factor,
+        notes: readinessNotes.trim() || null,
+      };
+      console.log('[readiness] sending payload:', JSON.stringify(payload));
       const data = await apiFetch('/api/recovery/readiness', {
         method: 'POST',
-        body: JSON.stringify({
-          mood: factor,
-          energy: factor,
-          notes: readinessNotes.trim() || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
+      console.log('[readiness] response:', JSON.stringify(data));
       // Guard: only update state if the response has the expected shape
       if (data && typeof data.score === 'number') {
         setReadiness({ ...data, logged: true });
@@ -150,9 +155,11 @@ export function AthleteDashboard() {
         setReadinessSuccess(false);
         setReadinessRating(null);
         setReadinessNotes('');
+        setReadinessError('');
       }, 1200);
-    } catch (err) {
-      console.error('[readiness submit]', err);
+    } catch (err: any) {
+      console.error('[readiness submit error]', err);
+      setReadinessError(err?.message || 'Failed to save readiness. Try again.');
     } finally {
       setSavingReadiness(false);
     }
@@ -401,7 +408,7 @@ export function AthleteDashboard() {
           <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-6 w-full max-w-sm shadow-xl">
             <div className="flex items-center justify-between mb-1">
               <h2 className="text-base font-semibold text-[var(--color-text-primary)]">How are you feeling today?</h2>
-              <button onClick={() => setShowReadinessModal(false)} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors">
+              <button onClick={() => { setShowReadinessModal(false); setReadinessError(''); }} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors">
                 <X size={16} />
               </button>
             </div>
@@ -431,9 +438,12 @@ export function AthleteDashboard() {
               rows={3}
             />
 
+            {readinessError && (
+              <p className="text-xs text-red-400 mb-3 text-center">{readinessError}</p>
+            )}
             <div className="flex gap-3">
               <button
-                onClick={() => setShowReadinessModal(false)}
+                onClick={() => { setShowReadinessModal(false); setReadinessError(''); }}
                 className="flex-1 py-2 text-sm text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
               >Cancel</button>
               <button
