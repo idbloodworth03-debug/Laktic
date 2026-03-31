@@ -544,6 +544,8 @@ export function SeasonPlan() {
   const [regenError, setRegenError] = useState<string | null>(null);
   const [milestones, setMilestones] = useState<any[]>([]);
   const [sharingMilestone, setSharingMilestone] = useState<string | null>(null);
+  const [completedDates, setCompletedDates] = useState<Set<string>>(new Set());
+  const [togglingDate, setTogglingDate] = useState<string | null>(null);
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
   const loadSeason = () => {
@@ -561,7 +563,13 @@ export function SeasonPlan() {
     }).catch(console.error).finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadSeason(); }, []);
+  const loadCompletions = () => {
+    apiFetch('/api/athlete/workouts/completions')
+      .then((dates: string[]) => setCompletedDates(new Set(dates)))
+      .catch(console.error);
+  };
+
+  useEffect(() => { loadSeason(); loadCompletions(); }, []);
 
   // Auto-refetch when the coaching agent updates the plan via tool calls
   useEffect(() => {
@@ -621,6 +629,23 @@ export function SeasonPlan() {
       setMilestones(prev => prev.filter(m => m.id !== id));
     } catch (e: any) { console.error(e); }
     finally { setSharingMilestone(null); }
+  };
+
+  const toggleComplete = async (date: string) => {
+    if (togglingDate === date) return;
+    setTogglingDate(date);
+    const isCompleted = completedDates.has(date);
+    try {
+      await apiFetch(`/api/athlete/workouts/${date}/complete`, {
+        method: isCompleted ? 'DELETE' : 'POST',
+      });
+      setCompletedDates(prev => {
+        const next = new Set(prev);
+        if (isCompleted) next.delete(date); else next.add(date);
+        return next;
+      });
+    } catch (e: any) { console.error(e); }
+    finally { setTogglingDate(null); }
   };
 
   const regenerate = async () => {
@@ -854,14 +879,14 @@ export function SeasonPlan() {
 
                   {/* Week progress bar */}
                   {(() => {
-                    const totalWorkouts = (week.workouts || []).filter((w: any) => w.distance_miles > 0 || w.title).length;
-                    const today = new Date().toISOString().slice(0, 10);
-                    const completedThisWeek = (week.workouts || []).filter((w: any) => w.date && w.date < today && (w.distance_miles > 0 || w.title)).length;
+                    const weekWorkouts = (week.workouts || []).filter((w: any) => !w.is_rest_day && (w.distance_miles > 0 || w.title));
+                    const totalWorkouts = weekWorkouts.length;
+                    const completedThisWeek = weekWorkouts.filter((w: any) => w.date && completedDates.has(w.date)).length;
                     if (totalWorkouts === 0) return null;
                     return (
                       <div className="mb-4 flex items-center gap-3">
                         <span className="text-xs shrink-0" style={{ color: 'var(--color-text-tertiary)' }}>
-                          {completedThisWeek} of {totalWorkouts} workouts this week
+                          {completedThisWeek}/{totalWorkouts} complete
                         </span>
                         <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--color-bg-tertiary)' }}>
                           <div className="h-full rounded-full" style={{ width: `${(completedThisWeek / totalWorkouts) * 100}%`, background: 'linear-gradient(to right, #00b87a, #00E5A0)' }} />
@@ -877,6 +902,9 @@ export function SeasonPlan() {
                       const key = `${week.week_number}-${i + 1}`;
                       const expanded = expandedWorkout === key;
                       const phase = week.phase || 'base';
+                      const isCompleted = wo?.date ? completedDates.has(wo.date) : false;
+                      const isToggling = wo?.date ? togglingDate === wo.date : false;
+                      const canComplete = !!wo && !wo.is_rest_day && !!wo.date;
 
                       return (
                         <div
@@ -885,38 +913,66 @@ export function SeasonPlan() {
                           className={`transition-all duration-150 ${expanded ? 'col-span-1 sm:col-span-2' : ''}`}
                           style={{
                             borderRadius: 12,
-                            border: `1px solid ${wo ? 'var(--color-border)' : 'var(--color-border)'}`,
-                            borderLeft: wo ? `4px solid ${PHASE_BORDER_COLOR[phase] ?? PHASE_BORDER_COLOR.base}` : `1px dashed var(--color-border)`,
-                            background: wo ? 'var(--color-bg-secondary)' : 'transparent',
+                            border: `1px solid ${wo ? (isCompleted ? 'rgba(0,229,160,0.25)' : 'var(--color-border)') : 'var(--color-border)'}`,
+                            borderLeft: wo ? `4px solid ${isCompleted ? 'var(--color-accent)' : (PHASE_BORDER_COLOR[phase] ?? PHASE_BORDER_COLOR.base)}` : `1px dashed var(--color-border)`,
+                            background: wo ? (isCompleted ? 'rgba(0,229,160,0.04)' : 'var(--color-bg-secondary)') : 'transparent',
                             padding: 16,
                             cursor: wo ? 'pointer' : 'default',
                             opacity: wo ? 1 : 0.35,
                           }}
                           onMouseEnter={e => {
-                            if (wo) (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-border-light)';
+                            if (wo) (e.currentTarget as HTMLElement).style.borderColor = isCompleted ? 'rgba(0,229,160,0.4)' : 'var(--color-border-light)';
                           }}
                           onMouseLeave={e => {
-                            if (wo) (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-border)';
+                            if (wo) (e.currentTarget as HTMLElement).style.borderColor = isCompleted ? 'rgba(0,229,160,0.25)' : 'var(--color-border)';
                           }}
                         >
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--color-text-tertiary)' }}>
                               {dayLabel}
                             </span>
-                            {wo?.date && (
-                              <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
-                                {new Date(wo.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                              </span>
-                            )}
+                            <div className="flex items-center gap-1.5">
+                              {wo?.date && (
+                                <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
+                                  {new Date(wo.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </span>
+                              )}
+                              {canComplete && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); toggleComplete(wo.date); }}
+                                  disabled={isToggling}
+                                  title={isCompleted ? 'Mark incomplete' : 'Mark complete'}
+                                  className="w-5 h-5 flex items-center justify-center rounded-full transition-all duration-150 shrink-0"
+                                  style={isCompleted ? {
+                                    background: 'var(--color-accent)',
+                                    color: '#000',
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                  } : {
+                                    background: 'transparent',
+                                    border: '1.5px solid var(--color-border-light)',
+                                    color: 'var(--color-text-tertiary)',
+                                    fontSize: 10,
+                                  }}
+                                >
+                                  {isToggling ? (
+                                    <span className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin block" />
+                                  ) : isCompleted ? '✓' : ''}
+                                </button>
+                              )}
+                            </div>
                           </div>
                           {wo ? (
                             <>
-                              <div className="font-medium text-sm mb-1.5 truncate" style={{ color: 'var(--color-text-primary)' }}>
+                              <div
+                                className="font-medium text-sm mb-1.5 truncate"
+                                style={{ color: isCompleted ? 'var(--color-text-secondary)' : 'var(--color-text-primary)', textDecoration: isCompleted ? 'line-through' : 'none', textDecorationColor: 'rgba(255,255,255,0.2)' }}
+                              >
                                 {wo.title}
                               </div>
                               <div className="flex gap-2 flex-wrap">
                                 {wo.distance_miles && (
-                                  <span className="font-mono text-xs font-medium" style={{ color: 'var(--color-accent)' }}>
+                                  <span className="font-mono text-xs font-medium" style={{ color: isCompleted ? 'var(--color-text-tertiary)' : 'var(--color-accent)' }}>
                                     {wo.distance_miles}mi
                                   </span>
                                 )}

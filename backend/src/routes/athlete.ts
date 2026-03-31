@@ -905,4 +905,70 @@ router.put(
   })
 );
 
+// GET /api/athlete/workouts/completions — fetch completion dates for current season
+router.get(
+  '/workouts/completions',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { data } = await supabase
+      .from('workout_completions')
+      .select('workout_date')
+      .eq('athlete_id', req.athlete.id)
+      .order('workout_date', { ascending: false })
+      .limit(200);
+    res.json((data || []).map((r: any) => r.workout_date));
+  })
+);
+
+// POST /api/athlete/workouts/:date/complete — mark a workout complete
+router.post(
+  '/workouts/:date/complete',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { date } = req.params;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Invalid date' });
+
+    const { data: season } = await supabase
+      .from('athlete_seasons')
+      .select('id')
+      .eq('athlete_id', req.athlete.id)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    const { error } = await supabase
+      .from('workout_completions')
+      .upsert({
+        athlete_id: req.athlete.id,
+        season_id: season?.id ?? null,
+        workout_date: date,
+      }, { onConflict: 'athlete_id,workout_date' });
+
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ ok: true });
+  })
+);
+
+// DELETE /api/athlete/workouts/:date/complete — unmark a workout
+router.delete(
+  '/workouts/:date/complete',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { date } = req.params;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Invalid date' });
+
+    await supabase
+      .from('workout_completions')
+      .delete()
+      .eq('athlete_id', req.athlete.id)
+      .eq('workout_date', date);
+
+    res.json({ ok: true });
+  })
+);
+
 export default router;

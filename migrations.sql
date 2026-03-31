@@ -2062,3 +2062,32 @@ ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS long_run_distance N
 -- ════════════════════════════════════════════════════════════════════
 -- END Migration 029
 -- ════════════════════════════════════════════════════════════════════
+
+
+-- ════════════════════════════════════════════════════════════════════
+-- Migration 030 — Workout Completions
+-- Tracks which plan workouts an athlete has marked as complete.
+-- ════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS public.workout_completions (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  athlete_id   UUID NOT NULL REFERENCES public.athlete_profiles(id) ON DELETE CASCADE,
+  season_id    UUID,
+  workout_date DATE NOT NULL,
+  completed_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(athlete_id, workout_date)
+);
+
+ALTER TABLE public.workout_completions ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "wc__athlete_own" ON public.workout_completions;
+  CREATE POLICY "wc__athlete_own" ON public.workout_completions
+    FOR ALL USING (
+      athlete_id = (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid())
+    );
+EXCEPTION WHEN others THEN RAISE NOTICE '[policy] wc__athlete_own: %', SQLERRM; END $$;
+
+-- ════════════════════════════════════════════════════════════════════
+-- END Migration 030
+-- ════════════════════════════════════════════════════════════════════
