@@ -391,6 +391,9 @@ router.post(
         .single(),
     ]);
 
+    console.log('[plan/generate] Generating plan for athlete:', athleteId);
+    console.log('[plan/generate] Athlete context loaded:', JSON.stringify(req.athlete).slice(0, 200));
+
     const generatePromise = generate({
       athleteProfile: req.athlete,
       bot,
@@ -402,12 +405,14 @@ router.post(
     });
 
     const savePlan = async (plan: any[], aiUsed: boolean): Promise<string> => {
+      console.log('[plan/generate] Plan generated successfully, weeks:', plan.length);
       const { data: season, error: seasonErr } = await supabase
         .from('athlete_seasons')
         .insert({ athlete_id: athleteId, bot_id: bot.id, race_calendar: [], season_plan: plan, ai_used: aiUsed, status: 'active' })
         .select('id')
         .single();
       if (seasonErr || !season) throw new Error(seasonErr?.message || 'Failed to save season');
+      console.log('[plan/generate] Plan saved to DB:', season.id);
       await supabase
         .from('plan_jobs')
         .update({ status: 'complete', result: { seasonId: season.id }, updated_at: new Date().toISOString() })

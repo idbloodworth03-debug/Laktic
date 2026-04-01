@@ -257,11 +257,25 @@ function Shell({
 export function MeetPaceSplash() {
   const nav = useNavigate();
   useEffect(() => {
-    // Mark onboarding complete and clear the confirmation gate
+    // Clear confirmation gate and mark onboarding complete
     localStorage.removeItem('laktic_awaiting_confirmation');
     apiFetch('/api/athlete/profile', { method: 'PATCH', body: JSON.stringify({ onboarding_completed: true }) }).catch(() => {});
-    const t = setTimeout(() => nav('/athlete/dashboard'), 3000);
-    return () => clearTimeout(t);
+
+    // Trigger plan generation — wait up to 25s then redirect regardless
+    const redirectTimer = setTimeout(() => nav('/athlete/dashboard', { replace: true }), 25000);
+
+    apiFetch('/api/athlete/season/generate', { method: 'POST' })
+      .then(() => {
+        clearTimeout(redirectTimer);
+        nav('/athlete/dashboard', { replace: true });
+      })
+      .catch(() => {
+        // Generation failed or season already exists — go to dashboard anyway
+        clearTimeout(redirectTimer);
+        nav('/athlete/dashboard', { replace: true });
+      });
+
+    return () => clearTimeout(redirectTimer);
   }, [nav]);
 
   return (
