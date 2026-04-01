@@ -7,13 +7,7 @@ import { useAuthStore } from '../store/authStore';
 
 interface ConfirmState {
   email: string;
-  role: 'coach' | 'athlete';
   name: string;
-  school_or_org?: string;
-  weekly_volume_miles?: number;
-  primary_events?: string[];
-  pr_mile?: string;
-  pr_5k?: string;
 }
 
 const RESEND_DELAY = 30;
@@ -25,57 +19,56 @@ export function EmailConfirmationPending() {
   const state = (location.state ?? {}) as Partial<ConfirmState>;
 
   const email = state.email ?? '';
-  const role = state.role ?? 'athlete';
 
   const [resendCountdown, setResendCountdown] = useState(RESEND_DELAY);
   const [resending, setResending] = useState(false);
   const [resendMsg, setResendMsg] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const advancedRef = useRef(false);
 
-  // Auto-poll: when user confirms in another tab, detect session and proceed
+  const advance = async (session: import('@supabase/supabase-js').Session) => {
+    if (advancedRef.current) return;
+    advancedRef.current = true;
+
+    if (pollRef.current) clearInterval(pollRef.current);
+
+    try {
+      const { role, profile } = await apiFetch('/api/me');
+      setAuth(session, role, profile);
+      nav('/athlete/dashboard', { replace: true });
+    } catch {
+      // Profile not yet created — create a minimal one then proceed
+      try {
+        const profile = await apiFetch('/api/athlete/profile', {
+          method: 'POST',
+          body: JSON.stringify({ name: state.name ?? 'Athlete' }),
+        });
+        setAuth(session, 'athlete', profile);
+        nav('/athlete/dashboard', { replace: true });
+      } catch {
+        nav('/athlete/dashboard', { replace: true });
+      }
+    }
+  };
+
+  // Primary: onAuthStateChange fires when email is confirmed in the same browser
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session) {
+          await advance(session);
+        }
+      }
+    );
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Fallback: poll getSession every 3s (catches same-browser confirmation)
   useEffect(() => {
     pollRef.current = setInterval(async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-
-      clearInterval(pollRef.current!);
-
-      // Profile may already exist (created in /auth/callback tab) or need creating here
-      try {
-        const { role: existingRole, profile } = await apiFetch('/api/me');
-        setAuth(session, existingRole, profile);
-        nav(existingRole === 'coach' ? '/coach/onboarding' : '/athlete/onboarding', { replace: true });
-        return;
-      } catch {
-        // No profile yet — create from state metadata
-      }
-
-      try {
-        let profile: any;
-        if (role === 'coach') {
-          profile = await apiFetch('/api/coach/profile', {
-            method: 'POST',
-            body: JSON.stringify({ name: state.name, school_or_org: state.school_or_org }),
-          });
-          setAuth(session, 'coach', profile);
-          nav('/coach/onboarding', { replace: true });
-        } else {
-          profile = await apiFetch('/api/athlete/profile', {
-            method: 'POST',
-            body: JSON.stringify({
-              name: state.name,
-              weekly_volume_miles: state.weekly_volume_miles,
-              primary_events: state.primary_events,
-              pr_mile: state.pr_mile,
-              pr_5k: state.pr_5k,
-            }),
-          });
-          setAuth(session, 'athlete', profile);
-          nav('/athlete/onboarding', { replace: true });
-        }
-      } catch {
-        // Failed silently — user will try again via /auth/callback from email link
-      }
+      await advance(session);
     }, 3000);
 
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
@@ -103,8 +96,6 @@ export function EmailConfirmationPending() {
       setResending(false);
     }
   };
-
-  const backPath = role === 'coach' ? '/coach/signup' : '/athlete/signup';
 
   return (
     <div
@@ -174,7 +165,7 @@ export function EmailConfirmationPending() {
               className="w-1.5 h-1.5 rounded-full animate-pulse shrink-0"
               style={{ background: 'var(--color-accent)' }}
             />
-            Waiting for confirmation…
+            Waiting for email confirmation… Once confirmed, this page will update automatically.
           </div>
 
           {/* Resend */}
@@ -203,7 +194,7 @@ export function EmailConfirmationPending() {
 
           {/* Back link */}
           <Link
-            to={backPath}
+            to="/athlete/signup"
             className="text-sm hover:underline block"
             style={{ color: 'var(--color-text-tertiary)' }}
           >

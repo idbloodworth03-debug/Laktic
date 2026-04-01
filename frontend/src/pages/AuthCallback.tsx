@@ -77,7 +77,7 @@ export function AuthCallback() {
         const { role: existingRole, profile } = await apiFetch('/api/me');
         console.log('[AuthCallback] existing profile found:', existingRole, profile?.id);
         setAuth(session, existingRole, profile);
-        setRedirectPath(existingRole === 'coach' ? '/coach/onboarding' : '/athlete/onboarding');
+        setRedirectPath(existingRole === 'coach' ? '/coach/onboarding' : '/athlete/dashboard');
         setStatus('success');
         return;
       } catch (meErr: any) {
@@ -131,7 +131,7 @@ export function AuthCallback() {
           });
           console.log('[AuthCallback] athlete profile created:', profile?.id);
           setAuth(session, 'athlete', profile);
-          setRedirectPath('/athlete/onboarding');
+          setRedirectPath('/athlete/dashboard');
           setStatus('success');
         }
 
