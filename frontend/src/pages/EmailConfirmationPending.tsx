@@ -32,23 +32,49 @@ export function EmailConfirmationPending() {
 
     if (pollRef.current) clearInterval(pollRef.current);
 
+    // Retrieve onboarding data saved by Onboarding.tsx before the email redirect
+    const savedStr = sessionStorage.getItem('laktic_onboarding');
+    const saved = savedStr ? JSON.parse(savedStr) : null;
+
+    let profile: any = null;
+
+    // Check if profile already exists (e.g. created by AuthCallback in another tab)
     try {
-      const { role, profile } = await apiFetch('/api/me');
-      setAuth(session, role, profile);
-      nav('/athlete/dashboard', { replace: true });
+      const me = await apiFetch('/api/me');
+      setAuth(session, me.role, me.profile);
+      profile = me.profile;
     } catch {
-      // Profile not yet created — create a minimal one then proceed
+      // Profile doesn't exist yet — create it now
       try {
-        const profile = await apiFetch('/api/athlete/profile', {
+        const name = saved?.name ?? state.name ?? 'Athlete';
+        profile = await apiFetch('/api/athlete/profile', {
           method: 'POST',
-          body: JSON.stringify({ name: state.name ?? 'Athlete' }),
+          body: JSON.stringify({ name }),
         });
         setAuth(session, 'athlete', profile);
-        nav('/athlete/dashboard', { replace: true });
       } catch {
-        nav('/athlete/dashboard', { replace: true });
+        // Profile creation failed (e.g. duplicate — AuthCallback won the race)
+        // Try /api/me one more time
+        try {
+          const me = await apiFetch('/api/me');
+          setAuth(session, me.role, me.profile);
+          profile = me.profile;
+        } catch {}
       }
     }
+
+    // Apply full onboarding data (patch) if we saved it and haven't applied it yet
+    if (saved?.patch && profile) {
+      try {
+        await apiFetch('/api/athlete/profile', {
+          method: 'PATCH',
+          body: JSON.stringify(saved.patch),
+        });
+      } catch {}
+      sessionStorage.removeItem('laktic_onboarding');
+    }
+
+    nav('/athlete/dashboard', { replace: true });
   };
 
   // Primary: onAuthStateChange fires when email is confirmed in the same browser

@@ -100,10 +100,10 @@ export function AthleteDashboard() {
     Promise.allSettled([
       apiFetch('/api/recovery/today').then(d => setReadiness(d)).catch(() => {}),
       apiFetch('/api/athlete/season').then(d => {
-        if (!d?.season) { nav('/athlete/browse', { replace: true }); return; }
+        if (!d?.season) return; // no plan yet — dashboard shows empty state
         const s = d.season;
         setSeason({ current_week: s.current_week ?? 1, total_weeks: s.total_weeks ?? 16, phase: s.phase ?? 'base', compliance_pct: s.compliance_pct ?? 0 });
-      }).catch(() => nav('/athlete/browse', { replace: true })),
+      }).catch(() => {}),
       apiFetch('/api/predictions').then(d => {
         const list: PredictionData[] = (d ?? []).map((p: any) => ({ distance: p.distance, predicted_time: p.predicted_time, trend: p.trend }));
         setPredictions(list);

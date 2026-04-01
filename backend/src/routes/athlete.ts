@@ -111,6 +111,16 @@ router.post(
   })
 );
 
+// GET /api/athlete/profile
+router.get(
+  '/profile',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    res.json(req.athlete);
+  })
+);
+
 // PATCH /api/athlete/profile
 router.patch(
   '/profile',

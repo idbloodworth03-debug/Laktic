@@ -113,23 +113,29 @@ export function AuthCallback() {
           setStatus('success');
 
         } else {
-          // Coerce numeric fields — Supabase user_metadata may deserialize as string
-          const weeklyMiles = meta.weekly_volume_miles != null
-            ? Number(meta.weekly_volume_miles) || undefined
-            : undefined;
-
-          const body: Record<string, any> = { name: meta.name ?? 'Athlete' };
-          if (weeklyMiles !== undefined) body.weekly_volume_miles = weeklyMiles;
-          if (meta.primary_events?.length) body.primary_events = meta.primary_events;
-          if (meta.pr_mile) body.pr_mile = meta.pr_mile;
-          if (meta.pr_5k) body.pr_5k = meta.pr_5k;
-
-          console.log('[AuthCallback] POST /api/athlete/profile body:', body);
+          console.log('[AuthCallback] POST /api/athlete/profile body:', { name: meta.name ?? 'Athlete' });
           profile = await apiFetch('/api/athlete/profile', {
             method: 'POST',
-            body: JSON.stringify(body),
+            body: JSON.stringify({ name: meta.name ?? 'Athlete' }),
           });
           console.log('[AuthCallback] athlete profile created:', profile?.id);
+
+          // Apply full onboarding data saved by Onboarding.tsx before the email redirect
+          const savedStr = sessionStorage.getItem('laktic_onboarding');
+          const saved = savedStr ? JSON.parse(savedStr) : null;
+          if (saved?.patch) {
+            try {
+              await apiFetch('/api/athlete/profile', {
+                method: 'PATCH',
+                body: JSON.stringify(saved.patch),
+              });
+              console.log('[AuthCallback] onboarding patch applied');
+            } catch (patchErr: any) {
+              console.warn('[AuthCallback] onboarding patch failed:', patchErr.message);
+            }
+            sessionStorage.removeItem('laktic_onboarding');
+          }
+
           setAuth(session, 'athlete', profile);
           setRedirectPath('/athlete/dashboard');
           setStatus('success');

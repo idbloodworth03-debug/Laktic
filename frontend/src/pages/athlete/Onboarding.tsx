@@ -341,22 +341,9 @@ export function Onboarding() {
       });
 
       if (signErr) { setError(signErr.message || 'Sign up failed. Please try again.'); return; }
-      if (authData.user && !authData.session) {
-        nav('/signup/confirm', { state: { email: data.email, name: data.name } });
-        return;
-      }
-      if (!authData.session) { setError('Sign up failed. Please try again.'); return; }
 
-      const profile = await apiFetch('/api/athlete/profile', {
-        method: 'POST',
-        body: JSON.stringify({ name: data.name, role: 'athlete' }),
-      });
-
-      setAuth(authData.session, 'athlete', profile);
-
-      // Build PATCH payload with all onboarding data
+      // Build full patch payload now — needed whether we have a session or not
       const patch: Record<string, unknown> = { onboarding_completed: true };
-
       if (data.age) patch.age = parseInt(data.age) || null;
       if (data.gender) patch.gender = data.gender;
       if (data.experience) patch.experience_level = data.experience;
@@ -383,6 +370,21 @@ export function Onboarding() {
       if (data.raceDate) patch.target_race_date = data.raceDate;
       if (data.goalTime) patch.goal_time = data.goalTime;
       if (data.biggestChallenges.length) patch.biggest_challenges = data.biggestChallenges;
+
+      if (authData.user && !authData.session) {
+        // Email confirmation required — save all data so EmailConfirmationPending can finish setup
+        sessionStorage.setItem('laktic_onboarding', JSON.stringify({ name: data.name, patch }));
+        nav('/signup/confirm', { state: { email: data.email, name: data.name } });
+        return;
+      }
+      if (!authData.session) { setError('Sign up failed. Please try again.'); return; }
+
+      const profile = await apiFetch('/api/athlete/profile', {
+        method: 'POST',
+        body: JSON.stringify({ name: data.name }),
+      });
+
+      setAuth(authData.session, 'athlete', profile);
 
       await apiFetch('/api/athlete/profile', { method: 'PATCH', body: JSON.stringify(patch) });
 
