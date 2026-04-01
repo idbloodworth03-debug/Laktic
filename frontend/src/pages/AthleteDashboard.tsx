@@ -258,7 +258,7 @@ export function AthleteDashboard() {
             {/* Quick links */}
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: 'Chat with Bot', href: '/athlete/chat', desc: 'Ask anything' },
+                { label: 'Chat with Pace', href: '/athlete/chat', desc: 'Your AI running coach' },
                 { label: 'Log Activity',  href: '/athlete/activities', desc: 'Record workout' },
                 { label: 'Race Calendar', href: '/athlete/races', desc: 'Events & goals' },
                 { label: 'Nutrition',     href: '/athlete/nutrition', desc: 'Track intake' },

@@ -251,7 +251,7 @@ interface ChatBubbleProps {
 export function ChatBubble({ role, content, planUpdated, label, avatarUrl, avatarName }: ChatBubbleProps) {
   const [imgErr, setImgErr] = React.useState(false);
   const isRight   = role === 'athlete';
-  const leftLabel = label ?? (role === 'coach' ? 'Your Coach' : 'Coach Bot');
+  const leftLabel = label ?? (role === 'coach' ? 'Your Coach' : 'Pace');
   const initial   = ((avatarName || leftLabel || 'A').charAt(0)).toUpperCase();
 
   const AvatarCircle = (

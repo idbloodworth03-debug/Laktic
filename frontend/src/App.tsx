@@ -58,7 +58,8 @@ function RequireAthlete({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
   const loc = useLocation();
   if (!role) return <Navigate to="/" state={{ from: loc }} replace />;
-  if (role !== 'athlete') return <Navigate to="/coach/dashboard" replace />;
+  // Coach role users are redirected to athlete dashboard in athlete-first mode
+  if (role !== 'athlete') return <Navigate to="/athlete/dashboard" replace />;
   return <>{children}</>;
 }
 
@@ -68,26 +69,26 @@ export default function App() {
       <Routes>
         {/* Public */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/register/coach" element={<CoachRegister />} />
+        {/* <Route path="/register/coach" element={<CoachRegister />} /> */}
         <Route path="/register/athlete" element={<AthleteRegister />} />
-        <Route path="/coach/signup" element={<CoachRegister />} />
+        {/* <Route path="/coach/signup" element={<CoachRegister />} /> */}
         <Route path="/athlete/signup" element={<AthleteRegister />} />
         <Route path="/login" element={<UnifiedLogin />} />
-        <Route path="/login/coach" element={<CoachLogin />} />
+        {/* <Route path="/login/coach" element={<CoachLogin />} /> */}
         <Route path="/login/athlete" element={<AthleteLogin />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/reset-password/new" element={<PasswordResetConfirm />} />
 
-        {/* Coach protected */}
-        <Route path="/coach/onboarding" element={<RequireCoach><CoachOnboarding /></RequireCoach>} />
-        <Route path="/coach/dashboard" element={<RequireCoach><CoachDashboard /></RequireCoach>} />
-        <Route path="/coach/bot/setup" element={<RequireCoach><BotSetupEdit /></RequireCoach>} />
-        <Route path="/coach/bot/edit" element={<RequireCoach><BotSetupEdit /></RequireCoach>} />
-        <Route path="/coach/knowledge" element={<RequireCoach><KnowledgeDocuments /></RequireCoach>} />
-        <Route path="/coach/progress" element={<RequireCoach><CoachTeamProgress /></RequireCoach>} />
-        <Route path="/coach/settings" element={<RequireCoach><CoachSettings /></RequireCoach>} />
-        <Route path="/coach/calendar" element={<RequireCoach><TeamCalendar /></RequireCoach>} />
+        {/* Coach protected — hidden for athlete-first pivot; backend preserved */}
+        {/* <Route path="/coach/onboarding" element={<RequireCoach><CoachOnboarding /></RequireCoach>} /> */}
+        {/* <Route path="/coach/dashboard" element={<RequireCoach><CoachDashboard /></RequireCoach>} /> */}
+        {/* <Route path="/coach/bot/setup" element={<RequireCoach><BotSetupEdit /></RequireCoach>} /> */}
+        {/* <Route path="/coach/bot/edit" element={<RequireCoach><BotSetupEdit /></RequireCoach>} /> */}
+        {/* <Route path="/coach/knowledge" element={<RequireCoach><KnowledgeDocuments /></RequireCoach>} /> */}
+        {/* <Route path="/coach/progress" element={<RequireCoach><CoachTeamProgress /></RequireCoach>} /> */}
+        {/* <Route path="/coach/settings" element={<RequireCoach><CoachSettings /></RequireCoach>} /> */}
+        {/* <Route path="/coach/calendar" element={<RequireCoach><TeamCalendar /></RequireCoach>} /> */}
 
         {/* Athlete protected */}
         <Route path="/athlete/dashboard" element={<RequireAthlete><AthleteDashboard /></RequireAthlete>} />
@@ -110,8 +111,8 @@ export default function App() {
         <Route path="/marketplace" element={<RequireAthlete><MarketplacePage /></RequireAthlete>} />
         <Route path="/marketplace/:coachId" element={<RequireAthlete><MarketplaceCoachProfile /></RequireAthlete>} />
 
-        {/* Coach — marketplace application */}
-        <Route path="/coach/marketplace/apply" element={<RequireCoach><MarketplaceApply /></RequireCoach>} />
+        {/* Coach — marketplace application — hidden */}
+        {/* <Route path="/coach/marketplace/apply" element={<RequireCoach><MarketplaceApply /></RequireCoach>} /> */}
 
         {/* Community — athletes and coaches */}
         <Route path="/community" element={<Community />} />
@@ -127,18 +128,18 @@ export default function App() {
         <Route path="/privacy" element={<Privacy />} />
 
         {/* Sprint 2 — AI Features */}
-        <Route path="/coach/readiness" element={<RequireCoach><TeamReadiness /></RequireCoach>} />
-        <Route path="/coach/recovery" element={<RequireCoach><TeamRecovery /></RequireCoach>} />
-        <Route path="/coach/gameplans" element={<RequireCoach><GameplanViewer /></RequireCoach>} />
+        {/* <Route path="/coach/readiness" element={<RequireCoach><TeamReadiness /></RequireCoach>} /> */}
+        {/* <Route path="/coach/recovery" element={<RequireCoach><TeamRecovery /></RequireCoach>} /> */}
+        {/* <Route path="/coach/gameplans" element={<RequireCoach><GameplanViewer /></RequireCoach>} /> */}
         <Route path="/athlete/gameplans" element={<RequireAthlete><AthleteGameplans /></RequireAthlete>} />
         <Route path="/athlete/gameplan/:id" element={<RequireAthlete><GameplanViewer /></RequireAthlete>} />
         <Route path="/athlete/debrief/:id" element={<RequireAthlete><RaceDebrief /></RequireAthlete>} />
 
         {/* Sprint 4 — Revenue Expansion */}
         <Route path="/marketplace/plans" element={<TrainingPlansMarketplace />} />
-        <Route path="/coach/plans" element={<RequireCoach><CoachPlanManage /></RequireCoach>} />
+        {/* <Route path="/coach/plans" element={<RequireCoach><CoachPlanManage /></RequireCoach>} /> */}
         <Route path="/athlete/analytics" element={<RequireAthlete><AnalyticsDashboard /></RequireAthlete>} />
-        <Route path="/coach/certification" element={<RequireCoach><CertificationPage /></RequireCoach>} />
+        {/* <Route path="/coach/certification" element={<RequireCoach><CertificationPage /></RequireCoach>} /> */}
         <Route path="/athlete/recruiting" element={<RequireAthlete><RecruitingSettings /></RequireAthlete>} />
         <Route path="/recruiting/signup" element={<RecruiterSignup />} />
         <Route path="/recruiting" element={<RecruiterDashboard />} />

@@ -206,7 +206,7 @@ function RoleSelectorModal({ onClose }: { onClose: () => void }) {
 
 // ── Navbar ────────────────────────────────────────────────────────────────────
 
-function Navbar({ onOpenModal }: { onOpenModal: () => void }) {
+function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 50);
@@ -230,7 +230,7 @@ function Navbar({ onOpenModal }: { onOpenModal: () => void }) {
       </Link>
 
       <div className="lk-nav-links" style={{ display: 'flex', gap: '36px', position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
-        {[{ label: 'For Coaches', href: '#coaches' }, { label: 'For Athletes', href: '#athletes' }].map(l => (
+        {[{ label: 'Features', href: '#athletes' }, { label: 'How It Works', href: '#how-it-works' }].map(l => (
           <a key={l.label} href={l.href}
             style={{ fontSize: '14px', color: 'rgba(255,255,255,0.55)', textDecoration: 'none', fontWeight: 500, transition: 'color 0.2s' }}
             onMouseEnter={e => (e.currentTarget.style.color = 'white')}
@@ -245,11 +245,11 @@ function Navbar({ onOpenModal }: { onOpenModal: () => void }) {
           onMouseEnter={e => { e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.28)'; }}
           onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; }}
         >Sign In</Link>
-        <button onClick={onOpenModal}
-          style={{ fontSize: '14px', fontWeight: 600, color: '#000', background: '#00E5A0', padding: '7px 16px', borderRadius: '8px', transition: 'background 0.2s', border: 'none', cursor: 'pointer' }}
+        <Link to="/athlete/signup"
+          style={{ fontSize: '14px', fontWeight: 600, color: '#000', background: '#00E5A0', padding: '7px 16px', borderRadius: '8px', transition: 'background 0.2s', border: 'none', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}
           onMouseEnter={e => (e.currentTarget.style.background = '#00cc8f')}
           onMouseLeave={e => (e.currentTarget.style.background = '#00E5A0')}
-        >Get Started Free</button>
+        >Start Training Free</Link>
       </div>
     </nav>
   );
@@ -257,7 +257,7 @@ function Navbar({ onOpenModal }: { onOpenModal: () => void }) {
 
 // ── Hero ──────────────────────────────────────────────────────────────────────
 
-function Hero({ onOpenModal }: { onOpenModal: () => void }) {
+function Hero() {
   return (
     <section id="coaches" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', position: 'relative', overflow: 'hidden', paddingTop: '60px' }}>
       {/* Grid bg */}
@@ -280,20 +280,20 @@ function Hero({ onOpenModal }: { onOpenModal: () => void }) {
           </div>
 
           <h1 style={{ fontSize: 'clamp(38px, 5.2vw, 64px)', fontFamily: "'DM Sans', sans-serif", fontWeight: 700, lineHeight: 1.06, color: 'white', marginBottom: '22px', letterSpacing: '-0.025em' }}>
-            Your athletes deserve<br />
-            <span style={{ color: '#00E5A0' }}>a coach that never sleeps</span>
+            Train Smarter.<br />
+            <span style={{ color: '#00E5A0' }}>Race Faster.</span>
           </h1>
 
           <p style={{ fontSize: 'clamp(16px, 1.6vw, 20px)', color: 'rgba(255,255,255,0.52)', lineHeight: 1.68, marginBottom: '36px', maxWidth: '560px' }}>
-            Laktic gives every athlete on your roster a personalized training plan, real-time coaching, and performance insights — automatically. You set the philosophy. Laktic does the rest.
+            Your AI running coach, powered by Laktic. Personalized plans, real-time adjustments, race day strategy — meet Pace.
           </p>
 
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <button onClick={onOpenModal}
-              style={{ display: 'inline-block', padding: '13px 28px', background: '#00E5A0', color: '#000', fontWeight: 700, fontSize: '15px', borderRadius: '10px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+            <Link to="/athlete/signup"
+              style={{ display: 'inline-block', padding: '13px 28px', background: '#00E5A0', color: '#000', fontWeight: 700, fontSize: '15px', borderRadius: '10px', textDecoration: 'none', transition: 'all 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.background = '#00cc8f'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,229,160,0.3)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = '#00E5A0'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
-            >Get Started Free</button>
+            >Start Training Free</Link>
             <a href="#how-it-works"
               style={{ display: 'inline-block', padding: '13px 24px', background: 'transparent', color: 'rgba(255,255,255,0.75)', fontWeight: 600, fontSize: '15px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.16)', textDecoration: 'none', transition: 'all 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.36)'; e.currentTarget.style.color = 'white'; }}
@@ -540,24 +540,24 @@ function UrgencySection() {
 
 // ── Final CTA ─────────────────────────────────────────────────────────────────
 
-function FinalCTA({ onOpenModal }: { onOpenModal: () => void }) {
+function FinalCTA() {
   const fade = useFadeIn();
   return (
     <section style={{ padding: 'clamp(72px, 9vw, 120px) clamp(16px, 4vw, 40px)', background: '#00E5A0' }}>
       <div style={{ maxWidth: '680px', margin: '0 auto', textAlign: 'center' }}>
         <div ref={fade.ref} style={fade.style}>
           <h2 style={{ fontSize: 'clamp(30px, 4.5vw, 56px)', fontFamily: "'DM Sans', sans-serif", fontWeight: 800, color: '#000', marginBottom: '14px', letterSpacing: '-0.03em', lineHeight: 1.08 }}>
-            Your athletes are waiting<br />for their best season.
+            Your best season<br />starts today.
           </h2>
           <p style={{ fontSize: '18px', color: 'rgba(0,60,44,0.75)', marginBottom: '34px', lineHeight: 1.55 }}>
-            Start your free 14-day trial. No credit card required.
+            Start your free trial. No credit card required.
           </p>
-          <button onClick={onOpenModal}
-            style={{ display: 'inline-block', padding: '15px 36px', background: '#000', color: '#00E5A0', fontWeight: 700, fontSize: '16px', borderRadius: '10px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+          <Link to="/athlete/signup"
+            style={{ display: 'inline-block', padding: '15px 36px', background: '#000', color: '#00E5A0', fontWeight: 700, fontSize: '16px', borderRadius: '10px', border: 'none', cursor: 'pointer', transition: 'all 0.2s', textDecoration: 'none' }}
             onMouseEnter={e => { e.currentTarget.style.background = '#111'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,0,0,0.3)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = '#000'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
-          >Get Started Free</button>
-          <p style={{ marginTop: '16px', fontSize: '13px', color: 'rgba(0,60,44,0.55)' }}>Takes 30 minutes to set up. Cancel anytime.</p>
+          >Start Training Free</Link>
+          <p style={{ marginTop: '16px', fontSize: '13px', color: 'rgba(0,60,44,0.55)' }}>Free to start. Cancel anytime.</p>
         </div>
       </div>
     </section>
@@ -601,18 +601,13 @@ function Footer() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function LandingPage() {
-  const [modalOpen, setModalOpen] = useState(false);
-  const openModal = () => setModalOpen(true);
-  const closeModal = () => setModalOpen(false);
-
   useEffect(() => {
-    document.title = "Laktic — Your athletes deserve a coach that never sleeps";
-    return () => { document.title = "Laktic — Train Smarter"; };
+    document.title = "Laktic — Train Smarter. Race Faster.";
+    return () => { document.title = "Laktic"; };
   }, []);
 
   return (
     <div style={{ background: '#0a0a0a', minHeight: '100vh', fontFamily: "'DM Sans', sans-serif", color: 'white' }}>
-      {modalOpen && <RoleSelectorModal onClose={closeModal} />}
       <style>{`
         @keyframes lk-float {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
@@ -635,15 +630,13 @@ export function LandingPage() {
           .lk-stats-grid > div:nth-child(4) { border-top: 1px solid rgba(255,255,255,0.07) !important; }
         }
       `}</style>
-      <Navbar onOpenModal={openModal} />
-      <Hero onOpenModal={openModal} />
+      <Navbar />
+      <Hero />
       <SocialProof />
-      <PainSection />
-      <SolutionSection />
-      <HowItWorksSection />
       <AthleteSection />
+      <HowItWorksSection />
       <UrgencySection />
-      <FinalCTA onOpenModal={openModal} />
+      <FinalCTA />
       <Footer />
     </div>
   );

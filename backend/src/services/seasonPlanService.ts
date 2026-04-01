@@ -3,10 +3,13 @@ import { env } from '../config/env';
 import { getFormattedKnowledge } from './knowledgeService';
 import { getWeekStartDate, addDays } from '../utils/dateUtils';
 import { RUNNING_EXPERT_BASELINE } from '../utils/runningExpertBaseline';
+import { PACE_PERSONA } from '../utils/pacePersona';
 
 const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
-const SYSTEM_PROMPT = `You are an expert distance running coach AI. Generate a complete multi-week periodized training season for this athlete.
+const SYSTEM_PROMPT = `${PACE_PERSONA}
+
+You are generating a complete multi-week periodized training season for this athlete.
 
 Rules:
 1. Use the coach's philosophy and uploaded knowledge to guide every decision.

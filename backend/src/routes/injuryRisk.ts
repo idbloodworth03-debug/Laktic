@@ -5,6 +5,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 import OpenAI from 'openai';
 import { env } from '../config/env';
 import { Resend } from 'resend';
+import { PACE_PERSONA } from '../utils/pacePersona';
 
 const router = Router();
 const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
@@ -133,7 +134,7 @@ async function computeInjuryRiskForAthlete(athleteId: string): Promise<{
       messages: [
         {
           role: 'system',
-          content: 'You are a sports medicine AI. Given injury risk factors as JSON, write exactly 2 sentences in plain English explaining the athlete\'s injury risk. Be specific about which factors are most concerning. Do not use markdown.'
+          content: `${PACE_PERSONA}\n\nGiven injury risk factors as JSON, write exactly 2 sentences in plain English explaining the athlete's injury risk. Sound like Pace — direct and specific. Do not use markdown.`
         },
         {
           role: 'user',

@@ -126,8 +126,8 @@ function BotChat() {
       >
         <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
           {activeTeam
-            ? <>Chatting with <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{activeTeam}</span>'s bot</>
-            : 'Chat with your coach bot'}
+            ? <>Training with <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{activeTeam}</span></>
+            : 'Pace is ready to coach'}
         </p>
         <div className="flex items-center gap-2">
           {clearConfirm ? (
@@ -159,7 +159,7 @@ function BotChat() {
               className="text-sm mb-5"
               style={{ color: 'var(--color-text-secondary)' }}
             >
-              Send a message to your coach bot. Ask about training, request modifications, or discuss your upcoming races.
+              Ask Pace anything about your training. Get personalized advice, request plan modifications, or talk through race strategy.
             </p>
             <div className="flex flex-wrap gap-2 justify-center">
               {PROMPTS.map(s => (
@@ -207,7 +207,7 @@ function BotChat() {
         onChange={setInput}
         onSend={send}
         sending={sending}
-        placeholder="Message your coach bot… (Enter to send, Shift+Enter for new line)"
+        placeholder="Ask Pace anything about your training… (Enter to send, Shift+Enter for new line)"
         hint={
           <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
             The bot can adjust workouts within the next 14 days. For larger changes, use{' '}
@@ -334,7 +334,6 @@ function DirectChat() {
 export function Chat() {
   const { profile, clearAuth } = useAuthStore();
   const nav = useNavigate();
-  const [tab, setTab] = useState<'bot' | 'coach'>('bot');
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
   return (
@@ -343,37 +342,16 @@ export function Chat() {
         className="flex flex-col"
         style={{ minHeight: '100vh', background: 'var(--color-bg-primary)' }}
       >
-        {/* Tab bar */}
+        {/* Page header */}
         <div
-          className="px-6 py-3 flex items-center justify-center shrink-0"
+          className="px-6 py-4 shrink-0"
           style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)' }}
         >
-          <div
-            className="flex items-center gap-0.5 p-0.5 rounded-lg"
-            style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}
-          >
-            {(['bot', 'coach'] as const).map(t => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className="px-5 py-1.5 rounded-md text-sm font-medium transition-all duration-150"
-                style={tab === t ? {
-                  background: 'var(--color-bg-hover)',
-                  color: 'var(--color-text-primary)',
-                  border: '1px solid var(--color-border-light)',
-                } : {
-                  background: 'transparent',
-                  color: 'var(--color-text-secondary)',
-                  border: '1px solid transparent',
-                }}
-              >
-                {t === 'bot' ? 'Coach Bot' : 'My Coach'}
-              </button>
-            ))}
-          </div>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Pace</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>Your AI running coach</p>
         </div>
 
-        {tab === 'bot' ? <BotChat /> : <DirectChat />}
+        <BotChat />
       </div>
     </AppLayout>
   );

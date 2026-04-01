@@ -7,6 +7,7 @@ import { z } from 'zod';
 import OpenAI from 'openai';
 import { env } from '../config/env';
 import { notifyPlanReady } from '../services/notificationService';
+import { PACE_PERSONA } from '../utils/pacePersona';
 
 const router = Router();
 const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
@@ -181,7 +182,7 @@ async function generateGameplanForAthlete(
     weather_structured: weatherStructured,
   };
 
-  const gameplanSystemPrompt = `${personalityBlock}You are an elite running coach AI. Generate a detailed, highly personalized race gameplan.
+  const gameplanSystemPrompt = `${PACE_PERSONA}\n\n${personalityBlock}Generate a detailed, highly personalized race gameplan.
 
 NUTRITION RULES — Be specific with real foods. Never say "carbohydrates and protein" or "energy snack" or "stay hydrated":
 - Name actual foods: "Bagel with peanut butter and a banana", "Half a Clif bar or 3 Medjool dates", "8oz water with a pinch of salt and squeeze of lemon"

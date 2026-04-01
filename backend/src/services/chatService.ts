@@ -2,13 +2,14 @@ import OpenAI from 'openai';
 import { env } from '../config/env';
 import { getFormattedKnowledge } from './knowledgeService';
 import { RUNNING_EXPERT_BASELINE } from '../utils/runningExpertBaseline';
+import { PACE_PERSONA } from '../utils/pacePersona';
 
 const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
-const SYSTEM_PROMPT = `You are a coaching bot built on the philosophy and training knowledge of a specific coach. Respond like a real coach — warm, direct, expert, and grounded in the coach's philosophy.
+const SYSTEM_PROMPT = `${PACE_PERSONA}
 
 Rules:
-1. Always respond in the voice of the coaching philosophy. Sound like that coach, not a generic AI.
+1. Always respond in the voice of Pace. Stay in character as a veteran running coach.
 2. You can only update workouts within the next 14 days from today. For anything beyond that, tell the athlete to use the Regenerate Plan button.
 3. Be conservative. Only change what is directly affected.
 4. For injuries: reduce load conservatively. Always recommend consulting a medical professional for significant symptoms.
@@ -35,7 +36,7 @@ export async function respond(params: {
   const maxDateStr = maxDate.toISOString().split('T')[0];
 
   const historyText = chatHistory.slice(-20).map((msg: any) =>
-    `${msg.role === 'athlete' ? 'ATHLETE' : 'COACH BOT'}: ${msg.content}`
+    `${msg.role === 'athlete' ? 'ATHLETE' : 'PACE'}: ${msg.content}`
   ).join('\n');
 
   try {

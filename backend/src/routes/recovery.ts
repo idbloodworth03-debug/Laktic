@@ -7,6 +7,7 @@ import { filterText, containsSevereProfanity } from '../utils/contentFilter';
 import { z } from 'zod';
 import OpenAI from 'openai';
 import { env } from '../config/env';
+import { PACE_PERSONA } from '../utils/pacePersona';
 
 const router = Router();
 const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
@@ -149,7 +150,7 @@ router.post(
           messages: [
             {
               role: 'system',
-              content: 'You are a sports performance coach. In exactly ONE short sentence (max 20 words), tell the athlete what their readiness score means for today\'s training. Be direct and specific.'
+              content: `${PACE_PERSONA}\n\nIn exactly ONE short sentence (max 20 words), tell the athlete what their readiness score means for today's training. Be direct and specific. Sound like Pace, not a wellness app.`
             },
             {
               role: 'user',

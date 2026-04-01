@@ -5,6 +5,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 import OpenAI from 'openai';
 import { env } from '../config/env';
 import { notifyPlanReady } from '../services/notificationService';
+import { PACE_PERSONA } from '../utils/pacePersona';
 
 const router = Router();
 const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
@@ -142,7 +143,7 @@ async function computePredictionsForAthlete(athleteId: string): Promise<Array<{
     messages: [
       {
         role: 'system',
-        content: `You are a performance analytics AI for runners. Based on the athlete data, predict race times. Use the Riegel baseline as a starting point and adjust based on training trends and race history. Respond ONLY with valid JSON:
+        content: `${PACE_PERSONA}\n\nYou are generating performance predictions. Based on the athlete data, predict race times. Use the Riegel baseline as a starting point and adjust based on training trends and race history. Respond ONLY with valid JSON:
 {
   "5K": { "predicted_time_seconds": 0, "confidence": "low|medium|high", "trend": "improving|plateau|declining", "explanation": "..." },
   "10K": { "predicted_time_seconds": 0, "confidence": "low|medium|high", "trend": "improving|plateau|declining", "explanation": "..." },

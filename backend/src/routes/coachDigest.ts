@@ -5,6 +5,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 import OpenAI from 'openai';
 import { env } from '../config/env';
 import { Resend } from 'resend';
+import { PACE_PERSONA } from '../utils/pacePersona';
 
 const router = Router();
 const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
@@ -163,8 +164,8 @@ async function generateDigestText(
       messages: [
         {
           role: 'system',
-          content: `${personalityBlock}You are an AI coaching assistant writing a concise weekly digest email for a running coach.
-Write in clear, professional prose. Be direct. Highlight standouts (positive and concerning).
+          content: `${PACE_PERSONA}\n\n${personalityBlock}Write a concise weekly training digest.
+Be direct. Highlight standouts (positive and concerning). Sound like Pace, not a generic assistant.
 Structure: 1) One-line summary of the week, 2) Athlete highlights (any risks/achievements), 3) Action items.
 Keep it under 300 words. No markdown headers — use plain paragraphs.`
         },

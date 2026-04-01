@@ -6,6 +6,7 @@ import { validate } from '../middleware/validate';
 import { bodyMetricsSchema, fuelLogEntrySchema, fuelCalculatorSchema } from '../schemas';
 import OpenAI from 'openai';
 import { env } from '../config/env';
+import { PACE_PERSONA } from '../utils/pacePersona';
 
 const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
@@ -213,7 +214,7 @@ router.get(
       messages: [
         {
           role: 'system',
-          content: 'You are an elite running nutritionist. Give precise, specific nutrition advice for a runner\'s next workout. Name real foods with exact amounts. Never say "eat carbs" — say "2 slices of sourdough with honey". Respond only with valid JSON matching the structure provided.',
+          content: `${PACE_PERSONA}\n\nYou are giving nutrition advice for a runner's next workout. Be precise and specific — name real foods with exact amounts. Never say "eat carbs" — say "2 slices of sourdough with honey". Respond only with valid JSON matching the structure provided.`,
         },
         {
           role: 'user',

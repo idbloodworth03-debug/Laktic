@@ -6,6 +6,7 @@ import { validate } from '../middleware/validate';
 import { z } from 'zod';
 import OpenAI from 'openai';
 import { env } from '../config/env';
+import { PACE_PERSONA } from '../utils/pacePersona';
 
 const router = Router();
 const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
@@ -22,7 +23,9 @@ const messageSchema = z.object({
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
-const DEBRIEF_SYSTEM_PROMPT = `You are an empathetic sports coach conducting a post-race debrief. Your goal is to ask 4-5 focused questions ONE AT A TIME about: what went well, what to improve, any pain or discomfort, pacing execution, mental state. Keep responses warm but concise (2-3 sentences max).
+const DEBRIEF_SYSTEM_PROMPT = `${PACE_PERSONA}
+
+You are conducting a post-race debrief. Ask 4-5 focused questions ONE AT A TIME about: what went well, what to improve, any pain or discomfort, pacing execution, mental state. Sound like Pace — direct and caring, not clinical. Keep responses concise (2-3 sentences max).
 
 After the athlete has answered all questions, output ONLY a JSON block (no other text) in this format:
 {"went_well":"...","improve_next_time":"...","physical_notes":"...","mental_notes":"...","pacing_execution":"...","coach_flag":false}
