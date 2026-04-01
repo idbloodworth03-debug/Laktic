@@ -85,12 +85,30 @@ export function AthleteSettings() {
   };
 
   async function connectStrava() {
-    try {
-      const data = await apiFetch('/api/strava/auth');
-      window.location.href = data.url;
-    } catch (err: any) {
-      setAlert({ type: 'error', message: err.message || 'Failed to start Strava connection' });
+    let { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      const { data: refreshData } = await supabase.auth.refreshSession();
+      session = refreshData.session;
     }
+    if (!session) {
+      setAlert({ type: 'error', message: 'Please sign in again before connecting Strava.' });
+      return;
+    }
+    // profile is always in store on protected route; fall back to /api/me if needed
+    let athleteId = profile?.id;
+    if (!athleteId) {
+      try {
+        const me = await apiFetch('/api/me');
+        athleteId = me.profile?.id;
+      } catch {}
+    }
+    if (!athleteId) {
+      setAlert({ type: 'error', message: 'Could not load your profile. Please refresh the page.' });
+      return;
+    }
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    // Full browser redirect — backend returns 302 to Strava, not JSON
+    window.location.href = `${apiUrl}/api/strava/auth?athleteId=${athleteId}&return_to=settings`;
   }
 
   async function triggerSync() {

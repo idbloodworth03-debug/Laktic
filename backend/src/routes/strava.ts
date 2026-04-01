@@ -19,6 +19,7 @@ router.get(
       return res.redirect(`${env.FRONTEND_URL}/signup/strava?strava_error=1`);
     }
     const athleteId = req.query.athleteId as string | undefined;
+    const returnTo = req.query.return_to as string | undefined;
     if (!athleteId) {
       return res.redirect(`${env.FRONTEND_URL}/signup/strava?strava_error=1`);
     }
@@ -31,7 +32,7 @@ router.get(
     if (!athlete) {
       return res.redirect(`${env.FRONTEND_URL}/signup/strava?strava_error=1`);
     }
-    const url = strava.getAuthUrl(athleteId);
+    const url = strava.getAuthUrl(athleteId, returnTo);
     res.redirect(url);
   })
 );
@@ -44,9 +45,14 @@ router.get(
     if (!parsed.success) {
       return res.status(400).json({ error: 'Missing code or state parameter' });
     }
-    const { code, state: athleteId } = parsed.data;
+    const { code } = parsed.data;
+    // State is either plain athleteId UUID or "${athleteId}|${returnTo}"
+    const rawState = parsed.data.state;
+    const pipeIdx = rawState.indexOf('|');
+    const athleteId = pipeIdx >= 0 ? rawState.slice(0, pipeIdx) : rawState;
+    const returnTo = pipeIdx >= 0 ? rawState.slice(pipeIdx + 1) : null;
 
-    console.log('[strava/callback] received code:', code?.slice(0, 8), 'state:', athleteId);
+    console.log('[strava/callback] received code:', code?.slice(0, 8), 'state:', athleteId, 'returnTo:', returnTo);
 
     const tokenData = await strava.exchangeCode(code);
 
@@ -72,16 +78,20 @@ router.get(
       return res.redirect(`${env.FRONTEND_URL}/signup/strava?strava_error=1`);
     }
 
-    // Redirect back to onboarding if not yet complete, otherwise dashboard
-    const { data: athleteProfile } = await supabase
-      .from('athlete_profiles')
-      .select('onboarding_completed')
-      .eq('id', athleteId)
-      .single();
-
-    const redirectUrl = athleteProfile?.onboarding_completed
-      ? `${env.FRONTEND_URL}/athlete/dashboard`
-      : `${env.FRONTEND_URL}/signup/meet-pace`;
+    // Determine redirect: explicit returnTo wins, then onboarding state
+    let redirectUrl: string;
+    if (returnTo === 'settings') {
+      redirectUrl = `${env.FRONTEND_URL}/athlete/settings?strava=connected`;
+    } else {
+      const { data: athleteProfile } = await supabase
+        .from('athlete_profiles')
+        .select('onboarding_completed')
+        .eq('id', athleteId)
+        .single();
+      redirectUrl = athleteProfile?.onboarding_completed
+        ? `${env.FRONTEND_URL}/athlete/dashboard`
+        : `${env.FRONTEND_URL}/signup/meet-pace`;
+    }
     res.redirect(redirectUrl);
   })
 );

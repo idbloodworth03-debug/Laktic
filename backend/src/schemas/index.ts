@@ -135,7 +135,7 @@ export const memberStatusSchema = z.object({
 
 export const stravaCallbackSchema = z.object({
   code: z.string().min(1),
-  state: z.string().uuid(),
+  state: z.string().min(1), // "${athleteId}" or "${athleteId}|${returnTo}"
   scope: z.string().optional()
 });
 
