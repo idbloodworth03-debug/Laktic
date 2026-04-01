@@ -91,12 +91,11 @@ export function EmailConfirmationPending() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fallback: poll every 2s — check email_confirmed_at for cross-device confirmation
+  // Fallback: poll every 2s — force refresh from server so cross-device confirmation is detected
   useEffect(() => {
     pollRef.current = setInterval(async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.refreshSession();
       if (!session) return;
-      // Only advance if email is actually confirmed
       if (session.user.email_confirmed_at) {
         await advance(session);
       }
@@ -132,7 +131,9 @@ export function EmailConfirmationPending() {
     setChecking(true);
     setConfirmError('');
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // refreshSession() forces a round-trip to Supabase — picks up cross-device confirmation
+      const { data: { session }, error } = await supabase.auth.refreshSession();
+      if (error) throw error;
       if (session?.user?.email_confirmed_at) {
         await advance(session);
       } else {

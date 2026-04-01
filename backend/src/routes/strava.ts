@@ -35,7 +35,8 @@ router.get(
 
     const tokenData = await strava.exchangeCode(code);
 
-    // Upsert the connection (one per athlete)
+    // Upsert on strava_athlete_id — if this Strava account was previously linked to
+    // a different athlete_id (e.g. test account reuse), overwrite with the current athlete.
     const { error } = await supabase
       .from('strava_connections')
       .upsert(
@@ -48,11 +49,12 @@ router.get(
           scope: 'read,activity:read_all',
           is_active: true
         },
-        { onConflict: 'athlete_id' }
+        { onConflict: 'strava_athlete_id' }
       );
 
     if (error) {
-      return res.status(400).json({ error: error.message });
+      // Redirect back to Strava connect step with error flag rather than showing raw JSON
+      return res.redirect(`${env.FRONTEND_URL}/signup/strava?strava_error=1`);
     }
 
     // Redirect back to onboarding if not yet complete, otherwise dashboard

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { apiFetch } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
@@ -304,8 +304,11 @@ export function MeetPaceSplash() {
 
 export function StravaConnectStep() {
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(
+    searchParams.get('strava_error') ? 'Strava connection failed. Please try again or skip for now.' : ''
+  );
 
   const connectStrava = async () => {
     setLoading(true);
