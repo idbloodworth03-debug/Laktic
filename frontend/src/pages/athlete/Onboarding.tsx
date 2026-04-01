@@ -257,7 +257,8 @@ function Shell({
 export function MeetPaceSplash() {
   const nav = useNavigate();
   useEffect(() => {
-    // Mark onboarding complete
+    // Mark onboarding complete and clear the confirmation gate
+    localStorage.removeItem('laktic_awaiting_confirmation');
     apiFetch('/api/athlete/profile', { method: 'PATCH', body: JSON.stringify({ onboarding_completed: true }) }).catch(() => {});
     const t = setTimeout(() => nav('/athlete/dashboard'), 3000);
     return () => clearTimeout(t);
@@ -296,6 +297,13 @@ export function StravaConnectStep() {
     setLoading(true);
     setError('');
     try {
+      // Verify session exists before calling backend — Strava route requires auth
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setError('Please sign in again before connecting Strava.');
+        setLoading(false);
+        return;
+      }
       const { apiFetch } = await import('../../lib/api');
       const data = await apiFetch('/api/strava/auth');
       // Flag so AthleteDashboard knows to show MeetPace after OAuth redirect
@@ -525,6 +533,11 @@ export function Onboarding() {
         // Email confirmation required — save all data so EmailConfirmationPending can finish setup
         sessionStorage.setItem('laktic_onboarding', JSON.stringify({ name: data.name, patch }));
       }
+
+      // Set a persistent flag so RequireAthlete blocks dashboard access until
+      // the user reaches MeetPaceSplash (cleared there). Works even when Supabase
+      // returns a session immediately (email confirmation disabled in dashboard).
+      localStorage.setItem('laktic_awaiting_confirmation', 'true');
 
       // Always redirect to the email confirmation screen.
       // EmailConfirmationPending will auto-advance immediately if email is already confirmed.

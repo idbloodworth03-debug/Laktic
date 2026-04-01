@@ -88,7 +88,10 @@ function RequireAthlete({ children }: { children: React.ReactNode }) {
   if (!role) return <Navigate to="/" state={{ from: loc }} replace />;
   // Coach role users are redirected to athlete dashboard in athlete-first mode
   if (role !== 'athlete') return <Navigate to="/athlete/dashboard" replace />;
-  // Block unconfirmed emails from accessing protected routes
+  // Block access until email confirmation step is fully complete.
+  // 'laktic_awaiting_confirmation' is set at signUp and cleared only on MeetPaceSplash.
+  if (localStorage.getItem('laktic_awaiting_confirmation')) return <Navigate to="/signup/confirm" replace />;
+  // Also block if session exists but email is not confirmed
   if (session && !session.user?.email_confirmed_at) return <Navigate to="/signup/confirm" replace />;
   return <>{children}</>;
 }
