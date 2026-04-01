@@ -50,7 +50,7 @@ export function getAuthUrl(athleteId: string): string {
     response_type: 'code',
     scope: 'read,activity:read_all',
     state: athleteId,
-    approval_prompt: 'auto'
+    approval_prompt: 'force'
   });
   return `${STRAVA_AUTH}?${params.toString()}`;
 }
