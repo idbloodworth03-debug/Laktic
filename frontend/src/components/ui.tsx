@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import {
   LayoutDashboard, Users, FileText, MessageSquare, TrendingUp, User,
   ChevronLeft, ChevronRight, Settings, LogOut, Activity,
@@ -278,7 +279,18 @@ export function ChatBubble({ role, content, planUpdated, label, avatarUrl, avata
           <span className="text-xs text-[var(--color-text-tertiary)] font-medium mb-1.5 block">{leftLabel}</span>
         )}
         <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${isRight ? 'bg-[var(--color-accent)] text-black font-medium rounded-tr-sm' : 'bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded-tl-sm'}`}>
-          {content}
+          {isRight ? content : (
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => <p style={{ margin: '0 0 8px', lineHeight: 1.55 }} className="last:mb-0">{children}</p>,
+                ul: ({ children }) => <ul style={{ paddingLeft: 16, margin: '4px 0 8px' }}>{children}</ul>,
+                ol: ({ children }) => <ol style={{ paddingLeft: 16, margin: '4px 0 8px' }}>{children}</ol>,
+                li: ({ children }) => <li style={{ marginBottom: 4, lineHeight: 1.5 }}>{children}</li>,
+                strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
+                em: ({ children }) => <em>{children}</em>,
+              }}
+            >{content}</ReactMarkdown>
+          )}
         </div>
         {planUpdated && (
           <span className="mt-1.5 inline-flex items-center gap-1 text-xs text-[var(--color-accent)] font-medium">
