@@ -83,10 +83,13 @@ function RequireCoach({ children }: { children: React.ReactNode }) {
 
 function RequireAthlete({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
+  const session = useAuthStore(s => s.session);
   const loc = useLocation();
   if (!role) return <Navigate to="/" state={{ from: loc }} replace />;
   // Coach role users are redirected to athlete dashboard in athlete-first mode
   if (role !== 'athlete') return <Navigate to="/athlete/dashboard" replace />;
+  // Block unconfirmed emails from accessing protected routes
+  if (session && !session.user?.email_confirmed_at) return <Navigate to="/signup/confirm" replace />;
   return <>{children}</>;
 }
 

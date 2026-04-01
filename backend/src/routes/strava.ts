@@ -64,7 +64,7 @@ router.get(
 
     const redirectUrl = athleteProfile?.onboarding_completed
       ? `${env.FRONTEND_URL}/athlete/dashboard`
-      : `${env.FRONTEND_URL}/athlete/onboarding?strava=connected`;
+      : `${env.FRONTEND_URL}/signup/meet-pace`;
     res.redirect(redirectUrl);
   })
 );

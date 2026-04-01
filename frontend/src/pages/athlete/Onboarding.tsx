@@ -257,6 +257,8 @@ function Shell({
 export function MeetPaceSplash() {
   const nav = useNavigate();
   useEffect(() => {
+    // Mark onboarding complete
+    apiFetch('/api/athlete/profile', { method: 'PATCH', body: JSON.stringify({ onboarding_completed: true }) }).catch(() => {});
     const t = setTimeout(() => nav('/athlete/dashboard'), 3000);
     return () => clearTimeout(t);
   }, [nav]);
@@ -430,6 +432,13 @@ export function Onboarding() {
   const setAuth = useAuthStore(s => s.setAuth);
   const nav = useNavigate();
 
+  // If already completed onboarding, skip straight to dashboard
+  useEffect(() => {
+    apiFetch('/api/athlete/profile').then((profile: any) => {
+      if (profile?.onboarding_completed) nav('/athlete/dashboard', { replace: true });
+    }).catch(() => {});
+  }, [nav]);
+
   const set = (patch: Partial<OnboardingData>) => setData(d => ({ ...d, ...patch }));
 
   const toggleArr = <K extends keyof OnboardingData>(key: K, val: string) => {
@@ -466,8 +475,9 @@ export function Onboarding() {
       });
 
       if (signErr) { setError(signErr.message || 'Sign up failed. Please try again.'); return; }
+      if (!authData.user) { setError('Sign up failed. Please try again.'); return; }
 
-      // Build full patch payload now — needed whether we have a session or not
+      // Build full patch payload — needed whether we have a session or not
       const patch: Record<string, unknown> = { onboarding_completed: true };
       if (data.age) patch.age = parseInt(data.age) || null;
       if (data.gender) patch.gender = data.gender;
@@ -496,24 +506,29 @@ export function Onboarding() {
       if (data.goalTime) patch.goal_time = data.goalTime;
       if (data.biggestChallenges.length) patch.biggest_challenges = data.biggestChallenges;
 
-      if (authData.user && !authData.session) {
+      if (authData.session) {
+        // Session returned immediately (Supabase email confirmation is DISABLED in Supabase Auth settings).
+        // NOTE: In production, enable "Confirm email" in Supabase Auth > Settings > Email so users
+        // are always required to confirm before getting a session.
+        // Create the profile now while we have the auth token, then still show the confirm screen.
+        try {
+          const profile = await apiFetch('/api/athlete/profile', {
+            method: 'POST',
+            body: JSON.stringify({ name: data.name }),
+          });
+          setAuth(authData.session, 'athlete', profile);
+          await apiFetch('/api/athlete/profile', { method: 'PATCH', body: JSON.stringify(patch) });
+        } catch {
+          // Profile may already exist — continue to confirm screen anyway
+        }
+      } else {
         // Email confirmation required — save all data so EmailConfirmationPending can finish setup
         sessionStorage.setItem('laktic_onboarding', JSON.stringify({ name: data.name, patch }));
-        nav('/signup/confirm', { state: { email: data.email, name: data.name } });
-        return;
       }
-      if (!authData.session) { setError('Sign up failed. Please try again.'); return; }
 
-      const profile = await apiFetch('/api/athlete/profile', {
-        method: 'POST',
-        body: JSON.stringify({ name: data.name }),
-      });
-
-      setAuth(authData.session, 'athlete', profile);
-
-      await apiFetch('/api/athlete/profile', { method: 'PATCH', body: JSON.stringify(patch) });
-
-      transition(() => setStep(15));
+      // Always redirect to the email confirmation screen.
+      // EmailConfirmationPending will auto-advance immediately if email is already confirmed.
+      nav('/signup/confirm', { state: { email: data.email, name: data.name } });
     } catch (e: any) {
       setError(e.message || 'Something went wrong. Please try again.');
     } finally {
