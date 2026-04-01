@@ -48,7 +48,7 @@ function buildUserPrompt(params: any): string {
     ap.pr_10k ? `PR 10K: ${ap.pr_10k}` : null,
     ap.pr_half_marathon ? `PR Half Marathon: ${ap.pr_half_marathon}` : null,
     ap.pr_marathon ? `PR Marathon: ${ap.pr_marathon}` : null,
-    ap.has_target_race && ap.target_race_name ? `Target Race: ${ap.target_race_name}${ap.target_race_date ? ` on ${ap.target_race_date}` : ''}${ap.goal_time ? ` — Goal Time: ${ap.goal_time}` : ''}` : null,
+    ap.has_target_race && ap.target_race_name ? `Target Race: ${ap.target_race_name}${ap.target_race_date ? ` on ${ap.target_race_date}` : ''}${ap.target_race_distance ? ` (${ap.target_race_distance})` : ''}${ap.goal_time ? ` — Goal Time: ${ap.goal_time}` : ''}` : null,
     ap.injury_notes ? `Injuries/Limitations: ${ap.injury_notes}` : null,
     ap.biggest_challenges?.length ? `Biggest Challenges: ${(ap.biggest_challenges as string[]).join(', ')}` : (ap.biggest_challenge ? `Biggest Challenge: ${ap.biggest_challenge}` : null),
   ].filter(Boolean).join('\n');

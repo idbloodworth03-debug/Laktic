@@ -552,6 +552,7 @@ export function Onboarding() {
       if (data.raceName) patch.target_race_name = data.raceName;
       if (data.raceDate) patch.target_race_date = data.raceDate;
       if (data.goalTime) patch.goal_time = data.goalTime;
+      if (data.raceDistance) patch.target_race_distance = data.raceDistance;
       if (data.biggestChallenges.length) patch.biggest_challenges = data.biggestChallenges;
 
       if (authData.session) {

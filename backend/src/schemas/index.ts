@@ -99,6 +99,7 @@ export const athleteProfileUpdateSchema = z.object({
   goal_time: z.string().max(50).nullish(),
   runner_types: z.array(z.string().max(100)).max(10).nullish(),
   biggest_challenges: z.array(z.string().max(200)).max(20).nullish(),
+  target_race_distance: z.string().max(100).nullish(),
 });
 
 export const chatMessageSchema = z.object({

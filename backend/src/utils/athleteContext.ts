@@ -155,7 +155,7 @@ export function formatContextForPrompt(ctx: AthleteContext): string {
 
   // Build goal race line
   const goalRaceLine = ap.has_target_race && ap.target_race_name
-    ? `${ap.target_race_name}${ap.target_race_date ? ` on ${ap.target_race_date}` : ''}${ap.goal_time ? ` — goal time ${ap.goal_time}` : ''}`
+    ? `${ap.target_race_name}${ap.target_race_date ? ` on ${ap.target_race_date}` : ''}${ap.target_race_distance ? ` (${ap.target_race_distance})` : ''}${ap.goal_time ? ` — goal time ${ap.goal_time}` : ''}`
     : 'none';
 
   // Build biggest challenges
