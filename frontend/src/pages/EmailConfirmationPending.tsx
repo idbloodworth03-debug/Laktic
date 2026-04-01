@@ -28,9 +28,33 @@ export function EmailConfirmationPending() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const advancedRef = useRef(false);
 
+  // Try to obtain a confirmed session. Strategy:
+  // 1. refreshSession() — works when this browser has a refresh token (same-device confirmation)
+  // 2. signInWithPassword() using creds stored in sessionStorage — works cross-device:
+  //    - If email not confirmed yet: Supabase returns error "Email not confirmed" → session null
+  //    - If confirmed: Supabase returns a real session
+  const tryGetConfirmedSession = async (): Promise<import('@supabase/supabase-js').Session | null> => {
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (!error && data.session?.user?.email_confirmed_at) return data.session;
+    } catch {}
+
+    const pendingEmail = sessionStorage.getItem('laktic_pending_email');
+    const pendingPassword = sessionStorage.getItem('laktic_pending_password');
+    if (pendingEmail && pendingPassword) {
+      const { data } = await supabase.auth.signInWithPassword({ email: pendingEmail, password: pendingPassword });
+      if (data.session?.user?.email_confirmed_at) return data.session;
+    }
+    return null;
+  };
+
   const advance = async (session: import('@supabase/supabase-js').Session) => {
     if (advancedRef.current) return;
     advancedRef.current = true;
+
+    // Clear the temporarily stored credentials now that we have a confirmed session
+    sessionStorage.removeItem('laktic_pending_email');
+    sessionStorage.removeItem('laktic_pending_password');
 
     if (pollRef.current) clearInterval(pollRef.current);
 
@@ -91,17 +115,16 @@ export function EmailConfirmationPending() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fallback: poll every 2s — force refresh from server so cross-device confirmation is detected
+  // Fallback: poll every 3s — tries refreshSession then signInWithPassword for cross-device detection
   useEffect(() => {
     pollRef.current = setInterval(async () => {
       try {
-        const { data: { session } } = await supabase.auth.refreshSession();
-        if (!session) return;
-        if (session.user.email_confirmed_at) await advance(session);
+        const session = await tryGetConfirmedSession();
+        if (session) await advance(session);
       } catch {
-        // Network error or no session — keep polling silently
+        // Network error — keep polling silently
       }
-    }, 2000);
+    }, 3000);
 
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
@@ -133,31 +156,15 @@ export function EmailConfirmationPending() {
     setChecking(true);
     setConfirmError('');
     try {
-      // Try refreshSession first — forces a server round-trip, picks up cross-device confirmation
-      let session: import('@supabase/supabase-js').Session | null = null;
-      try {
-        const { data, error } = await supabase.auth.refreshSession();
-        if (!error) session = data.session;
-      } catch {
-        // refreshSession can throw if no refresh token exists — fall through to getUser
-      }
-
-      // Fallback: getUser always hits the server
-      if (!session) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.email_confirmed_at) {
-          const { data: { session: s } } = await supabase.auth.getSession();
-          session = s;
-        }
-      }
-
-      if (session?.user?.email_confirmed_at) {
+      const session = await tryGetConfirmedSession();
+      if (session) {
         await advance(session);
       } else {
-        setConfirmError("We haven't received your confirmation yet. Check your email and try again.");
+        setConfirmError("Your email isn't confirmed yet. Check your inbox and click the link.");
       }
     } catch {
-      setConfirmError('Something went wrong. Please try again.');
+      // Even on unexpected errors, show a specific message — never "something went wrong"
+      setConfirmError("Your email isn't confirmed yet. Check your inbox and click the link.");
     } finally {
       setChecking(false);
     }

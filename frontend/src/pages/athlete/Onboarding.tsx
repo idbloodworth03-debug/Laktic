@@ -519,6 +519,12 @@ export function Onboarding() {
       if (signErr) { setError(signErr.message || 'Sign up failed. Please try again.'); return; }
       if (!authData.user) { setError('Sign up failed. Please try again.'); return; }
 
+      // Store credentials temporarily so EmailConfirmationPending can sign in fresh
+      // after cross-device confirmation (where no refresh token exists on this browser).
+      // Cleared immediately after successful sign-in in EmailConfirmationPending.
+      sessionStorage.setItem('laktic_pending_email', data.email.trim());
+      sessionStorage.setItem('laktic_pending_password', data.password);
+
       // Build full patch payload — needed whether we have a session or not
       const patch: Record<string, unknown> = { onboarding_completed: true };
       if (data.age) patch.age = parseInt(data.age) || null;
