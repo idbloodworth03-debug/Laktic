@@ -530,15 +530,22 @@ export function Onboarding() {
   const [searchParams] = useSearchParams();
 
   // If already completed onboarding, skip straight to dashboard
+  // (skip this check when arriving from Strava callback via ?step=meetpace)
   useEffect(() => {
+    if (searchParams.get('step') === 'meetpace') return;
     apiFetch('/api/athlete/profile').then((profile: any) => {
       if (profile?.onboarding_completed) nav('/athlete/dashboard', { replace: true });
     }).catch(() => {});
-  }, [nav]);
+  }, [nav]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Restore form data when returning from the confirmation screen ("Wrong email? Go back")
+  // URL-driven step jumps (used by Strava callback and "Wrong email? Go back")
   useEffect(() => {
-    if (searchParams.get('step') === '14') {
+    const stepParam = searchParams.get('step');
+    if (stepParam === 'meetpace') {
+      // Arriving from Strava OAuth callback — skip directly to Meet Pace
+      setStep(15);
+    } else if (stepParam === '14') {
+      // Returning from email confirmation ("Wrong email? Go back")
       const backup = localStorage.getItem('laktic_onboarding_form_backup');
       if (backup) {
         try {
@@ -595,8 +602,10 @@ export function Onboarding() {
       sessionStorage.setItem('laktic_pending_email', data.email.trim());
       sessionStorage.setItem('laktic_pending_password', data.password);
 
-      // Build full patch payload — needed whether we have a session or not
-      const patch: Record<string, unknown> = { onboarding_completed: true };
+      // Build full patch payload — needed whether we have a session or not.
+      // onboarding_completed is NOT set here — MeetPaceSplash sets it after plan generation,
+      // so the Strava callback can't accidentally detect it and redirect to dashboard early.
+      const patch: Record<string, unknown> = {};
       if (data.age) patch.age = parseInt(data.age) || null;
       if (data.gender) patch.gender = data.gender;
       if (data.experience) patch.experience_level = data.experience;

@@ -78,20 +78,12 @@ router.get(
       return res.redirect(`${env.FRONTEND_URL}/signup/strava?strava_error=1`);
     }
 
-    // Determine redirect: explicit returnTo wins, then onboarding state
-    let redirectUrl: string;
-    if (returnTo === 'settings') {
-      redirectUrl = `${env.FRONTEND_URL}/athlete/settings?strava=connected`;
-    } else {
-      const { data: athleteProfile } = await supabase
-        .from('athlete_profiles')
-        .select('onboarding_completed')
-        .eq('id', athleteId)
-        .single();
-      redirectUrl = athleteProfile?.onboarding_completed
-        ? `${env.FRONTEND_URL}/athlete/dashboard`
-        : `${env.FRONTEND_URL}/signup/meet-pace`;
-    }
+    // Determine redirect: settings return goes back to settings; onboarding always
+    // goes to Meet Pace (never dashboard — laktic_awaiting_confirmation blocks it until
+    // MeetPaceSplash clears it and marks onboarding_completed).
+    const redirectUrl = returnTo === 'settings'
+      ? `${env.FRONTEND_URL}/athlete/settings?strava=connected`
+      : `${env.FRONTEND_URL}/athlete/signup?step=meetpace`;
     res.redirect(redirectUrl);
   })
 );
