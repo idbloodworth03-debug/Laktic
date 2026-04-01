@@ -1009,9 +1009,7 @@ export function UnifiedLogin() {
       </Button>
       <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
         New here?{' '}
-        <Link to="/coach/signup" className="transition-colors" style={{ color: 'var(--color-accent)' }}>Sign up as a coach</Link>
-        {' '}or{' '}
-        <Link to="/athlete/signup" className="transition-colors" style={{ color: 'var(--color-accent)' }}>athlete</Link>
+        <Link to="/athlete/signup" className="transition-colors" style={{ color: 'var(--color-accent)' }}>Sign up</Link>
       </p>
     </SplitAuth>
   );
