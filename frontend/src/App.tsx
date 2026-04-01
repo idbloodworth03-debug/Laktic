@@ -1,5 +1,31 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Component, ReactNode } from 'react';
 import { useAuthStore } from './store/authStore';
+
+// ── Global error boundary — catches unhandled render errors in any page ───────
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif', color: 'white', textAlign: 'center', padding: '24px' }}>
+          <div>
+            <p style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>Something went wrong.</p>
+            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', marginBottom: '24px' }}>Try refreshing the page. If the problem persists, contact support.</p>
+            <button onClick={() => window.location.reload()} style={{ padding: '10px 24px', borderRadius: '8px', background: '#00E5A0', color: '#000', fontWeight: 600, border: 'none', cursor: 'pointer', fontSize: '14px' }}>
+              Refresh
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 import { CoachRegister, AthleteRegister, CoachLogin, AthleteLogin, PasswordResetConfirm, UnifiedLogin } from './pages/AuthPages';
 import { Onboarding, StravaConnectStep, MeetPaceSplash } from './pages/athlete/Onboarding';
@@ -66,6 +92,7 @@ function RequireAthlete({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <BrowserRouter>
       <Routes>
         {/* Public */}
@@ -153,5 +180,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+    </ErrorBoundary>
   );
 }

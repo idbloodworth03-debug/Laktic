@@ -429,7 +429,7 @@ function TeamSwitcher({ onTeamChange }: { onTeamChange: () => void }) {
           >
             <h3 className="font-semibold text-base mb-2" style={{ color: 'var(--color-text-primary)' }}>Leave {confirmLeave.name}?</h3>
             <p className="text-sm mb-5" style={{ color: 'var(--color-text-secondary)' }}>
-              You will lose access to their coaching bot and plan. You can rejoin later with an invite code.
+              You will lose access to this team's training plan. You can rejoin later with an invite code.
             </p>
             <div className="flex gap-2 justify-end">
               <Button variant="ghost" size="sm" onClick={() => setConfirmLeave(null)}>Cancel</Button>
@@ -648,6 +648,24 @@ export function SeasonPlan() {
     finally { setTogglingDate(null); }
   };
 
+  const generateInitialPlan = async () => {
+    setRegenError(null);
+    setRegenerating(true);
+    try {
+      const data = await apiFetch('/api/athlete/season/generate', { method: 'POST' });
+      if (data.status === 'generating' && data.jobId) {
+        setPollJobId(data.jobId);
+      } else {
+        const { season: updated } = await apiFetch('/api/athlete/season');
+        setSeason(updated);
+        setRegenerating(false);
+      }
+    } catch (e: any) {
+      setRegenerating(false);
+      setRegenError(e?.message || 'Something went wrong. Please try again.');
+    }
+  };
+
   const regenerate = async () => {
     setConfirmRegen(false);
     setRegenError(null);
@@ -684,11 +702,24 @@ export function SeasonPlan() {
       <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
         <div className="min-h-screen" style={{ background: 'var(--color-bg-primary)' }}>
           <div className="max-w-xl mx-auto px-6 py-20 text-center">
-            <h1 className="font-bold text-xl mb-2" style={{ color: 'var(--color-text-primary)' }}>No active season</h1>
-            <p className="mb-5 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-              Subscribe to a coach bot to get your personalized training plan.
-            </p>
-            <Link to="/athlete/browse"><Button>Browse Coach Bots</Button></Link>
+            {regenerating ? (
+              <>
+                <div className="flex justify-center mb-6"><Spinner size="lg" /></div>
+                <h1 className="font-bold text-xl mb-2" style={{ color: 'var(--color-text-primary)' }}>Building your plan…</h1>
+                <p style={{ color: 'var(--color-text-secondary)' }}>Pace is putting together your personalized training plan. This usually takes under a minute.</p>
+              </>
+            ) : (
+              <>
+                <h1 className="font-bold text-xl mb-2" style={{ color: 'var(--color-text-primary)' }}>Your plan is being built.</h1>
+                <p className="mb-6 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                  Pace is putting together your personalized training plan. Check back in a moment.
+                </p>
+                {regenError && (
+                  <p className="mb-4 text-sm text-red-400">{regenError}</p>
+                )}
+                <Button onClick={generateInitialPlan}>Generate My Plan</Button>
+              </>
+            )}
           </div>
         </div>
       </AppLayout>
@@ -708,12 +739,12 @@ export function SeasonPlan() {
             <div>
               <h1 className="font-bold text-3xl" style={{ color: 'var(--color-text-primary)' }}>Season Plan</h1>
               <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
-                {season.coach_bots?.name} · {plan.length} weeks
+                Pace · {plan.length} weeks
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               <Link to="/athlete/races"><Button variant="ghost" size="sm">Races</Button></Link>
-              <Link to="/athlete/chat"><Button variant="secondary" size="sm">Chat with Bot</Button></Link>
+              <Link to="/athlete/chat"><Button variant="secondary" size="sm">Chat with Pace</Button></Link>
               {regenerating ? (
                 <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                   <Spinner size="sm" />

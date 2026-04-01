@@ -332,6 +332,117 @@ router.post(
   })
 );
 
+// POST /api/athlete/season/generate — create the very first season plan for a new athlete
+router.post(
+  '/season/generate',
+  auth,
+  requireAthlete,
+  aiLimiter,
+  asyncHandler(async (req: AuthRequest, res) => {
+    // If an active season already exists, tell the client to use regenerate instead
+    const existing = await getActiveSeasonForTeam(req.athlete.id, req.athlete.active_team_id ?? null, 'id');
+    if (existing) return res.status(400).json({ error: 'Season already exists. Use regenerate to update your plan.' });
+
+    // Find any published bot to generate against (the default Pace system bot)
+    const { data: bot } = await supabase
+      .from('coach_bots')
+      .select('*')
+      .eq('is_published', true)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .single();
+
+    if (!bot) return res.status(503).json({ error: 'Plan generation is not available yet. Please try again later.' });
+
+    const { data: botWorkouts } = await supabase
+      .from('bot_workouts')
+      .select('*')
+      .eq('bot_id', bot.id)
+      .order('day_of_week');
+
+    const { data: job, error: jobError } = await supabase
+      .from('plan_jobs')
+      .insert({ athlete_id: req.athlete.id, bot_id: bot.id, status: 'generating', source: 'generate' })
+      .select('id')
+      .single();
+
+    if (jobError || !job) {
+      return res.status(500).json({ error: `Failed to initialise plan job: ${jobError?.message ?? 'unknown error'}` });
+    }
+
+    const jobId: string = job.id;
+    const athleteId: string = req.athlete.id;
+    const userId: string = req.user!.id;
+    const startDate = getWeekStartDate();
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const [{ data: recentActivities }, { data: latestReadiness }] = await Promise.all([
+      supabase.from('athlete_activities')
+        .select('start_date, activity_type, distance_miles, pace, duration')
+        .eq('athlete_id', req.athlete.id)
+        .gte('start_date', thirtyDaysAgo)
+        .order('start_date', { ascending: false })
+        .limit(20),
+      supabase.from('daily_readiness')
+        .select('score, label, recommended_intensity')
+        .eq('athlete_id', req.athlete.id)
+        .order('date', { ascending: false })
+        .limit(1)
+        .single(),
+    ]);
+
+    const generatePromise = generate({
+      athleteProfile: req.athlete,
+      bot,
+      botWorkouts: botWorkouts || [],
+      raceCalendar: [],
+      startDate,
+      recentActivities: recentActivities || [],
+      latestReadiness: latestReadiness ?? null,
+    });
+
+    const savePlan = async (plan: any[], aiUsed: boolean): Promise<string> => {
+      const { data: season, error: seasonErr } = await supabase
+        .from('athlete_seasons')
+        .insert({ athlete_id: athleteId, bot_id: bot.id, race_calendar: [], season_plan: plan, ai_used: aiUsed, status: 'active' })
+        .select('id')
+        .single();
+      if (seasonErr || !season) throw new Error(seasonErr?.message || 'Failed to save season');
+      await supabase
+        .from('plan_jobs')
+        .update({ status: 'complete', result: { seasonId: season.id }, updated_at: new Date().toISOString() })
+        .eq('id', jobId);
+      notifyPlanReady(userId, bot.name).catch(() => {});
+      return season.id;
+    };
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('TIMEOUT')), 25000)
+    );
+
+    try {
+      const { plan, aiUsed } = await Promise.race([generatePromise, timeoutPromise]);
+      const seasonId = await savePlan(plan, aiUsed);
+      return res.json({ seasonId, weeksGenerated: plan.length, aiUsed });
+    } catch (err: any) {
+      if (err.message !== 'TIMEOUT') {
+        await supabase.from('plan_jobs')
+          .update({ status: 'failed', error: err.message, updated_at: new Date().toISOString() })
+          .eq('id', jobId);
+        return res.status(500).json({ error: 'Plan generation failed. Please try again.' });
+      }
+      res.status(202).json({ status: 'generating', jobId });
+      generatePromise
+        .then(({ plan, aiUsed }) => savePlan(plan, aiUsed))
+        .catch(async (bgErr: any) => {
+          await supabase.from('plan_jobs')
+            .update({ status: 'failed', error: bgErr.message || 'Generation failed', updated_at: new Date().toISOString() })
+            .eq('id', jobId);
+        });
+    }
+  })
+);
+
 // POST /api/athlete/season/regenerate
 router.post(
   '/season/regenerate',
