@@ -96,6 +96,14 @@ export function AthleteDashboard() {
 
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
+  // After Strava OAuth during onboarding, show MeetPace before the dashboard
+  useEffect(() => {
+    if (sessionStorage.getItem('laktic_post_strava')) {
+      sessionStorage.removeItem('laktic_post_strava');
+      nav('/signup/meet-pace', { replace: true });
+    }
+  }, []);
+
   useEffect(() => {
     Promise.allSettled([
       apiFetch('/api/recovery/today').then(d => setReadiness(d)).catch(() => {}),

@@ -23,6 +23,8 @@ export function EmailConfirmationPending() {
   const [resendCountdown, setResendCountdown] = useState(RESEND_DELAY);
   const [resending, setResending] = useState(false);
   const [resendMsg, setResendMsg] = useState('');
+  const [confirmError, setConfirmError] = useState('');
+  const [checking, setChecking] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const advancedRef = useRef(false);
 
@@ -54,7 +56,6 @@ export function EmailConfirmationPending() {
         setAuth(session, 'athlete', profile);
       } catch {
         // Profile creation failed (e.g. duplicate — AuthCallback won the race)
-        // Try /api/me one more time
         try {
           const me = await apiFetch('/api/me');
           setAuth(session, me.role, me.profile);
@@ -63,7 +64,7 @@ export function EmailConfirmationPending() {
       }
     }
 
-    // Apply full onboarding data (patch) if we saved it and haven't applied it yet
+    // Apply full onboarding data (patch) if saved
     if (saved?.patch && profile) {
       try {
         await apiFetch('/api/athlete/profile', {
@@ -74,7 +75,8 @@ export function EmailConfirmationPending() {
       sessionStorage.removeItem('laktic_onboarding');
     }
 
-    nav('/athlete/dashboard', { replace: true });
+    // Advance to Strava connect step (not directly to dashboard)
+    nav('/signup/strava', { replace: true });
   };
 
   // Primary: onAuthStateChange fires when email is confirmed in the same browser
@@ -89,13 +91,16 @@ export function EmailConfirmationPending() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fallback: poll getSession every 3s (catches same-browser confirmation)
+  // Fallback: poll every 2s — check email_confirmed_at for cross-device confirmation
   useEffect(() => {
     pollRef.current = setInterval(async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      await advance(session);
-    }, 3000);
+      // Only advance if email is actually confirmed
+      if (session.user.email_confirmed_at) {
+        await advance(session);
+      }
+    }, 2000);
 
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
@@ -120,6 +125,23 @@ export function EmailConfirmationPending() {
       setResendMsg('Could not resend. Please wait and try again.');
     } finally {
       setResending(false);
+    }
+  };
+
+  const handleManualCheck = async () => {
+    setChecking(true);
+    setConfirmError('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.email_confirmed_at) {
+        await advance(session);
+      } else {
+        setConfirmError("We haven't received your confirmation yet. Check your email and try again.");
+      }
+    } catch {
+      setConfirmError('Something went wrong. Please try again.');
+    } finally {
+      setChecking(false);
     }
   };
 
@@ -194,25 +216,46 @@ export function EmailConfirmationPending() {
             Waiting for email confirmation… Once confirmed, this page will update automatically.
           </div>
 
-          {/* Resend */}
-          <div className="space-y-2">
+          {/* Primary CTA — prominent manual confirm button */}
+          <div className="space-y-3">
             <button
               type="button"
-              onClick={handleResend}
-              disabled={resendCountdown > 0 || resending}
-              className="w-full py-2.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-40"
+              onClick={handleManualCheck}
+              disabled={checking}
+              className="w-full py-4 rounded-xl font-semibold text-base transition-all disabled:opacity-60"
               style={{
-                background: 'var(--color-bg-secondary)',
-                border: '1px solid var(--color-border)',
-                color: 'var(--color-text-secondary)',
+                background: checking ? 'rgba(0,229,160,0.7)' : '#00E5A0',
+                color: '#000',
+                fontSize: '17px',
+                letterSpacing: '-0.01em',
               }}
             >
-              {resending
-                ? 'Sending…'
-                : resendCountdown > 0
-                ? `Resend email (${resendCountdown}s)`
-                : 'Resend confirmation email'}
+              {checking ? 'Checking…' : "I've Confirmed My Email →"}
             </button>
+
+            {confirmError && (
+              <p className="text-sm" style={{ color: '#f87171' }}>{confirmError}</p>
+            )}
+          </div>
+
+          {/* Resend section — secondary */}
+          <div className="space-y-1.5">
+            <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
+              Didn't get the email? Check your spam folder or{' '}
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resendCountdown > 0 || resending}
+                className="hover:underline disabled:opacity-50"
+                style={{ color: 'var(--color-accent)' }}
+              >
+                {resending
+                  ? 'sending…'
+                  : resendCountdown > 0
+                  ? `resend in ${resendCountdown}s`
+                  : 'resend email'}
+              </button>
+            </p>
             {resendMsg && (
               <p className="text-xs" style={{ color: 'var(--color-accent)' }}>{resendMsg}</p>
             )}
@@ -228,17 +271,6 @@ export function EmailConfirmationPending() {
           </Link>
 
         </div>
-      </div>
-
-      {/* Footer hint */}
-      <div className="px-8 pb-6 text-center">
-        <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
-          Didn't receive it? Check your spam folder or{' '}
-          <a href="mailto:support@laktic.com" style={{ color: 'var(--color-accent)' }} className="hover:underline">
-            contact support
-          </a>
-          .
-        </p>
       </div>
     </div>
   );

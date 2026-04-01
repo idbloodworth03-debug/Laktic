@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { useAuthStore } from './store/authStore';
 
 import { CoachRegister, AthleteRegister, CoachLogin, AthleteLogin, PasswordResetConfirm, UnifiedLogin } from './pages/AuthPages';
-import { Onboarding } from './pages/athlete/Onboarding';
+import { Onboarding, StravaConnectStep, MeetPaceSplash } from './pages/athlete/Onboarding';
 import { LandingPage } from './pages/LandingPage';
 import { ForgotPassword, ResetPassword } from './pages/PasswordReset';
 import { AthleteDashboard } from './pages/AthleteDashboard';
@@ -122,6 +122,8 @@ export default function App() {
         {/* Auth flow */}
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/signup/confirm" element={<EmailConfirmationPending />} />
+        <Route path="/signup/strava" element={<StravaConnectStep />} />
+        <Route path="/signup/meet-pace" element={<MeetPaceSplash />} />
 
         {/* Public routes — no auth */}
         <Route path="/athlete/:username" element={<AthletePublicProfile />} />

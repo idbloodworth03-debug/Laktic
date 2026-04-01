@@ -254,7 +254,7 @@ function Shell({
 
 // ── Step 15 — Meet Pace splash ────────────────────────────────────────────────
 
-function MeetPaceSplash() {
+export function MeetPaceSplash() {
   const nav = useNavigate();
   useEffect(() => {
     const t = setTimeout(() => nav('/athlete/dashboard'), 3000);
@@ -279,6 +279,131 @@ function MeetPaceSplash() {
         </div>
       </div>
       <style>{`@keyframes lk-dot { 0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1.2); } }`}</style>
+    </div>
+  );
+}
+
+// ── Strava connect step (post email-confirmation) ─────────────────────────────
+
+export function StravaConnectStep() {
+  const nav = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const connectStrava = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const { apiFetch } = await import('../../lib/api');
+      const data = await apiFetch('/api/strava/auth');
+      // Flag so AthleteDashboard knows to show MeetPace after OAuth redirect
+      sessionStorage.setItem('laktic_post_strava', '1');
+      window.location.href = data.url;
+    } catch (e: any) {
+      setError(e.message || 'Failed to start Strava connection. Try again or skip for now.');
+      setLoading(false);
+    }
+  };
+
+  const skip = () => nav('/signup/meet-pace', { replace: true });
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", color: 'white', textAlign: 'center', padding: '24px', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', backgroundImage: 'linear-gradient(rgba(0,229,160,1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,160,1) 1px, transparent 1px)', backgroundSize: '54px 54px', opacity: 0.03 }} />
+      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '600px', height: '600px', borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(252,82,0,0.06) 0%, transparent 68%)', pointerEvents: 'none' }} />
+
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: '420px', width: '100%' }}>
+        {/* Logos */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px', marginBottom: '40px' }}>
+          {/* Strava S icon */}
+          <div style={{ width: '56px', height: '56px', borderRadius: '14px', background: '#FC5200', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="28" height="28" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M12 3l-4 7h3L7 17l8-9h-4L12 3z" fill="white" />
+            </svg>
+          </div>
+          <div style={{ width: '20px', height: '2px', background: 'rgba(255,255,255,0.2)', borderRadius: '2px' }} />
+          {/* Pace P icon */}
+          <div style={{ width: '56px', height: '56px', borderRadius: '14px', background: '#00E5A0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', fontWeight: 800, color: '#000' }}>P</div>
+        </div>
+
+        <h1 style={{ fontSize: 'clamp(28px, 5vw, 42px)', fontWeight: 700, letterSpacing: '-0.03em', marginBottom: '16px', lineHeight: 1.15 }}>
+          Connect your runs.
+        </h1>
+        <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.55)', marginBottom: '40px', lineHeight: 1.6, maxWidth: '360px', margin: '0 auto 40px' }}>
+          Link Strava to sync your activities automatically. Your plan adapts based on what you actually run.
+        </p>
+
+        {/* Connect button */}
+        <button
+          type="button"
+          onClick={connectStrava}
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '18px 24px',
+            borderRadius: '14px',
+            background: loading ? 'rgba(252,82,0,0.7)' : '#FC5200',
+            border: 'none',
+            color: 'white',
+            fontSize: '17px',
+            fontWeight: 700,
+            cursor: loading ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px',
+            marginBottom: '16px',
+            fontFamily: "'DM Sans', sans-serif",
+            letterSpacing: '-0.01em',
+          }}
+        >
+          {loading ? (
+            <>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ animation: 'lk-spin 1s linear infinite' }}>
+                <circle cx="10" cy="10" r="8" stroke="rgba(255,255,255,0.3)" strokeWidth="2.5" />
+                <path d="M10 2a8 8 0 0 1 8 8" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+              </svg>
+              Connecting…
+            </>
+          ) : (
+            <>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M12 3l-4 7h3L7 17l8-9h-4L12 3z" fill="white" />
+              </svg>
+              Connect Strava
+            </>
+          )}
+        </button>
+
+        {error && (
+          <p style={{ fontSize: '13px', color: '#f87171', marginBottom: '16px' }}>{error}</p>
+        )}
+
+        {/* Skip */}
+        <button
+          type="button"
+          onClick={skip}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'rgba(255,255,255,0.4)',
+            fontSize: '15px',
+            cursor: 'pointer',
+            padding: '8px',
+            fontFamily: "'DM Sans', sans-serif",
+          }}
+        >
+          Skip for now →
+        </button>
+
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.2)', marginTop: '20px' }}>
+          You can always connect Strava later in your settings
+        </p>
+      </div>
+
+      <style>{`
+        @keyframes lk-spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }

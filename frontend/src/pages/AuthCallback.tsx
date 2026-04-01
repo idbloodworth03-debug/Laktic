@@ -77,7 +77,7 @@ export function AuthCallback() {
         const { role: existingRole, profile } = await apiFetch('/api/me');
         console.log('[AuthCallback] existing profile found:', existingRole, profile?.id);
         setAuth(session, existingRole, profile);
-        setRedirectPath(existingRole === 'coach' ? '/coach/onboarding' : '/athlete/dashboard');
+        setRedirectPath(existingRole === 'coach' ? '/coach/onboarding' : '/signup/strava');
         setStatus('success');
         return;
       } catch (meErr: any) {
@@ -137,7 +137,7 @@ export function AuthCallback() {
           }
 
           setAuth(session, 'athlete', profile);
-          setRedirectPath('/athlete/dashboard');
+          setRedirectPath('/signup/strava');
           setStatus('success');
         }
 
