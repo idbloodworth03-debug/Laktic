@@ -33,6 +33,8 @@ router.get(
     }
     const { code, state: athleteId } = parsed.data;
 
+    console.log('[strava/callback] received code:', code?.slice(0, 8), 'state:', athleteId);
+
     const tokenData = await strava.exchangeCode(code);
 
     // Upsert on strava_athlete_id — if this Strava account was previously linked to

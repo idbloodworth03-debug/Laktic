@@ -264,7 +264,7 @@ export function EmailConfirmationPending() {
 
           {/* Back link */}
           <Link
-            to="/athlete/signup"
+            to="/athlete/signup?step=14"
             className="text-sm hover:underline block"
             style={{ color: 'var(--color-text-tertiary)' }}
           >

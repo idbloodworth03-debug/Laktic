@@ -200,7 +200,7 @@ router.post('/track-signup', validate(trackSignupSchema), asyncHandler(async (re
         if (referrerUser?.email) {
           const resend = new Resend(env.RESEND_API_KEY);
           await resend.emails.send({
-            from: 'Laktic <noreply@laktic.app>',
+            from: 'Laktic <noreply@laktic.com>',
             to: referrerUser.email,
             subject: 'Someone just joined Laktic with your referral link!',
             html: `

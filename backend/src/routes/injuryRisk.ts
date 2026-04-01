@@ -190,7 +190,7 @@ async function notifyCoachOfHighRisk(
   const resend = new Resend(env.RESEND_API_KEY);
   try {
     await resend.emails.send({
-      from: 'Laktic <noreply@laktic.app>',
+      from: 'Laktic <noreply@laktic.com>',
       to: coachUser.email,
       subject: `Injury Risk Alert: ${athleteName} (${riskLevel})`,
       html: `

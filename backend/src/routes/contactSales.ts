@@ -27,7 +27,7 @@ router.post(
       const resend = new Resend(env.RESEND_API_KEY);
       try {
         await resend.emails.send({
-          from: 'Laktic <noreply@laktic.app>',
+          from: 'Laktic <noreply@laktic.com>',
           to: env.ADMIN_EMAIL,
           subject: `Enterprise Sales Inquiry — ${organization}`,
           html: `
@@ -46,7 +46,7 @@ router.post(
 
         // Also send confirmation to inquiry sender
         await resend.emails.send({
-          from: 'Laktic <noreply@laktic.app>',
+          from: 'Laktic <noreply@laktic.com>',
           to: email,
           subject: 'We received your Laktic enterprise inquiry',
           html: `

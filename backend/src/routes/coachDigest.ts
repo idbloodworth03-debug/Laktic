@@ -202,7 +202,7 @@ async function sendDigestEmail(
 
     const resend = new Resend(env.RESEND_API_KEY);
     await resend.emails.send({
-      from: 'Laktic <noreply@laktic.app>',
+      from: 'Laktic <noreply@laktic.com>',
       to: coachUser.email,
       subject: `${teamName} — Weekly Coaching Digest`,
       html: `

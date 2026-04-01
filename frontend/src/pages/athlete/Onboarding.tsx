@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { apiFetch } from '../../lib/api';
@@ -264,16 +264,21 @@ export function MeetPaceSplash() {
     // Trigger plan generation — wait up to 25s then redirect regardless
     const redirectTimer = setTimeout(() => nav('/athlete/dashboard', { replace: true }), 25000);
 
-    apiFetch('/api/athlete/season/generate', { method: 'POST' })
-      .then(() => {
-        clearTimeout(redirectTimer);
-        nav('/athlete/dashboard', { replace: true });
-      })
-      .catch(() => {
-        // Generation failed or season already exists — go to dashboard anyway
-        clearTimeout(redirectTimer);
-        nav('/athlete/dashboard', { replace: true });
-      });
+    (async () => {
+      // Force a session refresh so the token is valid even if we just came from email confirmation
+      const { data: { session } } = await supabase.auth.refreshSession();
+      console.log('[MeetPace] session after refresh:', session ? 'ok' : 'null');
+      console.log('[MeetPace] calling plan generation...');
+      try {
+        await apiFetch('/api/athlete/season/generate', { method: 'POST' });
+        console.log('[MeetPace] plan generation succeeded');
+      } catch (e: any) {
+        console.error('[MeetPace] plan generation error:', e?.message);
+        // "Season already exists" is fine — continue to dashboard
+      }
+      clearTimeout(redirectTimer);
+      nav('/athlete/dashboard', { replace: true });
+    })();
 
     return () => clearTimeout(redirectTimer);
   }, [nav]);
@@ -309,8 +314,12 @@ export function StravaConnectStep() {
   const [error, setError] = useState(
     searchParams.get('strava_error') ? 'Strava connection failed. Please try again or skip for now.' : ''
   );
+  // Guard against double-initiation from re-renders or StrictMode double-effect
+  const initiatedRef = useRef(false);
 
   const connectStrava = async () => {
+    if (initiatedRef.current) return;
+    initiatedRef.current = true;
     setLoading(true);
     setError('');
     try {
@@ -456,6 +465,7 @@ export function Onboarding() {
   const [fading, setFading] = useState(false);
   const setAuth = useAuthStore(s => s.setAuth);
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // If already completed onboarding, skip straight to dashboard
   useEffect(() => {
@@ -463,6 +473,21 @@ export function Onboarding() {
       if (profile?.onboarding_completed) nav('/athlete/dashboard', { replace: true });
     }).catch(() => {});
   }, [nav]);
+
+  // Restore form data when returning from the confirmation screen ("Wrong email? Go back")
+  useEffect(() => {
+    if (searchParams.get('step') === '14') {
+      const backup = localStorage.getItem('laktic_onboarding_form_backup');
+      if (backup) {
+        try {
+          const restored: OnboardingData = JSON.parse(backup);
+          // Clear passwords so user must re-enter; restore everything else
+          setData({ ...restored, email: '', password: '', confirmPassword: '' });
+        } catch {}
+      }
+      setStep(14);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (patch: Partial<OnboardingData>) => setData(d => ({ ...d, ...patch }));
 
@@ -550,6 +575,9 @@ export function Onboarding() {
         // Email confirmation required — save all data so EmailConfirmationPending can finish setup
         sessionStorage.setItem('laktic_onboarding', JSON.stringify({ name: data.name, patch }));
       }
+
+      // Save form answers (no passwords) so "Wrong email? Go back" can restore them
+      localStorage.setItem('laktic_onboarding_form_backup', JSON.stringify({ ...data, password: '', confirmPassword: '' }));
 
       // Set a persistent flag so RequireAthlete blocks dashboard access until
       // the user reaches MeetPaceSplash (cleared there). Works even when Supabase

@@ -218,7 +218,7 @@ export async function flagCoach(athleteId: string, message: string): Promise<Act
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'Laktic <hello@laktic.app>',
+          from: 'Laktic <noreply@laktic.com>',
           to: [coachEmail],
           subject: `Athlete alert — ${athleteName}`,
           html: `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#111;color:#eee;padding:32px;border-radius:8px;">
