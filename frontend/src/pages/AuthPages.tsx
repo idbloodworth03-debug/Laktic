@@ -974,14 +974,10 @@ export function UnifiedLogin() {
       if (me.role === 'coach') {
         nav(me.profile.onboarding_completed === false ? '/coach/onboarding' : '/coach/dashboard');
       } else if (me.role === 'athlete') {
-        if (!me.profile.onboarding_completed) {
-          nav('/athlete/onboarding');
-        } else {
-          try {
-            const { season } = await apiFetch('/api/athlete/season');
-            nav(season ? '/athlete/plan' : '/athlete/browse');
-          } catch { nav('/athlete/browse'); }
-        }
+        try {
+          const { season } = await apiFetch('/api/athlete/season');
+          nav(season ? '/athlete/plan' : '/athlete/dashboard');
+        } catch { nav('/athlete/dashboard'); }
       } else {
         throw new Error('Unknown account type. Please contact support.');
       }

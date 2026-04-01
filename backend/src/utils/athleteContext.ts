@@ -143,6 +143,49 @@ export function formatContextForPrompt(ctx: AthleteContext): string {
   const today = new Date().toISOString().slice(0, 10);
   const ap = ctx.profile;
 
+  // Build PRs line
+  const prs = [
+    ap.pr_800m ? `800m ${ap.pr_800m}` : null,
+    ap.pr_mile ? `Mile ${ap.pr_mile}` : null,
+    ap.pr_5k ? `5K ${ap.pr_5k}` : null,
+    ap.pr_10k ? `10K ${ap.pr_10k}` : null,
+    ap.pr_half_marathon ? `Half ${ap.pr_half_marathon}` : null,
+    ap.pr_marathon ? `Full ${ap.pr_marathon}` : null,
+  ].filter(Boolean).join(' | ') || 'none recorded';
+
+  // Build goal race line
+  const goalRaceLine = ap.has_target_race && ap.target_race_name
+    ? `${ap.target_race_name}${ap.target_race_date ? ` on ${ap.target_race_date}` : ''}${ap.goal_time ? ` — goal time ${ap.goal_time}` : ''}`
+    : 'none';
+
+  // Build biggest challenges
+  const challenges = Array.isArray(ap.biggest_challenges) && ap.biggest_challenges.length > 0
+    ? ap.biggest_challenges.join(', ')
+    : ap.biggest_challenge || 'not specified';
+
+  // Build runner types
+  const runnerTypes = Array.isArray(ap.runner_types) && ap.runner_types.length > 0
+    ? ap.runner_types.join(', ')
+    : ap.primary_goal || 'not specified';
+
+  const athleteProfile = [
+    `ATHLETE PROFILE:`,
+    `- Name: ${ap.name || 'unknown'}${ap.age ? `, Age: ${ap.age}` : ''}${ap.gender ? `, Gender: ${ap.gender}` : ''}`,
+    `- Running experience: ${ap.experience_level || 'not specified'}`,
+    `- Runner type: ${runnerTypes}`,
+    `- Distances: ${(ap.primary_events || []).join(', ') || 'not specified'}`,
+    `- Season: ${ap.fitness_level || 'not specified'}`,
+    `- Training days/week: ${ap.training_days_per_week ?? 'not specified'}`,
+    `- Current weekly mileage: ${ap.current_weekly_mileage ?? ap.weekly_volume_miles ?? 'unknown'} miles`,
+    ap.fitness_rating ? `- Self-rated fitness: ${ap.fitness_rating}/10` : null,
+    `- PRs: ${prs}`,
+    (ap.height_ft || ap.height_in || ap.weight_lbs) ? `- Height: ${ap.height_ft ?? '?'}ft ${ap.height_in ?? '?'}in | Weight: ${ap.weight_lbs ?? '?'} lbs` : null,
+    ap.sleep_average ? `- Avg sleep: ${ap.sleep_average}` : null,
+    ap.injury_notes ? `- Injuries/limitations: ${ap.injury_notes}` : null,
+    `- Goal race: ${goalRaceLine}`,
+    `- Biggest challenges: ${challenges}`,
+  ].filter(Boolean).join('\n');
+
   const profileLines = [
     `Name: ${ap.name}`,
     ap.experience_level ? `Experience: ${ap.experience_level}` : null,
@@ -209,6 +252,7 @@ export function formatContextForPrompt(ctx: AthleteContext): string {
 
   return [
     `TODAY: ${today}`,
+    athleteProfile,
     `ATHLETE: ${profileLines}`,
     nextRaceLine,
     weekMilesLine,

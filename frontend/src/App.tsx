@@ -10,12 +10,12 @@ import { CoachDashboard } from './pages/CoachDashboard';
 import { CoachOnboarding } from './pages/CoachOnboarding';
 import { BotSetupEdit } from './pages/BotSetupEdit';
 import { KnowledgeDocuments } from './pages/KnowledgeDocuments';
-import { BrowseBots, BotDetail } from './pages/BotPages';
+// import { BrowseBots, BotDetail } from './pages/BotPages'; // hidden — athlete-first pivot
 import { RaceCalendar } from './pages/RaceCalendar';
 import { SeasonPlan } from './pages/SeasonPlan';
 import { Chat } from './pages/Chat';
 import { JoinTeam } from './pages/JoinTeam';
-import { AthleteOnboarding } from './pages/AthleteOnboarding';
+// import { AthleteOnboarding } from './pages/AthleteOnboarding'; // replaced by new Onboarding flow
 import { AthleteSettings } from './pages/AthleteSettings';
 import { Activities } from './pages/Activities';
 import { AthleteProgress } from './pages/AthleteProgress';
@@ -93,9 +93,10 @@ export default function App() {
 
         {/* Athlete protected */}
         <Route path="/athlete/dashboard" element={<RequireAthlete><AthleteDashboard /></RequireAthlete>} />
-        <Route path="/athlete/onboarding" element={<RequireAthlete><AthleteOnboarding /></RequireAthlete>} />
-        <Route path="/athlete/browse" element={<RequireAthlete><BrowseBots /></RequireAthlete>} />
-        <Route path="/athlete/bots/:botId" element={<RequireAthlete><BotDetail /></RequireAthlete>} />
+        {/* Old onboarding removed — redirect to new signup flow */}
+        <Route path="/athlete/onboarding" element={<Navigate to="/athlete/signup" replace />} />
+        {/* <Route path="/athlete/browse" element={<RequireAthlete><BrowseBots /></RequireAthlete>} /> */}
+        {/* <Route path="/athlete/bots/:botId" element={<RequireAthlete><BotDetail /></RequireAthlete>} /> */}
         <Route path="/athlete/plan" element={<RequireAthlete><SeasonPlan /></RequireAthlete>} />
         <Route path="/athlete/races" element={<RequireAthlete><RaceCalendar /></RequireAthlete>} />
         <Route path="/athlete/join" element={<RequireAthlete><JoinTeam /></RequireAthlete>} />
@@ -108,9 +109,9 @@ export default function App() {
         <Route path="/athlete/feed" element={<RequireAthlete><TeamFeed /></RequireAthlete>} />
         <Route path="/athlete/leaderboard" element={<RequireAthlete><TeamLeaderboard /></RequireAthlete>} />
 
-        {/* Marketplace — public browse, athlete profile view */}
-        <Route path="/marketplace" element={<RequireAthlete><MarketplacePage /></RequireAthlete>} />
-        <Route path="/marketplace/:coachId" element={<RequireAthlete><MarketplaceCoachProfile /></RequireAthlete>} />
+        {/* Marketplace — hidden for athlete-first pivot */}
+        {/* <Route path="/marketplace" element={<RequireAthlete><MarketplacePage /></RequireAthlete>} /> */}
+        {/* <Route path="/marketplace/:coachId" element={<RequireAthlete><MarketplaceCoachProfile /></RequireAthlete>} /> */}
 
         {/* Coach — marketplace application — hidden */}
         {/* <Route path="/coach/marketplace/apply" element={<RequireCoach><MarketplaceApply /></RequireCoach>} /> */}

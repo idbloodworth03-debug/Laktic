@@ -87,6 +87,18 @@ export const athleteProfileUpdateSchema = z.object({
   pr_marathon: z.string().max(20).nullish(),
   experience_level: z.string().max(50).nullish(),
   long_run_distance: z.number().min(0).max(100).nullish(),
+  // New onboarding fields
+  pr_800m: z.string().max(20).nullish(),
+  age: z.number().int().min(0).max(120).nullish(),
+  gender: z.string().max(50).nullish(),
+  fitness_rating: z.number().int().min(1).max(10).nullish(),
+  height_ft: z.number().int().min(0).max(10).nullish(),
+  height_in: z.number().int().min(0).max(11).nullish(),
+  weight_lbs: z.number().min(0).max(1000).nullish(),
+  sleep_average: z.string().max(50).nullish(),
+  goal_time: z.string().max(50).nullish(),
+  runner_types: z.array(z.string().max(100)).max(10).nullish(),
+  biggest_challenges: z.array(z.string().max(200)).max(20).nullish(),
 });
 
 export const chatMessageSchema = z.object({
