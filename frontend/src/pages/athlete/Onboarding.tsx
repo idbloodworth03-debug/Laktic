@@ -313,6 +313,7 @@ export function StravaConnectStep() {
   const profile = useAuthStore(s => s.profile);
   const setAuth = useAuthStore(s => s.setAuth);
   const [loading, setLoading] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
   const [error, setError] = useState(
     searchParams.get('strava_error') ? 'Strava connection failed. Please try again or skip for now.' : ''
   );
@@ -324,7 +325,7 @@ export function StravaConnectStep() {
   useEffect(() => {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) { setSessionReady(true); return; }
 
       let currentProfile = profile;
       if (!currentProfile) {
@@ -349,16 +350,40 @@ export function StravaConnectStep() {
         } catch {}
         sessionStorage.removeItem('laktic_onboarding');
       }
+
+      setSessionReady(true);
     })();
   }, []);
 
-  const connectStrava = () => {
+  const connectStrava = async () => {
     if (initiatedRef.current) return;
-    const athleteId = profile?.id;
-    if (!athleteId) {
-      setError('Please sign in again before connecting Strava.');
+
+    // Get a fresh session at click time — never rely on store state
+    let { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      const { data: refreshData } = await supabase.auth.refreshSession();
+      session = refreshData.session;
+    }
+    if (!session) {
+      setError('Session expired — please sign in again.');
       return;
     }
+
+    // Use profile from store if loaded; otherwise fetch it now
+    let athleteId = profile?.id;
+    if (!athleteId) {
+      try {
+        const me = await apiFetch('/api/me');
+        setAuth(session, me.role, me.profile);
+        athleteId = me.profile?.id;
+      } catch {}
+    }
+    if (!athleteId) {
+      initiatedRef.current = false;
+      setError('Could not load your profile. Please refresh the page.');
+      return;
+    }
+
     initiatedRef.current = true;
     setLoading(true);
     setError('');
@@ -368,6 +393,17 @@ export function StravaConnectStep() {
   };
 
   const skip = () => nav('/signup/meet-pace', { replace: true });
+
+  if (!sessionReady) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style={{ animation: 'lk-spin 1s linear infinite' }}>
+          <circle cx="16" cy="16" r="12" stroke="rgba(255,255,255,0.15)" strokeWidth="3" />
+          <path d="M16 4a12 12 0 0 1 12 12" stroke="#00E5A0" strokeWidth="3" strokeLinecap="round" />
+        </svg>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", color: 'white', textAlign: 'center', padding: '24px', position: 'relative', overflow: 'hidden' }}>
