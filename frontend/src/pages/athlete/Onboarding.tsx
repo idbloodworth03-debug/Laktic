@@ -311,12 +311,46 @@ export function StravaConnectStep() {
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
   const profile = useAuthStore(s => s.profile);
+  const setAuth = useAuthStore(s => s.setAuth);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(
     searchParams.get('strava_error') ? 'Strava connection failed. Please try again or skip for now.' : ''
   );
   // Guard against double-initiation from re-renders or StrictMode double-effect
   const initiatedRef = useRef(false);
+
+  // Load profile + apply onboarding patch when arriving from email confirmation
+  // (advance() in EmailConfirmationPending sets minimal auth with no profile)
+  useEffect(() => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      let currentProfile = profile;
+      if (!currentProfile) {
+        try {
+          const me = await apiFetch('/api/me');
+          setAuth(session, me.role, me.profile);
+          currentProfile = me.profile;
+        } catch {
+          // Profile doesn't exist yet — will be auto-created by requireAthlete middleware
+        }
+      }
+
+      // Apply full onboarding patch saved before email redirect (same-tab sessionStorage)
+      const savedStr = sessionStorage.getItem('laktic_onboarding');
+      const saved = savedStr ? JSON.parse(savedStr) : null;
+      if (saved?.patch) {
+        try {
+          await apiFetch('/api/athlete/profile', {
+            method: 'PATCH',
+            body: JSON.stringify(saved.patch),
+          });
+        } catch {}
+        sessionStorage.removeItem('laktic_onboarding');
+      }
+    })();
+  }, []);
 
   const connectStrava = () => {
     if (initiatedRef.current) return;

@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Mail } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 
 interface ConfirmState {
@@ -48,7 +47,7 @@ export function EmailConfirmationPending() {
     return null;
   };
 
-  const advance = async (session: import('@supabase/supabase-js').Session) => {
+  const advance = (session: import('@supabase/supabase-js').Session) => {
     if (advancedRef.current) return;
     advancedRef.current = true;
 
@@ -58,57 +57,19 @@ export function EmailConfirmationPending() {
 
     if (pollRef.current) clearInterval(pollRef.current);
 
-    // Retrieve onboarding data saved by Onboarding.tsx before the email redirect
-    const savedStr = sessionStorage.getItem('laktic_onboarding');
-    const saved = savedStr ? JSON.parse(savedStr) : null;
+    // Set minimal auth state — StravaConnectStep will load the full profile on mount
+    // and apply any pending onboarding patch from sessionStorage.
+    setAuth(session, 'athlete', null);
 
-    let profile: any = null;
-
-    // Check if profile already exists (e.g. created by AuthCallback in another tab)
-    try {
-      const me = await apiFetch('/api/me');
-      setAuth(session, me.role, me.profile);
-      profile = me.profile;
-    } catch {
-      // Profile doesn't exist yet — create it now
-      try {
-        const name = saved?.name ?? state.name ?? 'Athlete';
-        profile = await apiFetch('/api/athlete/profile', {
-          method: 'POST',
-          body: JSON.stringify({ name }),
-        });
-        setAuth(session, 'athlete', profile);
-      } catch {
-        // Profile creation failed (e.g. duplicate — AuthCallback won the race)
-        try {
-          const me = await apiFetch('/api/me');
-          setAuth(session, me.role, me.profile);
-          profile = me.profile;
-        } catch {}
-      }
-    }
-
-    // Apply full onboarding data (patch) if saved
-    if (saved?.patch && profile) {
-      try {
-        await apiFetch('/api/athlete/profile', {
-          method: 'PATCH',
-          body: JSON.stringify(saved.patch),
-        });
-      } catch {}
-      sessionStorage.removeItem('laktic_onboarding');
-    }
-
-    // Advance to Strava connect step (not directly to dashboard)
     nav('/signup/strava', { replace: true });
   };
 
   // Primary: onAuthStateChange fires when email is confirmed in the same browser
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session) {
-          await advance(session);
+      (_event, session) => {
+        if (session?.user?.email_confirmed_at) {
+          advance(session);
         }
       }
     );
@@ -120,7 +81,7 @@ export function EmailConfirmationPending() {
     pollRef.current = setInterval(async () => {
       try {
         const session = await tryGetConfirmedSession();
-        if (session) await advance(session);
+        if (session) advance(session);
       } catch {
         // Network error — keep polling silently
       }
@@ -158,7 +119,7 @@ export function EmailConfirmationPending() {
     try {
       const session = await tryGetConfirmedSession();
       if (session) {
-        await advance(session);
+        advance(session);
       } else {
         setConfirmError("Your email isn't confirmed yet. Check your inbox and click the link.");
       }
