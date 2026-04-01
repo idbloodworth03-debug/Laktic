@@ -9,17 +9,30 @@ import * as strava from '../services/stravaService';
 
 const router = Router();
 
-// GET /api/strava/auth — Generate Strava OAuth URL (redirect to Strava)
+// GET /api/strava/auth — Redirect browser directly to Strava's OAuth consent page
+// Called via full browser navigation (window.location.href), not fetch — no auth header available.
+// athleteId (athlete_profiles.id) is passed as query param and forwarded as OAuth state.
 router.get(
   '/auth',
-  auth,
-  requireAthlete,
-  asyncHandler(async (req: AuthRequest, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     if (!env.STRAVA_CLIENT_ID || !env.STRAVA_REDIRECT_URI) {
-      return res.status(503).json({ error: 'Strava integration is not yet configured' });
+      return res.redirect(`${env.FRONTEND_URL}/signup/strava?strava_error=1`);
     }
-    const url = strava.getAuthUrl(req.athlete.id);
-    res.json({ url });
+    const athleteId = req.query.athleteId as string | undefined;
+    if (!athleteId) {
+      return res.redirect(`${env.FRONTEND_URL}/signup/strava?strava_error=1`);
+    }
+    // Verify the athleteId exists to prevent state spoofing
+    const { data: athlete } = await supabase
+      .from('athlete_profiles')
+      .select('id')
+      .eq('id', athleteId)
+      .single();
+    if (!athlete) {
+      return res.redirect(`${env.FRONTEND_URL}/signup/strava?strava_error=1`);
+    }
+    const url = strava.getAuthUrl(athleteId);
+    res.redirect(url);
   })
 );
 

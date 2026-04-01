@@ -15,6 +15,7 @@ import { updateWorkout, reduceWeekIntensity, markRestDay, addInjuryNote, flagCoa
 import OpenAI from 'openai';
 import { env } from '../config/env';
 import { RUNNING_EXPERT_BASELINE } from '../utils/runningExpertBaseline';
+import { PACE_PERSONA } from '../utils/pacePersona';
 
 const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
@@ -343,8 +344,8 @@ router.post(
     const existing = await getActiveSeasonForTeam(req.athlete.id, req.athlete.active_team_id ?? null, 'id');
     if (existing) return res.status(400).json({ error: 'Season already exists. Use regenerate to update your plan.' });
 
-    // Find any published bot to generate against (the default Pace system bot)
-    const { data: bot } = await supabase
+    // Find any published bot — fall back to Pace defaults if none exists
+    const { data: botRow } = await supabase
       .from('coach_bots')
       .select('*')
       .eq('is_published', true)
@@ -352,17 +353,23 @@ router.post(
       .limit(1)
       .single();
 
-    if (!bot) return res.status(503).json({ error: 'Plan generation is not available yet. Please try again later.' });
+    const bot = botRow ?? {
+      id: null,
+      name: 'Pace',
+      philosophy: RUNNING_EXPERT_BASELINE,
+      personality_prompt: PACE_PERSONA,
+      event_focus: 'running',
+      level_focus: 'all',
+    };
 
-    const { data: botWorkouts } = await supabase
-      .from('bot_workouts')
-      .select('*')
-      .eq('bot_id', bot.id)
-      .order('day_of_week');
+    const botWorkoutsResult = botRow
+      ? await supabase.from('bot_workouts').select('*').eq('bot_id', botRow.id).order('day_of_week')
+      : { data: [] };
+    const botWorkouts = botWorkoutsResult.data;
 
     const { data: job, error: jobError } = await supabase
       .from('plan_jobs')
-      .insert({ athlete_id: req.athlete.id, bot_id: bot.id, status: 'generating', source: 'generate' })
+      .insert({ athlete_id: req.athlete.id, bot_id: botRow?.id ?? null, status: 'generating', source: 'onboarding' })
       .select('id')
       .single();
 
@@ -408,7 +415,7 @@ router.post(
       console.log('[plan/generate] Plan generated successfully, weeks:', plan.length);
       const { data: season, error: seasonErr } = await supabase
         .from('athlete_seasons')
-        .insert({ athlete_id: athleteId, bot_id: bot.id, race_calendar: [], season_plan: plan, ai_used: aiUsed, status: 'active' })
+        .insert({ athlete_id: athleteId, bot_id: botRow?.id ?? null, race_calendar: [], season_plan: plan, ai_used: aiUsed, status: 'active' })
         .select('id')
         .single();
       if (seasonErr || !season) throw new Error(seasonErr?.message || 'Failed to save season');
@@ -483,12 +490,18 @@ router.post(
     );
     if (!season) return res.status(404).json({ error: 'No active season' });
 
-    const bot = (season as any).coach_bots;
-    const { data: botWorkouts } = await supabase
-      .from('bot_workouts')
-      .select('*')
-      .eq('bot_id', season.bot_id)
-      .order('day_of_week');
+    const bot = (season as any).coach_bots ?? {
+      id: null,
+      name: 'Pace',
+      philosophy: RUNNING_EXPERT_BASELINE,
+      personality_prompt: PACE_PERSONA,
+      event_focus: 'running',
+      level_focus: 'all',
+    };
+    const botWorkoutsResult = season.bot_id
+      ? await supabase.from('bot_workouts').select('*').eq('bot_id', season.bot_id).order('day_of_week')
+      : { data: [] };
+    const botWorkouts = botWorkoutsResult.data;
 
     const { data: job, error: jobError } = await supabase
       .from('plan_jobs')

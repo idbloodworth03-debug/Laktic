@@ -94,10 +94,12 @@ export function EmailConfirmationPending() {
   // Fallback: poll every 2s — force refresh from server so cross-device confirmation is detected
   useEffect(() => {
     pollRef.current = setInterval(async () => {
-      const { data: { session } } = await supabase.auth.refreshSession();
-      if (!session) return;
-      if (session.user.email_confirmed_at) {
-        await advance(session);
+      try {
+        const { data: { session } } = await supabase.auth.refreshSession();
+        if (!session) return;
+        if (session.user.email_confirmed_at) await advance(session);
+      } catch {
+        // Network error or no session — keep polling silently
       }
     }, 2000);
 
@@ -131,9 +133,24 @@ export function EmailConfirmationPending() {
     setChecking(true);
     setConfirmError('');
     try {
-      // refreshSession() forces a round-trip to Supabase — picks up cross-device confirmation
-      const { data: { session }, error } = await supabase.auth.refreshSession();
-      if (error) throw error;
+      // Try refreshSession first — forces a server round-trip, picks up cross-device confirmation
+      let session: import('@supabase/supabase-js').Session | null = null;
+      try {
+        const { data, error } = await supabase.auth.refreshSession();
+        if (!error) session = data.session;
+      } catch {
+        // refreshSession can throw if no refresh token exists — fall through to getUser
+      }
+
+      // Fallback: getUser always hits the server
+      if (!session) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email_confirmed_at) {
+          const { data: { session: s } } = await supabase.auth.getSession();
+          session = s;
+        }
+      }
+
       if (session?.user?.email_confirmed_at) {
         await advance(session);
       } else {

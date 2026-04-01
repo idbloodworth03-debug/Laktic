@@ -310,6 +310,7 @@ export function MeetPaceSplash() {
 export function StravaConnectStep() {
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
+  const profile = useAuthStore(s => s.profile);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(
     searchParams.get('strava_error') ? 'Strava connection failed. Please try again or skip for now.' : ''
@@ -317,28 +318,19 @@ export function StravaConnectStep() {
   // Guard against double-initiation from re-renders or StrictMode double-effect
   const initiatedRef = useRef(false);
 
-  const connectStrava = async () => {
+  const connectStrava = () => {
     if (initiatedRef.current) return;
+    const athleteId = profile?.id;
+    if (!athleteId) {
+      setError('Please sign in again before connecting Strava.');
+      return;
+    }
     initiatedRef.current = true;
     setLoading(true);
     setError('');
-    try {
-      // Verify session exists before calling backend — Strava route requires auth
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        setError('Please sign in again before connecting Strava.');
-        setLoading(false);
-        return;
-      }
-      const { apiFetch } = await import('../../lib/api');
-      const data = await apiFetch('/api/strava/auth');
-      // Flag so AthleteDashboard knows to show MeetPace after OAuth redirect
-      sessionStorage.setItem('laktic_post_strava', '1');
-      window.location.href = data.url;
-    } catch (e: any) {
-      setError(e.message || 'Failed to start Strava connection. Try again or skip for now.');
-      setLoading(false);
-    }
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    // Full browser navigation — backend redirects directly to Strava's OAuth page
+    window.location.href = `${apiUrl}/api/strava/auth?athleteId=${athleteId}`;
   };
 
   const skip = () => nav('/signup/meet-pace', { replace: true });
