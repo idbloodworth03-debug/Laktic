@@ -173,6 +173,40 @@ export async function addInjuryNote(athleteId: string, note: string): Promise<Ac
   return { ok: true, message: 'Injury note recorded' };
 }
 
+// ── 6. saveMemory ─────────────────────────────────────────────────────────────
+
+export async function saveMemory(
+  athleteId: string,
+  memoryText: string,
+  sourceSessionId?: string | null
+): Promise<ActionResult> {
+  const { error } = await supabase.from('bot_memory').insert({
+    athlete_id: athleteId,
+    memory_text: memoryText,
+    source_session_id: sourceSessionId ?? null,
+  });
+
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: 'Memory saved' };
+}
+
+// ── 7. summarizeSession ───────────────────────────────────────────────────────
+
+export async function summarizeSession(
+  athleteId: string,
+  summaryText: string,
+  messageCount: number
+): Promise<ActionResult> {
+  const { error } = await supabase.from('conversation_summaries').insert({
+    athlete_id: athleteId,
+    summary_text: summaryText,
+    message_count: messageCount,
+  });
+
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, message: 'Session summary saved' };
+}
+
 // ── 5. flagCoach ──────────────────────────────────────────────────────────────
 
 export async function flagCoach(athleteId: string, message: string): Promise<ActionResult> {

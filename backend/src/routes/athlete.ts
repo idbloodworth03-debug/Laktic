@@ -11,7 +11,8 @@ import { athleteProfileSchema, athleteProfileUpdateSchema, chatMessageSchema, ra
 import { sendAthleteWelcomeEmail } from '../services/emailService';
 import { notifyPlanReady } from '../services/notificationService';
 import { loadAthleteContext, formatContextForPrompt } from '../utils/athleteContext';
-import { updateWorkout, reduceWeekIntensity, markRestDay, addInjuryNote, flagCoach } from '../utils/botActions';
+import { updateWorkout, reduceWeekIntensity, markRestDay, addInjuryNote, flagCoach, saveMemory } from '../utils/botActions';
+import { extractMemories } from '../utils/memoryExtractor';
 import OpenAI from 'openai';
 import { env } from '../config/env';
 import { RUNNING_EXPERT_BASELINE } from '../utils/runningExpertBaseline';
@@ -855,6 +856,24 @@ ATHLETE: ${message}`;
     });
 
     res.json({ botReply, planUpdated, updatedDays });
+
+    // Auto-extract memories every 10 messages (fire and forget — never delays response)
+    const totalMessages = (chatHistory?.length ?? 0) + 2;
+    if (totalMessages % 10 === 0) {
+      const recentSlice = (chatHistory || []).slice(-10).map((m: any) => ({
+        role: m.role as string,
+        content: m.content as string,
+      }));
+      extractMemories(recentSlice)
+        .then(async (memories) => {
+          for (const mem of memories) {
+            await saveMemory(req.athlete.id, mem, season.id);
+          }
+        })
+        .catch(() => {
+          // non-blocking — extraction failure must never surface to the athlete
+        });
+    }
   })
 );
 

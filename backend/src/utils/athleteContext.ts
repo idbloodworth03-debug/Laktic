@@ -14,6 +14,8 @@ export interface AthleteContext {
   readinessHistory: any[];
   todayReadiness: any | null;
   weeklyMileage: number;
+  persistentMemories: string[];
+  conversationSummaries: string[];
 }
 
 export async function loadAthleteContext(
@@ -30,6 +32,8 @@ export async function loadAthleteContext(
     { data: recentActivities },
     { data: readinessHistory },
     { data: todayReadiness },
+    { data: persistentMemoriesRaw },
+    { data: conversationSummariesRaw },
   ] = await Promise.all([
     supabase.from('athlete_profiles').select('*').eq('id', athleteId).single(),
     supabase
@@ -60,6 +64,18 @@ export async function loadAthleteContext(
       .eq('athlete_id', athleteId)
       .eq('date', today)
       .single(),
+    supabase
+      .from('bot_memory')
+      .select('memory_text')
+      .eq('athlete_id', athleteId)
+      .order('created_at', { ascending: false })
+      .limit(10),
+    supabase
+      .from('conversation_summaries')
+      .select('summary_text')
+      .eq('athlete_id', athleteId)
+      .order('created_at', { ascending: false })
+      .limit(3),
   ]);
 
   const activeSeason = seasonRow
@@ -135,6 +151,8 @@ export async function loadAthleteContext(
     readinessHistory: readinessHistory || [],
     todayReadiness: todayReadiness || null,
     weeklyMileage,
+    persistentMemories: (persistentMemoriesRaw || []).map((r: any) => r.memory_text as string),
+    conversationSummaries: (conversationSummariesRaw || []).map((r: any) => r.summary_text as string),
   };
 }
 
@@ -250,6 +268,22 @@ export function formatContextForPrompt(ctx: AthleteContext): string {
           .join('\n')
       : '';
 
+  const memoryLines: string[] = [];
+  if (ctx.persistentMemories.length > 0 || ctx.conversationSummaries.length > 0) {
+    memoryLines.push('What Pace remembers about this athlete:');
+    for (const m of ctx.persistentMemories) {
+      memoryLines.push(`- ${m}`);
+    }
+    if (ctx.conversationSummaries.length > 0) {
+      memoryLines.push('');
+      memoryLines.push('Recent session summaries:');
+      for (const s of ctx.conversationSummaries) {
+        memoryLines.push(`- ${s}`);
+      }
+    }
+  }
+  const memoryBlock = memoryLines.join('\n');
+
   return [
     `TODAY: ${today}`,
     athleteProfile,
@@ -264,6 +298,7 @@ export function formatContextForPrompt(ctx: AthleteContext): string {
     '',
     readinessBlock,
     readinessHistoryBlock ? '\n' + readinessHistoryBlock : '',
+    memoryBlock ? '\n' + memoryBlock : '',
   ]
     .filter((s) => s !== null && s !== undefined)
     .join('\n')
