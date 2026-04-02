@@ -12,6 +12,7 @@ import { sendAthleteWelcomeEmail } from '../services/emailService';
 import { notifyPlanReady } from '../services/notificationService';
 import { loadAthleteContext, formatContextForPrompt } from '../utils/athleteContext';
 import { classifyAthleteTier, derivePaceBands, deriveEventPaces } from '../utils/athleteTier';
+import { predictRaceTime, getPredictionTrend, RACE_DISTANCES_M } from '../utils/performancePredictions';
 import { updateWorkout, reduceWeekIntensity, markRestDay, addInjuryNote, flagCoach, saveMemory, summarizeSession } from '../utils/botActions';
 import { extractMemories } from '../utils/memoryExtractor';
 import OpenAI from 'openai';
@@ -1213,6 +1214,107 @@ router.delete(
       .eq('workout_date', date);
 
     res.json({ ok: true });
+  })
+);
+
+// GET /api/athlete/predictions — race time predictions and trend data
+router.get(
+  '/predictions',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const athlete = req.athlete;
+
+    // Load active season to compute compliance
+    const season = await getActiveSeasonForTeam(athlete.id, athlete.active_team_id ?? null, 'id, season_plan, race_calendar');
+    const plan: any[] = season?.season_plan || [];
+
+    // Count planned workouts in the past (with distance > 0)
+    const planned: string[] = [];
+    for (const week of plan) {
+      for (const wo of week.workouts || []) {
+        if (wo.date && wo.date < today && (wo.distance_miles || wo.total_distance || 0) > 0 && !wo.is_rest_day) {
+          planned.push(wo.date);
+        }
+      }
+    }
+
+    // Count completions
+    const { data: completionRows } = await supabase
+      .from('workout_completions')
+      .select('workout_date')
+      .eq('athlete_id', athlete.id);
+
+    const completedDates = new Set((completionRows || []).map((r: any) => r.workout_date as string));
+    const completedCount = planned.filter(d => completedDates.has(d)).length;
+    const complianceRate = planned.length > 0 ? Math.round((completedCount / planned.length) * 100) : 0;
+
+    // Weeks of training completed (weeks that have at least one planned workout in the past)
+    const weekStarts = new Set(plan.filter(w => w.week_start_date < today).map(w => w.week_start_date as string));
+    const weeksOfTraining = weekStarts.size;
+
+    // Weeks to race
+    const raceCalendar: any[] = season?.race_calendar || [];
+    const goalRaces = raceCalendar.filter((r: any) => r.is_goal_race && r.date > today);
+    goalRaces.sort((a: any, b: any) => a.date.localeCompare(b.date));
+    const nextGoalRace = goalRaces[0] ?? null;
+    const weeksToRace = nextGoalRace
+      ? Math.ceil((new Date(nextGoalRace.date + 'T00:00:00Z').getTime() - new Date(today + 'T00:00:00Z').getTime()) / (7 * 24 * 60 * 60 * 1000))
+      : null;
+
+    // Logged activity weeks (approximation: distinct ISO weeks in recent activities)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const { data: recentActs } = await supabase
+      .from('athlete_activities')
+      .select('start_date')
+      .eq('athlete_id', athlete.id)
+      .gte('start_date', thirtyDaysAgo);
+    const actWeeks = new Set((recentActs || []).map((a: any) => (a.start_date as string).slice(0, 7)));
+    const loggedWeeks = actWeeks.size;
+
+    // Primary events to predict
+    const primaryEvents: string[] = Array.isArray(athlete.primary_events) ? athlete.primary_events : [];
+    // Map event labels to distance keys
+    const eventToKey: Record<string, string> = {
+      '800m': '800m', '1500m': '1500m', '1500': '1500m', 'mile': 'mile', 'Mile': 'mile',
+      '5k': '5K', '5K': '5K', '5000m': '5K',
+      '10k': '10K', '10K': '10K', '10000m': '10K',
+      'half marathon': 'half', 'half': 'half',
+      'marathon': 'marathon',
+    };
+
+    // Build prediction for each event + goal race distance
+    const distancesToPredict = new Set<string>();
+    for (const ev of primaryEvents) {
+      const key = eventToKey[ev] ?? eventToKey[ev.toLowerCase()];
+      if (key && RACE_DISTANCES_M[key]) distancesToPredict.add(key);
+    }
+    if (athlete.target_race_distance) {
+      const k = eventToKey[athlete.target_race_distance] ?? eventToKey[(athlete.target_race_distance as string).toLowerCase()];
+      if (k) distancesToPredict.add(k);
+    }
+    // Always include at least one prediction
+    if (distancesToPredict.size === 0) distancesToPredict.add('5K');
+
+    const predictions = Array.from(distancesToPredict).map(dist => {
+      const pred = predictRaceTime(athlete, dist, weeksOfTraining, complianceRate, weeksToRace, loggedWeeks);
+      const trend = weeksToRace
+        ? getPredictionTrend(athlete, dist, weeksOfTraining, complianceRate, weeksToRace)
+        : [];
+      return { ...pred, complianceRate, weeksOfTraining, weeksToRace, trend };
+    });
+
+    // Also compute primary goal prediction for context
+    const primaryPred = predictions[0] ?? null;
+
+    res.json({
+      predictions,
+      primaryPrediction: primaryPred,
+      complianceRate,
+      weeksOfTraining,
+      weeksToRace,
+    });
   })
 );
 

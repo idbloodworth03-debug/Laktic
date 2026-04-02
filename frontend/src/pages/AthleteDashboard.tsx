@@ -7,6 +7,7 @@ import { AppLayout, Card, Badge, Button, ReadinessRing, ProgressBar, Spinner, St
 import { UserAvatar } from '../components/UserAvatar';
 import { PaceZonesCard } from '../components/PaceZonesCard';
 import { PhaseIndicator } from '../components/PhaseIndicator';
+import { RacePredictionsCard } from '../components/RacePredictionsCard';
 import { ArrowRight, ChevronRight, TrendingUp, TrendingDown, Minus, X } from 'lucide-react';
 
 interface ReadinessData {
@@ -317,6 +318,9 @@ export function AthleteDashboard() {
             {season && (
               <PhaseIndicator phase={season.phase} weeksToRace={weeksToRace} />
             )}
+
+            {/* Race predictions */}
+            <RacePredictionsCard />
 
             {/* Pace zones */}
             <PaceZonesCard />

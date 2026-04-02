@@ -182,9 +182,10 @@ interface WorkoutModalProps {
   paceBands?: { LT2: string; LT1: string; steady: string; easy: string; recovery: string; needs_aerobic_pr: boolean } | null;
   eventPaces?: { mile_pace: string | null; pace_1500: string | null; pace_800: string | null; pace_5k: string | null } | null;
   onAskPace?: () => void;
+  primaryPrediction?: { raceWeekPrediction: string; targetDistance: string } | null;
 }
 
-function WorkoutModal({ wo, onClose, isCompleted, onComplete, togglingComplete, paceBands, eventPaces, onAskPace }: WorkoutModalProps) {
+function WorkoutModal({ wo, onClose, isCompleted, onComplete, togglingComplete, paceBands, eventPaces, onAskPace, primaryPrediction }: WorkoutModalProps) {
   const typeStyle = WORKOUT_TYPE_STYLE[getWorkoutType(wo.title, false)];
   const sections = wo.description ? parseDescription(wo.description) : null;
 
@@ -301,6 +302,40 @@ function WorkoutModal({ wo, onClose, isCompleted, onComplete, togglingComplete, 
               )}
             </div>
           )}
+
+          {/* Performance Impact */}
+          {primaryPrediction && (() => {
+            const wt2 = getWorkoutType(wo.title, false);
+            if (wt2 === 'rest' || !wo.title) return null;
+            let primaryBenefit = '';
+            let estimatedContribution = '';
+            if (wt2 === 'easy') {
+              primaryBenefit = 'Aerobic recovery';
+              estimatedContribution = `Keeps training load sustainable — essential to reaching ${primaryPrediction.raceWeekPrediction} on race week.`;
+            } else if (wt2 === 'long') {
+              primaryBenefit = 'Endurance base';
+              estimatedContribution = `Extends your aerobic ceiling, pushing your race week projection toward ${primaryPrediction.raceWeekPrediction} for ${primaryPrediction.targetDistance}.`;
+            } else if (wt2 === 'tempo') {
+              primaryBenefit = 'Lactate threshold';
+              estimatedContribution = `Raises your sustainable race pace — each week of consistent threshold work moves you closer to ${primaryPrediction.raceWeekPrediction}.`;
+            } else if (wt2 === 'intervals' || wt2 === 'race') {
+              primaryBenefit = 'Race-specific sharpness';
+              estimatedContribution = `Directly targets your ${primaryPrediction.targetDistance} race pace. Projected race week: ${primaryPrediction.raceWeekPrediction}.`;
+            } else {
+              primaryBenefit = 'General fitness';
+              estimatedContribution = `Contributes to your overall progression toward ${primaryPrediction.raceWeekPrediction} at race week.`;
+            }
+            return (
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-tertiary)' }}>Performance Impact</p>
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)', fontFamily: 'DM Sans, sans-serif' }}>{primaryBenefit}</p>
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{estimatedContribution}</p>
+                  <p className="font-mono text-[11px]" style={{ color: '#00E5A0', fontFamily: 'DM Mono, monospace' }}>Race week target: {primaryPrediction.raceWeekPrediction}</p>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Your Paces */}
           {(wo.pace_guideline || derivedPace || eventPaceDisplay) && (
@@ -756,6 +791,7 @@ export function SeasonPlan() {
   const [sharingMilestone, setSharingMilestone] = useState<string | null>(null);
   const [completedDates, setCompletedDates] = useState<Set<string>>(new Set());
   const [togglingDate, setTogglingDate] = useState<string | null>(null);
+  const [primaryPrediction, setPrimaryPrediction] = useState<{ raceWeekPrediction: string; targetDistance: string } | null>(null);
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
   const loadSeason = () => {
@@ -779,7 +815,18 @@ export function SeasonPlan() {
       .catch(console.error);
   };
 
-  useEffect(() => { loadSeason(); loadCompletions(); }, []);
+  useEffect(() => {
+    loadSeason();
+    loadCompletions();
+    apiFetch('/api/athlete/predictions')
+      .then((d: any) => {
+        const p = d?.primaryPrediction ?? d?.predictions?.[0] ?? null;
+        if (p && !p.needsMoreData) {
+          setPrimaryPrediction({ raceWeekPrediction: p.raceWeekPrediction, targetDistance: p.targetDistance });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Auto-refetch when the coaching agent updates the plan via tool calls
   useEffect(() => {
@@ -951,6 +998,7 @@ export function SeasonPlan() {
           togglingComplete={selectedWorkout.date ? togglingDate === selectedWorkout.date : false}
           paceBands={paceBands}
           eventPaces={eventPaces}
+          primaryPrediction={primaryPrediction}
           onAskPace={() => {
             const msg = encodeURIComponent(`Can you explain this workout: ${selectedWorkout.title}${selectedWorkout.distance_miles ? ` (${selectedWorkout.distance_miles} mi)` : ''}${selectedWorkout.date ? ` on ${selectedWorkout.dateLabel}` : ''}?`);
             nav(`/athlete/chat?q=${msg}`);
@@ -1308,6 +1356,30 @@ export function SeasonPlan() {
                                   })()}
                                 </div>
                               )}
+                              {/* Prediction impact line */}
+                              {primaryPrediction && !isCompleted && !wo.is_rest_day && (() => {
+                                const wt = getWorkoutType(wo.title || '', false);
+                                if (wt === 'easy') {
+                                  return (
+                                    <p className="text-[10px] pl-4 mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>
+                                      Recovery — key to hitting {primaryPrediction.raceWeekPrediction}
+                                    </p>
+                                  );
+                                }
+                                if (wt === 'intervals' || wt === 'race') {
+                                  return (
+                                    <p className="font-mono text-[10px] pl-4 mt-0.5" style={{ color: '#00E5A0' }}>
+                                      Sharpens race pace — projected {primaryPrediction.raceWeekPrediction} for {primaryPrediction.targetDistance}
+                                    </p>
+                                  );
+                                }
+                                // tempo, long, general
+                                return (
+                                  <p className="font-mono text-[10px] pl-4 mt-0.5" style={{ color: '#00E5A0' }}>
+                                    Builds toward {primaryPrediction.raceWeekPrediction} at race week
+                                  </p>
+                                );
+                              })()}
                             </>
                           ) : (
                             <div className="text-xs pl-1" style={{ color: 'var(--color-text-tertiary)' }}>Rest</div>

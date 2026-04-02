@@ -1,5 +1,6 @@
 import { supabase } from '../db/supabase';
 import { getFormattedKnowledge } from '../services/knowledgeService';
+import { predictRaceTime } from './performancePredictions';
 
 /** Derive current training phase from race calendar */
 export function derivePhase(upcomingRaces: any[]): string {
@@ -361,6 +362,39 @@ export function formatContextForPrompt(ctx: AthleteContext): string {
 
   const trainingPhaseBlock = phaseLines.filter(Boolean).join('\n');
 
+  // Performance predictions block
+  let predictionsBlock = '';
+  try {
+    const events: string[] = Array.isArray(ap.primary_events) ? ap.primary_events : [];
+    const eventToKey: Record<string, string> = {
+      '800m': '800m', '1500m': '1500m', 'mile': 'mile', 'Mile': 'mile',
+      '5k': '5K', '5K': '5K', '10k': '10K', '10K': '10K',
+      'half': 'half', 'marathon': 'marathon',
+    };
+    const primaryDistKey = (() => {
+      for (const ev of events) {
+        const k = eventToKey[ev] ?? eventToKey[ev?.toLowerCase?.()];
+        if (k) return k;
+      }
+      if (ap.target_race_distance) {
+        return eventToKey[ap.target_race_distance] ?? eventToKey[(ap.target_race_distance as string).toLowerCase()] ?? '5K';
+      }
+      return '5K';
+    })();
+    const weeksToRace = ctx.daysUntilRace != null ? Math.ceil(ctx.daysUntilRace / 7) : null;
+    const pred = predictRaceTime(ap, primaryDistKey, 0, 70, weeksToRace, 0);
+    if (!pred.needsMoreData) {
+      predictionsBlock = [
+        'PERFORMANCE PREDICTIONS:',
+        `- Current predicted ${primaryDistKey}: ${pred.currentPrediction}`,
+        weeksToRace ? `- Race week prediction: ${pred.raceWeekPrediction}` : null,
+        `- Potential if consistent: ${pred.potentialPR}`,
+        `- Confidence: ${pred.confidenceLevel}`,
+        `- Based on: ${pred.basedOn}`,
+      ].filter(Boolean).join('\n');
+    }
+  } catch { /* predictions are non-critical */ }
+
   return [
     `TODAY: ${today}`,
     athleteProfile,
@@ -376,6 +410,7 @@ export function formatContextForPrompt(ctx: AthleteContext): string {
     readinessBlock,
     readinessHistoryBlock ? '\n' + readinessHistoryBlock : '',
     trainingPhaseBlock ? '\n' + trainingPhaseBlock : '',
+    predictionsBlock ? '\n' + predictionsBlock : '',
     memoryBlock ? '\n' + memoryBlock : '',
   ]
     .filter((s) => s !== null && s !== undefined)
