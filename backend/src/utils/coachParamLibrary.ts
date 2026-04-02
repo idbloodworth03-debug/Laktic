@@ -188,6 +188,19 @@ export function getMpwBand(mpw: number): string {
   return 'over_50';
 }
 
+export function getWarmupCooldown(mpwBand: string): { warmup_mi: number; cooldown_mi: number } {
+  return WARMUP_COOLDOWN_SCALING[mpwBand] ?? WARMUP_COOLDOWN_SCALING.under_30;
+}
+
+export function getRoleMap(trainingDays: number, phase: string): string[] {
+  const d = `d${Math.min(Math.max(trainingDays, 3), 7)}` as keyof typeof WEEKLY_PATTERN.role_maps.ease_in;
+  if (phase === 'ease_in') {
+    return [...(WEEKLY_PATTERN.role_maps.ease_in[d] ?? WEEKLY_PATTERN.role_maps.ease_in.d5)];
+  }
+  const key = d as keyof typeof WEEKLY_PATTERN.role_maps.training_phases;
+  return [...(WEEKLY_PATTERN.role_maps.training_phases[key] ?? WEEKLY_PATTERN.role_maps.training_phases.d5)];
+}
+
 // ── J. Volume Caps ────────────────────────────────────────────────────────────
 
 export const VOLUME_CAPS = {

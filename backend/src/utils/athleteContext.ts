@@ -316,32 +316,50 @@ export function formatContextForPrompt(ctx: AthleteContext): string {
   }
   const memoryBlock = memoryLines.join('\n');
 
-  // Training phase context for track/middle-distance athletes
-  let trainingPhaseBlock = '';
-  if (isTrackEventAthlete(ap)) {
-    const phase = derivePhase(ctx.upcomingRaces);
-    const phaseLabels: Record<string, string> = {
-      ease_in: 'Ease-In',
-      base: 'Base',
-      pre_competition: 'Pre-Competition',
-      competition: 'Competition',
-    };
-    const phaseLabel = phaseLabels[phase] || phase;
-    const fitnessLevel = ap.fitness_level || ap.experience_level || 'intermediate';
-    const mpw = ap.current_weekly_mileage ?? ap.weekly_volume_miles ?? 0;
-    trainingPhaseBlock = [
-      'TRAINING PHASE CONTEXT (1500m/mile system):',
-      `- Current phase: ${phaseLabel} (${phase})`,
-      `- Fitness level: ${fitnessLevel}`,
-      `- Weekly volume: ${mpw} mpw`,
-      `- Training days/week: ${ap.training_days_per_week ?? 'not specified'}`,
-      `- Pace sources: aerobic systems from 3000m+ PRs only; event-specific from mile/1500/800 PRs`,
-      ap.pr_5k ? `- Aerobic anchor: 5K ${ap.pr_5k}` : null,
-      ap.pr_mile ? `- Event anchor: Mile ${ap.pr_mile}` : null,
-      ap.pr_1500m ? `- Event anchor: 1500m ${ap.pr_1500m}` : null,
-      ap.pr_800m ? `- Event anchor: 800m ${ap.pr_800m}` : null,
-    ].filter(Boolean).join('\n');
+  // Training phase context — always injected for every athlete
+  const phase = derivePhase(ctx.upcomingRaces);
+  const phaseLabels: Record<string, string> = {
+    ease_in: 'Ease-In',
+    base: 'Base',
+    pre_competition: 'Pre-Competition',
+    competition: 'Competition',
+  };
+  const phaseLabel = phaseLabels[phase] || phase;
+  const fitnessLevel = ap.fitness_level || ap.experience_level || 'intermediate';
+  const mpw = ap.current_weekly_mileage ?? ap.weekly_volume_miles ?? 0;
+  const hasTrackEvents = isTrackEventAthlete(ap);
+  const hasAerobicPRs = !!(ap.pr_5k || ap.pr_10k || ap.pr_half_marathon || ap.pr_marathon);
+
+  const phaseLines: (string | null)[] = [
+    'TRAINING PHASE CONTEXT:',
+    `- Current phase: ${phaseLabel} (${phase})`,
+    `- Fitness level: ${fitnessLevel}`,
+    `- Weekly volume: ${mpw} mpw`,
+    `- Training days/week: ${ap.training_days_per_week ?? 'not specified'}`,
+    ctx.daysUntilRace != null ? `- Weeks to race: ${Math.ceil(ctx.daysUntilRace / 7)}` : null,
+  ];
+
+  if (hasTrackEvents) {
+    // Track / middle-distance athlete — include both aerobic and event-specific anchors
+    phaseLines.push(`- Pace sources: aerobic systems from 3000m+ PRs only; event-specific from mile/1500/800 PRs`);
+    if (ap.pr_5k)   phaseLines.push(`- Aerobic anchor: 5K ${ap.pr_5k}`);
+    if (ap.pr_mile) phaseLines.push(`- Event anchor: Mile ${ap.pr_mile}`);
+    if (ap.pr_1500m) phaseLines.push(`- Event anchor: 1500m ${ap.pr_1500m}`);
+    if (ap.pr_800m) phaseLines.push(`- Event anchor: 800m ${ap.pr_800m}`);
+  } else if (hasAerobicPRs) {
+    // Road / 5K athlete — aerobic paces only
+    phaseLines.push(`- Pace sources: all paces derived from aerobic PRs (3000m+ performances)`);
+    if (ap.pr_5k)           phaseLines.push(`- Aerobic anchor: 5K ${ap.pr_5k}`);
+    if (ap.pr_10k)          phaseLines.push(`- Aerobic anchor: 10K ${ap.pr_10k}`);
+    if (ap.pr_half_marathon) phaseLines.push(`- Aerobic anchor: Half Marathon ${ap.pr_half_marathon}`);
+    if (ap.pr_marathon)     phaseLines.push(`- Aerobic anchor: Marathon ${ap.pr_marathon}`);
+  } else {
+    // Beginner / no PRs — effort-based guidance
+    phaseLines.push(`- No race PRs on file — use effort-based guidance (easy = conversational pace)`);
+    phaseLines.push(`- Aerobic paces will be established as PRs are added to the profile`);
   }
+
+  const trainingPhaseBlock = phaseLines.filter(Boolean).join('\n');
 
   return [
     `TODAY: ${today}`,

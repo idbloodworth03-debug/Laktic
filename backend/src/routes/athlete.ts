@@ -815,9 +815,7 @@ Rules:
 3. For injuries: reduce load conservatively. Always recommend professional medical evaluation for significant symptoms.
 4. Use tools when action is needed — don't just suggest changes, make them.
 5. After using tools, tell the athlete exactly what you changed.
-6. Flag the human coach for serious injuries, mental health concerns, or anything requiring human judgment.
-
-${RUNNING_EXPERT_BASELINE}`;
+6. Flag the human coach for serious injuries, mental health concerns, or anything requiring human judgment.`;
 
     // Build conversation messages
     const historyText = (chatHistory || []).slice(-20).map((msg: any) =>

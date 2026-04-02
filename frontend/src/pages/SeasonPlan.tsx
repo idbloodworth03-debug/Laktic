@@ -119,6 +119,7 @@ type CalWorkout = {
   pace_guideline?: string;
   description?: string;
   change_reason?: string;
+  why?: string;
   phase: string;
   dateLabel: string;
   date?: string;
@@ -130,22 +131,45 @@ type DescSection = { label: string; text: string; color: string };
 
 function parseDescription(desc: string): DescSection[] | null {
   const SECTION_PATTERNS: { re: RegExp; label: string; color: string }[] = [
-    { re: /^Warmup:\s*/i,       label: 'Warmup',        color: '#4ade80' },
-    { re: /^Main Set:\s*/i,     label: 'Main Set',      color: '#00E5A0' },
-    { re: /^Cooldown:\s*/i,     label: 'Cooldown',      color: '#60a5fa' },
-    { re: /^Coaching Cue:\s*/i, label: 'Coaching Cue',  color: '#f59e0b' },
+    { re: /^Warmup:/i,        label: 'Warmup',       color: '#9ca3af' },
+    { re: /^Main\s*[Ss]et:/i, label: 'Main Set',     color: '#00E5A0' },
+    { re: /^Cooldown:/i,      label: 'Cooldown',     color: '#9ca3af' },
+    { re: /^Coaching\s*[Cc]ue:/i, label: 'Pace Says', color: '#f59e0b' },
   ];
-  // Try to split on these patterns
-  const parts = desc.split(/(?=Warmup:|Main Set:|Cooldown:|Coaching Cue:)/i).filter(Boolean);
-  if (parts.length < 2) return null;
-  return parts.map(part => {
-    for (const p of SECTION_PATTERNS) {
-      if (p.re.test(part)) {
-        return { label: p.label, text: part.replace(p.re, '').trim().replace(/\.$/, ''), color: p.color };
-      }
+
+  // Split on double-newlines first (canonical format from new prompt)
+  const blocks = desc.split(/\n\n+/).map(b => b.trim()).filter(Boolean);
+
+  if (blocks.length >= 2) {
+    // Check if any block starts with a known section label
+    const hasLabels = blocks.some(b => SECTION_PATTERNS.some(p => p.re.test(b)));
+    if (hasLabels) {
+      return blocks.map(block => {
+        for (const p of SECTION_PATTERNS) {
+          if (p.re.test(block)) {
+            const text = block.replace(p.re, '').trim();
+            return { label: p.label, text, color: p.color };
+          }
+        }
+        return { label: '', text: block, color: 'rgba(255,255,255,0.15)' };
+      });
     }
-    return { label: '', text: part.trim(), color: 'rgba(255,255,255,0.15)' };
-  });
+  }
+
+  // Fallback: try inline section splitting (old format)
+  const inlineParts = desc.split(/(?=Warmup:|Main\s*[Ss]et:|Cooldown:|Coaching\s*[Cc]ue:)/i).filter(Boolean);
+  if (inlineParts.length >= 2) {
+    return inlineParts.map(part => {
+      for (const p of SECTION_PATTERNS) {
+        if (p.re.test(part)) {
+          return { label: p.label, text: part.replace(p.re, '').trim().replace(/\.$/, ''), color: p.color };
+        }
+      }
+      return { label: '', text: part.trim(), color: 'rgba(255,255,255,0.15)' };
+    });
+  }
+
+  return null;
 }
 
 // ── Workout detail modal ──────────────────────────────────────────────────────
@@ -181,12 +205,13 @@ function WorkoutModal({ wo, onClose, isCompleted, onComplete, togglingComplete, 
   })();
 
   const PHASE_BADGE: Record<string, { bg: string; color: string }> = {
-    base:          { bg: 'rgba(75,85,99,0.3)',   color: '#9ca3af' },
-    build:         { bg: 'rgba(59,130,246,0.15)', color: '#60a5fa' },
-    pre_competition:{ bg: 'rgba(167,139,250,0.15)', color: '#a78bfa' },
-    competition:   { bg: 'rgba(0,229,160,0.12)', color: '#00E5A0' },
-    taper:         { bg: 'rgba(251,146,60,0.15)', color: '#fb923c' },
-    recovery:      { bg: 'rgba(75,85,99,0.2)',   color: '#6b7280' },
+    ease_in:       { bg: 'rgba(96,165,250,0.15)',  color: '#60a5fa' },
+    base:          { bg: 'rgba(74,222,128,0.1)',   color: '#4ade80' },
+    build:         { bg: 'rgba(96,165,250,0.15)',  color: '#60a5fa' },
+    pre_competition:{ bg: 'rgba(245,158,11,0.15)', color: '#f59e0b' },
+    competition:   { bg: 'rgba(0,229,160,0.12)',   color: '#00E5A0' },
+    taper:         { bg: 'rgba(245,158,11,0.15)',  color: '#f59e0b' },
+    recovery:      { bg: 'rgba(75,85,99,0.2)',     color: '#6b7280' },
     sharpening:    { bg: 'rgba(192,132,252,0.15)', color: '#c084fc' },
   };
   const phaseBadge = PHASE_BADGE[wo.phase] ?? PHASE_BADGE.base;
@@ -305,10 +330,10 @@ function WorkoutModal({ wo, onClose, isCompleted, onComplete, togglingComplete, 
           )}
 
           {/* Why this workout */}
-          {wo.change_reason && (
+          {(wo.why || wo.change_reason) && (
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-tertiary)' }}>Why this workout</p>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-tertiary)' }}>{wo.change_reason}</p>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-tertiary)' }}>{wo.why || wo.change_reason}</p>
             </div>
           )}
         </div>
@@ -371,10 +396,11 @@ function PlanMonthView({ plan }: { plan: any[] }) {
         if (!workoutsByDate[wo.date]) workoutsByDate[wo.date] = [];
         workoutsByDate[wo.date].push({
           title: wo.title,
-          distance_miles: wo.distance_miles,
+          distance_miles: wo.distance_miles ?? wo.total_distance,
           pace_guideline: wo.pace_guideline,
           description: wo.description,
           change_reason: wo.change_reason,
+          why: wo.why,
           phase: week.phase || 'base',
           dateLabel: new Date(wo.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
         });
@@ -1151,10 +1177,11 @@ export function SeasonPlan() {
                               : dayLabel;
                             setSelectedWorkout({
                               title: wo.title || '',
-                              distance_miles: wo.distance_miles,
+                              distance_miles: wo.distance_miles ?? wo.total_distance,
                               pace_guideline: wo.pace_guideline,
                               description: wo.description,
                               change_reason: wo.change_reason,
+                              why: wo.why,
                               phase: week.phase || 'base',
                               dateLabel,
                               date: wo.date,
