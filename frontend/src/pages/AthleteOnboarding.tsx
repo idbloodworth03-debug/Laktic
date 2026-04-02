@@ -124,7 +124,7 @@ function ChipGroup({ options, selected, onToggle, multi = false }: {
 function DayPills({ value, onChange }: { value: number | null; onChange: (v: number) => void }) {
   return (
     <div className="flex gap-2">
-      {[2, 3, 4, 5, 6].map(n => (
+      {[2, 3, 4, 5, 6, 7].map(n => (
         <button
           key={n}
           type="button"
@@ -251,6 +251,7 @@ export function AthleteOnboarding() {
   const [currentMileage, setCurrentMileage] = useState('');
   const [longRunDistance, setLongRunDistance] = useState('');
   const [experienceLevel, setExperienceLevel] = useState('');
+  const [pr800m, setPr800m] = useState('');
   const [prMile, setPrMile] = useState('');
   const [pr5k, setPr5k] = useState('');
   const [pr10k, setPr10k] = useState('');
@@ -325,6 +326,7 @@ export function AthleteOnboarding() {
           current_weekly_mileage: currentMileage ? parseFloat(currentMileage) : null,
           long_run_distance: longRunDistance ? parseFloat(longRunDistance) : null,
           experience_level: experienceLevel || null,
+          pr_800m: pr800m.trim() || null,
           pr_mile: prMile.trim() || null,
           pr_5k: pr5k.trim() || null,
           pr_10k: pr10k.trim() || null,
@@ -555,6 +557,7 @@ export function AthleteOnboarding() {
         <div>
           <SectionLabel>Personal records <span className="normal-case font-normal">(optional)</span></SectionLabel>
           <div className="grid grid-cols-2 gap-3">
+            <Input label="800m PR" value={pr800m} onChange={e => setPr800m(e.target.value)} placeholder="e.g. 2:05" />
             <Input label="Mile PR" value={prMile} onChange={e => setPrMile(e.target.value)} placeholder="e.g. 5:30" />
             <Input label="5K PR" value={pr5k} onChange={e => setPr5k(e.target.value)} placeholder="e.g. 22:30" />
             <Input label="10K PR" value={pr10k} onChange={e => setPr10k(e.target.value)} placeholder="e.g. 48:00" />

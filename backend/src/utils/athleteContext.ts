@@ -1,6 +1,28 @@
 import { supabase } from '../db/supabase';
 import { getFormattedKnowledge } from '../services/knowledgeService';
 
+/** Derive current training phase from race calendar */
+export function derivePhase(upcomingRaces: any[]): string {
+  if (!upcomingRaces || upcomingRaces.length === 0) return 'base';
+  const today = new Date().toISOString().slice(0, 10);
+  const next = upcomingRaces.find((r: any) => r.date >= today);
+  if (!next) return 'base';
+  const daysAway = Math.ceil(
+    (new Date(next.date + 'T00:00:00Z').getTime() - new Date(today + 'T00:00:00Z').getTime()) / 86400000
+  );
+  if (daysAway < 42) return 'competition';       // < 6 weeks
+  if (daysAway < 84) return 'pre_competition';   // 6–12 weeks
+  return 'base';                                  // > 12 weeks
+}
+
+/** True if the athlete competes primarily in track/middle-distance events */
+export function isTrackEventAthlete(profile: any): boolean {
+  const events: string[] = Array.isArray(profile?.primary_events) ? profile.primary_events : [];
+  return events.some((e: string) =>
+    /800m?|1[,.]?500m?|1500|mile/i.test(e)
+  );
+}
+
 export interface AthleteContext {
   profile: any;
   coachBot: any | null;
@@ -293,6 +315,31 @@ export function formatContextForPrompt(ctx: AthleteContext): string {
   }
   const memoryBlock = memoryLines.join('\n');
 
+  // Training phase context for track/middle-distance athletes
+  let trainingPhaseBlock = '';
+  if (isTrackEventAthlete(ap)) {
+    const phase = derivePhase(ctx.upcomingRaces);
+    const phaseLabels: Record<string, string> = {
+      ease_in: 'Ease-In',
+      base: 'Base',
+      pre_competition: 'Pre-Competition',
+      competition: 'Competition',
+    };
+    const phaseLabel = phaseLabels[phase] || phase;
+    const fitnessLevel = ap.fitness_level || ap.experience_level || 'intermediate';
+    const mpw = ap.current_weekly_mileage ?? ap.weekly_volume_miles ?? 0;
+    trainingPhaseBlock = [
+      'TRAINING PHASE CONTEXT (1500m/mile system):',
+      `- Current phase: ${phaseLabel} (${phase})`,
+      `- Fitness level: ${fitnessLevel}`,
+      `- Weekly volume: ${mpw} mpw`,
+      `- Pace sources: aerobic systems from 3000m+ PRs only; event-specific from mile/1500/800 PRs`,
+      ap.pr_5k ? `- Aerobic anchor: 5K ${ap.pr_5k}` : null,
+      ap.pr_mile ? `- Event anchor: Mile ${ap.pr_mile}` : null,
+      ap.pr_800m ? `- Event anchor: 800m ${ap.pr_800m}` : null,
+    ].filter(Boolean).join('\n');
+  }
+
   return [
     `TODAY: ${today}`,
     athleteProfile,
@@ -307,6 +354,7 @@ export function formatContextForPrompt(ctx: AthleteContext): string {
     '',
     readinessBlock,
     readinessHistoryBlock ? '\n' + readinessHistoryBlock : '',
+    trainingPhaseBlock ? '\n' + trainingPhaseBlock : '',
     memoryBlock ? '\n' + memoryBlock : '',
   ]
     .filter((s) => s !== null && s !== undefined)
