@@ -121,89 +121,236 @@ type CalWorkout = {
   change_reason?: string;
   phase: string;
   dateLabel: string;
+  date?: string;
+  type?: string;
 };
 
+// ── Description section parser ────────────────────────────────────────────────
+type DescSection = { label: string; text: string; color: string };
+
+function parseDescription(desc: string): DescSection[] | null {
+  const SECTION_PATTERNS: { re: RegExp; label: string; color: string }[] = [
+    { re: /^Warmup:\s*/i,       label: 'Warmup',        color: '#4ade80' },
+    { re: /^Main Set:\s*/i,     label: 'Main Set',      color: '#00E5A0' },
+    { re: /^Cooldown:\s*/i,     label: 'Cooldown',      color: '#60a5fa' },
+    { re: /^Coaching Cue:\s*/i, label: 'Coaching Cue',  color: '#f59e0b' },
+  ];
+  // Try to split on these patterns
+  const parts = desc.split(/(?=Warmup:|Main Set:|Cooldown:|Coaching Cue:)/i).filter(Boolean);
+  if (parts.length < 2) return null;
+  return parts.map(part => {
+    for (const p of SECTION_PATTERNS) {
+      if (p.re.test(part)) {
+        return { label: p.label, text: part.replace(p.re, '').trim().replace(/\.$/, ''), color: p.color };
+      }
+    }
+    return { label: '', text: part.trim(), color: 'rgba(255,255,255,0.15)' };
+  });
+}
+
 // ── Workout detail modal ──────────────────────────────────────────────────────
-function WorkoutModal({ wo, onClose }: { wo: CalWorkout; onClose: () => void }) {
+interface WorkoutModalProps {
+  wo: CalWorkout;
+  onClose: () => void;
+  isCompleted?: boolean;
+  onComplete?: () => void;
+  togglingComplete?: boolean;
+  paceBands?: { LT2: string; LT1: string; steady: string; easy: string; recovery: string; needs_aerobic_pr: boolean } | null;
+  eventPaces?: { mile_pace: string | null; pace_1500: string | null; pace_800: string | null; pace_5k: string | null } | null;
+  onAskPace?: () => void;
+}
+
+function WorkoutModal({ wo, onClose, isCompleted, onComplete, togglingComplete, paceBands, eventPaces, onAskPace }: WorkoutModalProps) {
   const typeStyle = WORKOUT_TYPE_STYLE[getWorkoutType(wo.title, false)];
+  const sections = wo.description ? parseDescription(wo.description) : null;
+
+  // Derive display paces
+  const wt = getWorkoutType(wo.title, false);
+  const derivedPace = (() => {
+    if (!paceBands || paceBands.needs_aerobic_pr) return null;
+    if (wt === 'easy' || wt === 'long') return { label: 'Easy', value: paceBands.easy };
+    if (wt === 'tempo') return { label: 'LT1/Tempo', value: paceBands.LT1 };
+    if (wt === 'intervals') return { label: 'LT2/Threshold', value: paceBands.LT2 };
+    return null;
+  })();
+  const eventPaceDisplay = (() => {
+    if (!eventPaces) return null;
+    if (wt === 'intervals' && eventPaces.mile_pace) return { label: 'Mile', value: eventPaces.mile_pace };
+    if (wt === 'race' && eventPaces.pace_5k) return { label: '5K', value: eventPaces.pace_5k };
+    return null;
+  })();
+
+  const PHASE_BADGE: Record<string, { bg: string; color: string }> = {
+    base:          { bg: 'rgba(75,85,99,0.3)',   color: '#9ca3af' },
+    build:         { bg: 'rgba(59,130,246,0.15)', color: '#60a5fa' },
+    pre_competition:{ bg: 'rgba(167,139,250,0.15)', color: '#a78bfa' },
+    competition:   { bg: 'rgba(0,229,160,0.12)', color: '#00E5A0' },
+    taper:         { bg: 'rgba(251,146,60,0.15)', color: '#fb923c' },
+    recovery:      { bg: 'rgba(75,85,99,0.2)',   color: '#6b7280' },
+    sharpening:    { bg: 'rgba(192,132,252,0.15)', color: '#c084fc' },
+  };
+  const phaseBadge = PHASE_BADGE[wo.phase] ?? PHASE_BADGE.base;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-6"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-md p-6 fade-up"
+        className="relative w-full sm:max-w-[600px] sm:mx-4 sm:mb-0 sm:rounded-[20px] fade-up"
         style={{
-          background: 'var(--color-bg-secondary)',
+          background: '#0a0a0a',
           border: '1px solid rgba(255,255,255,0.08)',
-          borderLeft: `3px solid ${typeStyle.border}`,
-          borderRadius: 20,
-          boxShadow: '0 25px 60px rgba(0,0,0,0.7)',
+          borderTop: `3px solid ${typeStyle.dot}`,
+          borderRadius: '20px 20px 0 0',
+          boxShadow: '0 -20px 60px rgba(0,0,0,0.8)',
+          maxHeight: '90vh',
+          overflowY: 'auto',
         }}
         onClick={e => e.stopPropagation()}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center text-lg transition-all"
-          style={{ borderRadius: '50%', color: 'var(--color-text-secondary)' }}
-        >
-          ×
-        </button>
+        {/* Header */}
+        <div className="px-5 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-lg transition-all"
+            style={{ borderRadius: '50%', color: 'var(--color-text-tertiary)', background: 'rgba(255,255,255,0.05)' }}
+          >
+            ×
+          </button>
 
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{wo.dateLabel}</span>
-          <span className="text-xs capitalize" style={{ color: 'var(--color-text-tertiary)' }}>· {wo.phase}</span>
-        </div>
+          <div className="flex items-center gap-2 mb-2 pr-8">
+            <span
+              className="text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full capitalize"
+              style={{ background: phaseBadge.bg, color: phaseBadge.color }}
+            >
+              {wo.phase.replace('_', ' ')}
+            </span>
+            <span className="text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>{wo.dateLabel}</span>
+          </div>
 
-        {/* Type dot + title */}
-        <div className="flex items-start gap-2.5 mb-4">
-          <span
-            className="shrink-0 rounded-full mt-1"
-            style={{ width: 7, height: 7, background: typeStyle.dot }}
-          />
-          <span className="text-base font-medium leading-snug" style={{ color: 'var(--color-text-primary)' }}>
-            {wo.title}
-          </span>
-        </div>
-
-        {/* Distance + pace */}
-        {(wo.distance_miles || wo.pace_guideline) && (
-          <div className="flex items-baseline gap-5 mb-4 pl-1">
-            {wo.distance_miles && (
-              <div>
-                <div className="font-mono font-semibold" style={{ fontSize: 22, color: typeStyle.dot, lineHeight: 1 }}>
+          <div className="flex items-start justify-between gap-4">
+            <h2 className="text-lg font-semibold leading-snug" style={{ color: 'var(--color-text-primary)', fontFamily: 'DM Sans, sans-serif' }}>
+              {wo.title}
+            </h2>
+            {wo.distance_miles != null && (
+              <div className="text-right shrink-0">
+                <div
+                  className="font-semibold leading-none"
+                  style={{ fontFamily: 'DM Mono, monospace', fontSize: 22, color: typeStyle.dot }}
+                >
                   {wo.distance_miles}
                   <span className="text-xs font-normal ml-1" style={{ color: 'var(--color-text-tertiary)' }}>mi</span>
                 </div>
-                <div className="text-[10px] uppercase tracking-widest mt-1" style={{ color: 'var(--color-text-tertiary)' }}>distance</div>
-              </div>
-            )}
-            {wo.pace_guideline && (
-              <div>
-                <div className="font-mono text-sm font-medium" style={{ color: 'var(--color-text-secondary)', lineHeight: 1 }}>
-                  {wo.pace_guideline}
-                </div>
-                <div className="text-[10px] uppercase tracking-widest mt-1" style={{ color: 'var(--color-text-tertiary)' }}>pace</div>
+                <div className="text-[10px] uppercase tracking-widest mt-1" style={{ color: 'var(--color-text-tertiary)' }}>total</div>
               </div>
             )}
           </div>
-        )}
+        </div>
 
-        {wo.description && (
-          <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--color-text-secondary)' }}>{wo.description}</p>
-        )}
+        {/* Body */}
+        <div className="px-5 py-4 space-y-5">
 
-        {wo.change_reason && (
-          <p
-            className="text-xs pt-3"
-            style={{
-              color: 'var(--color-text-tertiary)',
-              borderTop: '1px solid rgba(255,255,255,0.06)',
-              paddingLeft: 8,
-              borderLeft: `2px solid ${typeStyle.border}`,
-            }}
+          {/* The Workout */}
+          {wo.description && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-tertiary)' }}>The Workout</p>
+              {sections ? (
+                <div className="space-y-3">
+                  {sections.map((s, i) => (
+                    <div
+                      key={i}
+                      className="pl-3 py-1"
+                      style={{ borderLeft: `2px solid ${s.color}` }}
+                    >
+                      {s.label && (
+                        <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: s.color }}>{s.label}</p>
+                      )}
+                      <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{s.text}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{wo.description}</p>
+              )}
+            </div>
+          )}
+
+          {/* Your Paces */}
+          {(wo.pace_guideline || derivedPace || eventPaceDisplay) && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-tertiary)' }}>Your Paces</p>
+              <div className="space-y-2">
+                {wo.pace_guideline && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Target</span>
+                    <span className="font-mono text-xs font-medium" style={{ color: '#00E5A0', fontFamily: 'DM Mono, monospace' }}>{wo.pace_guideline}</span>
+                  </div>
+                )}
+                {derivedPace && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{derivedPace.label}</span>
+                    <span className="font-mono text-xs" style={{ color: 'var(--color-text-secondary)', fontFamily: 'DM Mono, monospace' }}>{derivedPace.value}</span>
+                  </div>
+                )}
+                {eventPaceDisplay && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{eventPaceDisplay.label} pace</span>
+                    <span className="font-mono text-xs" style={{ color: 'var(--color-text-secondary)', fontFamily: 'DM Mono, monospace' }}>{eventPaceDisplay.value}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Why this workout */}
+          {wo.change_reason && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-tertiary)' }}>Why this workout</p>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-tertiary)' }}>{wo.change_reason}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        {(onComplete || onAskPace) && (
+          <div
+            className="px-5 py-4 flex gap-3"
+            style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
           >
-            Adjusted: {wo.change_reason}
-          </p>
+            {onComplete && (
+              <button
+                onClick={() => { onComplete(); onClose(); }}
+                disabled={togglingComplete}
+                className="flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all"
+                style={isCompleted ? {
+                  background: 'rgba(255,255,255,0.06)',
+                  color: 'var(--color-text-secondary)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                } : {
+                  background: '#00E5A0',
+                  color: '#000',
+                  border: '1px solid transparent',
+                }}
+              >
+                {togglingComplete ? '...' : isCompleted ? 'Mark Incomplete' : 'Mark Complete'}
+              </button>
+            )}
+            {onAskPace && (
+              <button
+                onClick={onAskPace}
+                className="flex-1 py-2.5 text-sm font-medium rounded-xl transition-all"
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  color: 'var(--color-text-secondary)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                }}
+              >
+                Ask Pace about this
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -572,6 +719,7 @@ export function SeasonPlan() {
   const [loading, setLoading] = useState(true);
   const [currentWeek, setCurrentWeek] = useState(0);
   const [expandedWorkout, setExpandedWorkout] = useState<string | null>(null);
+  const [selectedWorkout, setSelectedWorkout] = useState<CalWorkout | null>(null);
   const [regenerating, setRegenerating] = useState(false);
   const [confirmRegen, setConfirmRegen] = useState(false);
   const [planView, setPlanView] = useState<'weekly' | 'monthly'>('weekly');
@@ -767,6 +915,24 @@ export function SeasonPlan() {
 
   return (
     <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
+      {/* Workout detail modal */}
+      {selectedWorkout && (
+        <WorkoutModal
+          wo={selectedWorkout}
+          onClose={() => setSelectedWorkout(null)}
+          isCompleted={selectedWorkout.date ? completedDates.has(selectedWorkout.date) : false}
+          onComplete={selectedWorkout.date ? () => toggleComplete(selectedWorkout.date!) : undefined}
+          togglingComplete={selectedWorkout.date ? togglingDate === selectedWorkout.date : false}
+          paceBands={paceBands}
+          eventPaces={eventPaces}
+          onAskPace={() => {
+            const msg = encodeURIComponent(`Can you explain this workout: ${selectedWorkout.title}${selectedWorkout.distance_miles ? ` (${selectedWorkout.distance_miles} mi)` : ''}${selectedWorkout.date ? ` on ${selectedWorkout.dateLabel}` : ''}?`);
+            nav(`/athlete/chat?q=${msg}`);
+            setSelectedWorkout(null);
+          }}
+        />
+      )}
+
       <div className="min-h-screen" style={{ background: 'var(--color-bg-primary)' }}>
         <div className="max-w-5xl mx-auto px-6 py-8">
 
@@ -966,8 +1132,6 @@ export function SeasonPlan() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                     {DAYS.map((dayLabel, i) => {
                       const wo = week.workouts?.find((w: any) => w.day_of_week === i + 1);
-                      const key = `${week.week_number}-${i + 1}`;
-                      const expanded = expandedWorkout === key;
                       const phase = week.phase || 'base';
                       const isCompleted = wo?.date ? completedDates.has(wo.date) : false;
                       const isToggling = wo?.date ? togglingDate === wo.date : false;
@@ -979,8 +1143,25 @@ export function SeasonPlan() {
                       return (
                         <div
                           key={i}
-                          onClick={() => wo && setExpandedWorkout(expanded ? null : key)}
-                          className={`transition-all duration-150 ${expanded ? 'col-span-1 sm:col-span-2' : ''}`}
+                          onClick={() => {
+                            if (!wo) return;
+                            const dateStr = wo.date ?? '';
+                            const dateLabel = dateStr
+                              ? new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+                              : dayLabel;
+                            setSelectedWorkout({
+                              title: wo.title || '',
+                              distance_miles: wo.distance_miles,
+                              pace_guideline: wo.pace_guideline,
+                              description: wo.description,
+                              change_reason: wo.change_reason,
+                              phase: week.phase || 'base',
+                              dateLabel,
+                              date: wo.date,
+                              type: wo.type,
+                            });
+                          }}
+                          className="transition-all duration-150"
                           style={{
                             borderRadius: 12,
                             border: `1px solid ${wo ? (isCompleted ? 'rgba(0,229,160,0.18)' : 'rgba(255,255,255,0.06)') : 'var(--color-border)'}`,
@@ -1098,31 +1279,6 @@ export function SeasonPlan() {
                                       </span>
                                     );
                                   })()}
-                                </div>
-                              )}
-                              {/* Expanded detail */}
-                              {expanded && (
-                                <div
-                                  className="mt-3 pt-3 space-y-2"
-                                  style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
-                                >
-                                  {wo.description && (
-                                    <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                                      {wo.description}
-                                    </p>
-                                  )}
-                                  {wo.change_reason && (
-                                    <p
-                                      className="text-xs"
-                                      style={{
-                                        color: 'var(--color-text-tertiary)',
-                                        paddingLeft: 8,
-                                        borderLeft: `2px solid ${woType.border}`,
-                                      }}
-                                    >
-                                      Adjusted: {wo.change_reason}
-                                    </p>
-                                  )}
                                 </div>
                               )}
                             </>
