@@ -1,472 +1,321 @@
 /**
  * seasonPlanService.ts
- * Generates multi-week periodized training plans via GPT-4o.
+ * Code-first plan generation: deterministic skeleton + GPT-4o descriptions only.
  *
  * MIGRATION 034 — informational only.
- * Workouts are stored as JSONB inside athlete_seasons.season_plan, so no schema
- * migration is required to persist the new fields. If a dedicated workouts table
- * is added later, run the following:
- *
- *   ALTER TABLE workouts
- *     ADD COLUMN IF NOT EXISTS description     TEXT,
- *     ADD COLUMN IF NOT EXISTS why             TEXT,
- *     ADD COLUMN IF NOT EXISTS warmup_miles    NUMERIC(4,2),
- *     ADD COLUMN IF NOT EXISTS cooldown_miles  NUMERIC(4,2),
- *     ADD COLUMN IF NOT EXISTS main_set_miles  NUMERIC(4,2);
+ * Workouts are stored as JSONB inside athlete_seasons.season_plan.
+ * Fields: description, why, warmup_miles, cooldown_miles, main_set_miles require no SQL migration.
  */
 
 import OpenAI from 'openai';
 import { env } from '../config/env';
-import { getFormattedKnowledge } from './knowledgeService';
 import { getWeekStartDate, addDays } from '../utils/dateUtils';
-import { PACE_PERSONA } from '../utils/pacePersona';
 import {
-  classifyAthleteTier,
-  getPhaseFromDates,
-  derivePaceBands,
-  deriveEventPaces,
-} from '../utils/athleteTier';
-import {
-  getMpwBand,
-  getWarmupCooldown,
-  getRoleMap,
-  DISTRIBUTION_BY_PHASE,
-  LONG_RUN_SHARE_BY_PHASE,
-  ROTATION_LOGIC,
-  WORKOUT_LIBRARY,
-  PHASE_MODEL,
-} from '../utils/coachParamLibrary';
+  buildPlanSkeleton,
+  validateAndFixPlan,
+  PlannedWorkout,
+  PlanSkeleton,
+} from '../utils/planEngine';
+import { classifyAthleteTier } from '../utils/athleteTier';
 
 const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
-// ── System message: persona only, no data ────────────────────────────────────
-const PLAN_SYSTEM_PROMPT = `${PACE_PERSONA}
+// ── GPT-4o description system prompt ─────────────────────────────────────────
 
-You are generating a structured multi-week periodized training plan. Follow every rule exactly. Do not improvise.
+const DESC_SYSTEM = `You are Pace, an elite running coach. Write workout descriptions.
+Be direct and specific. Use coaching voice — short sentences, no fluff.
+Return ONLY valid JSON — no markdown, no explanation.`;
 
-Return ONLY valid JSON — no markdown fences, no explanation. The root key must be "weeks".`;
+// ── Generate description for a single structured workout ─────────────────────
 
-// ── Day name → day_of_week number ────────────────────────────────────────────
-const DAY_NAME_TO_NUM: Record<string, number> = {
-  monday: 1, tuesday: 2, wednesday: 3, thursday: 4,
-  friday: 5, saturday: 6, sunday: 7,
-};
+async function generateWorkoutDescription(
+  wo:      PlannedWorkout,
+  tier:    string,
+  mpwBand: string,
+  phase:   string,
+  easyPg:  string,
+  recPg:   string,
+): Promise<{ description: string; why: string }> {
+  const warmupLine   = wo.warmupMiles > 0 ? `${wo.warmupMiles} mi at easy pace (${easyPg})` : 'none';
+  const cooldownLine = wo.cooldownMiles > 0 ? `${wo.cooldownMiles} mi at recovery pace (${recPg})` : 'none';
 
-// ── Map getMpwBand output → WORKOUT_LIBRARY volume key ───────────────────────
-function toLibraryBand(mpwBand: string): string {
-  if (mpwBand === 'over_50') return 'mpw_50_60';
-  return mpwBand;
-}
+  const userContent = `Write a description for this workout:
+Title: ${wo.title}
+Type: ${wo.role}
+Main set: ${wo.mainSetDescription}
+Pace: ${wo.paceGuideline}
+Warmup: ${warmupLine}
+Cooldown: ${cooldownLine}
+Athlete: ${tier}, ${mpwBand} mpw, ${phase} phase
 
-// ── Phase rules text for prompt injection ────────────────────────────────────
-function buildPhaseRulesText(phase: string): string {
-  const phaseModel = PHASE_MODEL[phase as keyof typeof PHASE_MODEL];
-  const dist = DISTRIBUTION_BY_PHASE[phase];
-  const lr = LONG_RUN_SHARE_BY_PHASE[phase as keyof typeof LONG_RUN_SHARE_BY_PHASE];
-
-  const lines: string[] = [];
-  if (phaseModel) lines.push(`Intent: ${phaseModel.intent}`);
-  if (dist) {
-    lines.push('Distribution: ' + Object.entries(dist)
-      .map(([k, v]) => `${k} ${v.min_pct}-${v.max_pct}%`)
-      .join(' | '));
-  }
-  if (lr) lines.push(`Long run: ${lr.min_pct}-${lr.max_pct}% of weekly volume. ${lr.notes}`);
-  return lines.join('\n');
-}
-
-// ── Workout library summary for prompt injection ──────────────────────────────
-function buildWorkoutLibraryText(phase: string, libraryBand: string): string {
-  const phaseToUse = phase === 'ease_in' ? 'base' : phase;
-  const entries = Object.entries(WORKOUT_LIBRARY).filter(([, w]) => (w as any).phase === phaseToUse);
-  if (entries.length === 0) return '(Easy runs only during Ease-In phase)';
-  return entries.map(([name, w]) => {
-    const wo = w as any;
-    let vol = '';
-    if (wo.volume_by_mpw?.[libraryBand]) {
-      const v = wo.volume_by_mpw[libraryBand];
-      vol = ` [main set ${v.min_mi}-${v.max_mi} mi]`;
-    } else if (wo.reps_by_mpw?.[libraryBand]) {
-      const r = wo.reps_by_mpw[libraryBand];
-      vol = ` [${r.min}-${r.max} reps]`;
-    } else if (wo.sets_by_mpw?.[libraryBand]) {
-      vol = ` [${wo.sets_by_mpw[libraryBand]} sets]`;
-    }
-    return `  ${name}: ${wo.description}${vol}`;
-  }).join('\n');
-}
-
-// ── Rotation text ─────────────────────────────────────────────────────────────
-function buildRotationText(phase: string): string {
-  const r = ROTATION_LOGIC as any;
-  if (phase === 'ease_in') return 'Ease-in: easy runs only, no specific work.';
-  if (phase === 'base') {
-    return `Aerobic: ${r.base_aerobic_rotation.join(' → ')}\nSpecific: ${r.base_specific_rotation.join(' → ')}\nNo-repeat window: ${r.non_repeat_window_weeks} weeks`;
-  }
-  if (phase === 'pre_competition') {
-    return `Aerobic: ${r.pre_comp_aerobic_rotation.join(' → ')}\nSpecific: ${r.pre_comp_specific_rotation.join(' → ')}\nNo-repeat window: ${r.non_repeat_window_weeks} weeks`;
-  }
-  if (phase === 'competition') {
-    return `Rotation: ${r.competition_specific_rotation.join(' → ')}\nNo-repeat window: ${r.non_repeat_window_weeks} weeks`;
-  }
-  return '';
-}
-
-// ── Tier rules ────────────────────────────────────────────────────────────────
-function buildTierRules(tier: string): string {
-  if (tier === 'beginner') {
-    return [
-      'If tier = beginner:',
-      '- Weeks 1-2: easy runs only, 20-30 min, no pace targets, pace_guideline = "Easy effort — conversational pace"',
-      '- No threshold or intervals until week 4',
-      '- Max single run = 3.5 miles in week 1, 4.5 miles in week 2',
-      '- Long run never exceeds 30% of weekly volume',
-    ].join('\n');
-  }
-  if (tier === 'intermediate') {
-    return [
-      'If tier = intermediate:',
-      '- Use lower end of MPW band volumes',
-      '- Threshold from week 2, event-specific from week 4',
-    ].join('\n');
-  }
-  return [
-    'If tier = advanced:',
-    '- Full param library volumes immediately',
-    '- Show exact computed paces on every workout',
-  ].join('\n');
-}
-
-// ── Build the full plan generation user prompt ────────────────────────────────
-function buildPlanPrompt(params: {
-  bot: any;
-  botWorkouts: any[];
-  athleteProfile: any;
-  raceCalendar: any[];
-  coachKnowledge: string;
-  startDate: string;
-  numWeeks: number;
-  recentActivities?: any[];
-  latestReadiness?: { score: number; label: string } | null;
-  planType?: string;
-}): string {
-  const { bot, athleteProfile, raceCalendar, coachKnowledge, startDate, numWeeks, recentActivities, latestReadiness, planType } = params;
-  const ap = athleteProfile;
-  const today = new Date().toISOString().split('T')[0];
-
-  // Pre-compute all values server-side
-  const tier = classifyAthleteTier(ap);
-  const phase = getPhaseFromDates(ap);
-  const bands = derivePaceBands(ap);
-  const events = deriveEventPaces(ap);
-  const mpw = Number(ap.current_weekly_mileage || ap.weekly_volume_miles || 20);
-  const trainingDays = Number(ap.training_days_per_week || 5);
-  const mpwBand = getMpwBand(mpw);
-  const libraryBand = toLibraryBand(mpwBand);
-  const wc = getWarmupCooldown(mpwBand);
-  const roleMapArr = getRoleMap(trainingDays, phase);
-  const roleMapText = roleMapArr.join(', ');
-
-  // Weeks to race
-  const goalRaces = raceCalendar.filter((r: any) => r.is_goal_race && r.date >= today);
-  goalRaces.sort((a: any, b: any) => a.date.localeCompare(b.date));
-  const nextGoalRace = goalRaces[0];
-  const weeksToRace = nextGoalRace
-    ? Math.ceil((new Date(nextGoalRace.date + 'T00:00:00Z').getTime() - new Date(today + 'T00:00:00Z').getTime()) / (7 * 24 * 60 * 60 * 1000))
-    : null;
-
-  // Computed paces
-  const lt2 = bands.needs_aerobic_pr ? 'null' : bands.LT2;
-  const lt1 = bands.needs_aerobic_pr ? 'null' : bands.LT1;
-  const steady = bands.needs_aerobic_pr ? 'null' : bands.steady;
-  const easy = bands.needs_aerobic_pr ? 'null' : bands.easy;
-  const recovery = bands.needs_aerobic_pr ? 'null' : bands.recovery;
-  const milePace = events.mile_pace ?? 'null';
-  const pace800 = events.pace_800 ?? 'null';
-  const pace1500 = events.pace_1500 ?? 'null';
-
-  const activitiesText = recentActivities && recentActivities.length > 0
-    ? recentActivities.slice(0, 15).map((a: any) =>
-        `  ${(a.start_date || '').slice(0, 10)}: ${a.activity_type || 'Run'} ${a.distance_miles ? a.distance_miles + ' mi' : ''} ${a.pace ? '@ ' + a.pace + '/mi' : ''}`
-      ).join('\n')
-    : '  No recent activities';
-
-  const readinessText = latestReadiness
-    ? `${latestReadiness.score}/100 — ${latestReadiness.label}${latestReadiness.score <= 40 ? ' — start conservatively this week' : latestReadiness.score >= 80 ? ' — full load OK' : ''}`
-    : 'Not logged';
-
-  return `You are Pace, an elite running coach. Generate a structured training plan. Follow every rule exactly. Do not improvise.
-
-ATHLETE:
-- Name: ${ap.name || 'Athlete'}, Age: ${ap.age ?? 'unknown'}, Experience: ${ap.experience_level || 'not specified'}
-- Tier: ${tier}
-- Weekly mileage target: ${mpw} mpw
-- Training days/week: ${trainingDays}
-- Events: ${(ap.primary_events || []).join(', ') || 'not specified'}
-- Goal: ${ap.target_race_distance || 'not specified'} on ${ap.target_race_date || 'not specified'}${ap.goal_time ? ` — goal time: ${ap.goal_time}` : ''}
-- PRs: 800m=${ap.pr_800m ?? 'none'} | 1500m=${ap.pr_1500m ?? 'none'} | Mile=${ap.pr_mile ?? 'none'} | 5K=${ap.pr_5k ?? 'none'}
-- Fitness rating: ${ap.fitness_rating ?? 'not specified'}/10
-- Injuries/limitations: ${ap.injury_notes || 'none'}
-- Plan type: ${planType || 'standard'}
-${coachKnowledge ? `\nCOACH KNOWLEDGE:\n${coachKnowledge}` : ''}
-COACH PHILOSOPHY:
-${bot.philosophy || 'Science-based periodized training.'}
-
-RECENT ACTIVITIES (last 30 days):
-${activitiesText}
-
-CURRENT READINESS: ${readinessText}
-
-COMPUTED TRAINING PACES — use these exact values in every workout. Do not guess or approximate:
-- LT2 (threshold): ${lt2}/mi
-- LT1: ${lt1}/mi
-- Steady: ${steady}/mi
-- Easy: ${easy}/mi
-- Recovery: ${recovery}/mi
-- Mile pace: ${milePace}/mi
-- 800m pace: ${pace800} per 400m
-- 1500m pace: ${pace1500} per 400m
-Note: If a value is null, write "by effort" — do not invent a pace.
-
-WARMUP AND COOLDOWN — use these exact distances on every non-easy non-rest day:
-- Warmup: ${wc.warmup_mi} miles at easy pace (${easy}/mi)
-- Cooldown: ${wc.cooldown_mi} miles at recovery pace (${recovery}/mi)
-
-CURRENT TRAINING PHASE: ${phase}
-WEEKS TO RACE: ${weeksToRace ?? 'no race set'}
-MPW BAND: ${mpwBand}
-
-WEEKLY ROLE MAP for ${trainingDays} days/week in ${phase} phase:
-${roleMapText}
-  - mon_aerobic / mon_easy = Monday aerobic or easy run
-  - tue_easy = Tuesday easy
-  - wed_easy_speeddev = Wednesday easy + speed development appended
-  - thu_specific = Thursday quality/specific workout
-  - fri_easy = Friday easy
-  - sat_longrun = Saturday long run (easy effort, never split)
-  - sun_off = Sunday rest
-
-PHASE RULES:
-${buildPhaseRulesText(phase)}
-
-WORKOUT LIBRARY for phase "${phase === 'ease_in' ? 'base' : phase}", MPW band "${libraryBand}":
-${buildWorkoutLibraryText(phase, libraryBand)}
-
-ROTATION RULES:
-${buildRotationText(phase)}
-
-TIER RULES:
-${buildTierRules(tier)}
-
-MILEAGE ACCURACY — critical:
-- total_distance = warmup_miles + main_set_miles + cooldown_miles, calculated precisely
-- For intervals: count rep distances + jog recovery distances
-- Weekly total must be within 5% of target weekly mileage (${mpw} mpw)
-- Round to nearest 0.25 miles
-
-GENERATION RULES:
-1. Every week must be different — no repeated workout titles in adjacent weeks
-2. Progressive overload: add 5-10% volume per week during build. Every 4th week = recovery (reduce 30-40%, easy only, phase="recovery")
-3. Taper the final 2 weeks before goal races (reduce volume 20% then 40%, phase="taper")
-4. Use ONLY named workouts from the library for quality days
-5. The description field must include:
-   a. Warmup: exact distance + pace
-   b. Main set: every rep written out explicitly with distance, pace, rest
-   c. Cooldown: exact distance + pace
-   d. Coaching cue: 1-2 sentences from Pace on what to focus on
-   Separate each section with a blank line (\\n\\n)
-6. The why field: 1 sentence — why this workout this week
-
-RACE CALENDAR:
-${JSON.stringify(raceCalendar)}
-
-TODAY: ${today} | PLAN STARTS: ${startDate} | TOTAL WEEKS: ${numWeeks}
-
-OUTPUT — return valid JSON only, no markdown, no explanation:
+Return JSON only:
 {
-  "weeks": [
-    {
-      "week_number": 1,
-      "phase": "base",
-      "total_miles": 28.5,
-      "workouts": [
-        {
-          "day": "Monday",
-          "day_of_week": 1,
-          "date": "YYYY-MM-DD",
-          "title": "Progressive Tempo Run",
-          "type": "aerobic",
-          "total_distance": 6.5,
-          "distance_miles": 6.5,
-          "pace_guideline": "5:02-5:12/mi building to 4:42-4:55/mi",
-          "description": "Warmup: 1.0 mile easy at 6:45-7:15/mi.\\n\\nMain set: 4.5 miles progressive tempo. Start the first mile at LT1 (5:02-5:12/mi). Each mile, increase effort slightly. Finish at LT2 (4:42-4:55/mi).\\n\\nCooldown: 1.0 mile easy at recovery pace (7:15-8:00/mi).\\n\\nCoaching cue: The first mile should feel almost too easy. That is correct.",
-          "why": "Progressive tempos train the aerobic system to handle increasing effort over time.",
-          "change_reason": "Progressive tempos train the aerobic system to handle increasing effort over time.",
-          "warmup_miles": 1.0,
-          "cooldown_miles": 1.0,
-          "main_set_miles": 4.5,
-          "ai_adjustable": true
-        }
-      ]
-    }
-  ]
-}
+  "description": "Full step-by-step instructions. If warmup exists: start with 'Warmup: X miles...' then blank line. Main set: every rep written out explicitly with distance, pace, rest. If cooldown exists: end with 'Cooldown: X miles...'. Blank line then one coaching cue from Pace.",
+  "why": "One sentence on why this workout is in the plan this week."
+}`;
 
-Generate the full ${numWeeks}-week season plan now.`;
-}
-
-// ── Normalize plan output to ensure backward-compatible field names ───────────
-function normalizePlan(weeks: any[], startDate: string): any[] {
-  return weeks.map((week: any, wi: number) => {
-    const weekStart = week.week_start_date || addDays(startDate, wi * 7);
-    const workouts = (week.workouts || []).map((wo: any) => {
-      // day_of_week: accept number or derive from day name
-      let dayNum: number = wo.day_of_week;
-      if (!dayNum && wo.day) {
-        dayNum = DAY_NAME_TO_NUM[(wo.day as string).toLowerCase()] ?? 1;
-      }
-      // distance_miles: prefer explicit, fall back to total_distance
-      const dist = wo.distance_miles ?? wo.total_distance ?? 0;
-      // change_reason: prefer explicit, fall back to why
-      const reason = wo.change_reason ?? wo.why ?? '';
-      // date: prefer explicit, else compute from week start + day_of_week
-      const date = wo.date || (dayNum ? addDays(weekStart, dayNum - 1) : weekStart);
-      return {
-        ...wo,
-        day_of_week: dayNum || 1,
-        date,
-        distance_miles: dist,
-        total_distance: dist,
-        change_reason: reason,
-        why: reason,
-        warmup_miles: wo.warmup_miles ?? null,
-        cooldown_miles: wo.cooldown_miles ?? null,
-        main_set_miles: wo.main_set_miles ?? null,
-        ai_adjustable: wo.ai_adjustable ?? true,
-      };
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: DESC_SYSTEM },
+        { role: 'user',   content: userContent },
+      ],
+      response_format: { type: 'json_object' },
+      max_tokens: 600,
     });
+    const parsed = JSON.parse(completion.choices[0].message.content ?? '{}');
     return {
-      ...week,
-      week_number: week.week_number ?? wi + 1,
-      week_start_date: weekStart,
-      workouts,
+      description: (parsed.description as string | undefined) ?? buildCodeDescription(wo, easyPg, recPg),
+      why:         (parsed.why as string | undefined) ?? `${wo.title} supports ${phase} phase development.`,
     };
+  } catch {
+    return {
+      description: buildCodeDescription(wo, easyPg, recPg),
+      why:         `${wo.title} supports ${phase} phase development.`,
+    };
+  }
+}
+
+// ── Code-generated descriptions (easy runs, long runs, rest days) ─────────────
+
+function buildCodeDescription(wo: PlannedWorkout, easyPg: string, _recPg: string): string {
+  if (wo.isRestDay) return '';
+
+  if (wo.role === 'easy' || wo.role === 'easy_speeddev') {
+    const suffix = wo.role === 'easy_speeddev'
+      ? '\n\nFinish with 4-6 x 100m strides at controlled fast effort. Walk back for full recovery after each.'
+      : '';
+    return `Easy run at ${easyPg}. Run by feel — this should be comfortable enough to hold a conversation the entire time.${suffix}`;
+  }
+
+  if (wo.role === 'long_run') {
+    return (
+      `${wo.mainSetDistance} miles easy at ${easyPg}. Run the entire distance at easy effort — never split.\n\n` +
+      `Keep effort conversational throughout. If you have to think about your pace, you are going too hard.\n\n` +
+      `Coaching cue: Easy means easy. Hold a conversation the entire way. This run builds your aerobic base — not your fitness limit.`
+    );
+  }
+
+  // Fallback for structured workouts when GPT-4o fails
+  const warmupPart   = wo.warmupMiles > 0 ? `Warmup: ${wo.warmupMiles} miles at ${easyPg}.\n\n` : '';
+  const cooldownPart = wo.cooldownMiles > 0 ? `\n\nCooldown: ${wo.cooldownMiles} miles easy.` : '';
+  return `${warmupPart}${wo.mainSetDescription}.${cooldownPart}`;
+}
+
+// ── Convert skeleton week → DB-format week ────────────────────────────────────
+
+function skeletonWeekToDb(
+  week:     PlanSkeleton['weeks'][0],
+  easyPg:   string,
+  recPg:    string,
+  weekStart: string,
+): any {
+  const workouts = week.workouts.map(wo => ({
+    day:              wo.day,
+    day_of_week:      wo.dayOfWeek,
+    date:             wo.date ?? addDays(weekStart, wo.dayOfWeek - 1),
+    title:            wo.title,
+    type:             wo.role,
+    role:             wo.role,
+    workout_key:      wo.workoutKey,
+    distance_miles:   wo.totalDistance,
+    total_distance:   wo.totalDistance,
+    pace_guideline:   wo.paceGuideline,
+    description:      wo.role === 'easy' || wo.role === 'easy_speeddev'
+                        ? buildCodeDescription(wo, easyPg, recPg)
+                        : wo.role === 'long_run'
+                          ? buildCodeDescription(wo, easyPg, recPg)
+                          : '',  // filled by GPT-4o
+    why:              '',       // filled by GPT-4o
+    change_reason:    '',       // filled by GPT-4o
+    warmup_miles:     wo.warmupMiles  > 0 ? wo.warmupMiles  : null,
+    cooldown_miles:   wo.cooldownMiles > 0 ? wo.cooldownMiles : null,
+    main_set_miles:   wo.mainSetDistance > 0 ? wo.mainSetDistance : null,
+    is_rest_day:      wo.isRestDay,
+    ai_adjustable:    !wo.isRestDay,
+    _planWorkout:     wo,       // temporary — stripped before save
+  }));
+
+  return {
+    week_number:    week.weekNumber,
+    week_start_date: weekStart,
+    phase:          week.phase,
+    total_miles:    week.targetMiles,
+    workouts,
+  };
+}
+
+// ── Needs GPT-4o description? ─────────────────────────────────────────────────
+
+function needsGptDescription(wo: PlannedWorkout): boolean {
+  if (wo.isRestDay) return false;
+  if (wo.role === 'easy' || wo.role === 'easy_speeddev' || wo.role === 'long_run') return false;
+  return true;
+}
+
+// ── Fallback plan ──────────────────────────────────────────────────────────────
+
+function fallbackPlan(startDate: string, numWeeks: number, athlete: any): any[] {
+  const tier        = classifyAthleteTier(athlete);
+  const rawMpw      = Number(athlete.current_weekly_mileage ?? athlete.weekly_volume_miles ?? 0);
+  const baseMpw     = rawMpw > 0 ? rawMpw : (tier === 'beginner' ? 12 : tier === 'intermediate' ? 25 : 40);
+  const days        = Math.max(3, Math.min(7, Number(athlete.training_days_per_week ?? 4)));
+  const easyMi      = Math.round(baseMpw / days * 4) / 4;
+
+  const dayNums     = [1, 3, 5].slice(0, days); // Mon, Wed, Fri baseline
+  const phases      = ['base', 'base', 'base', 'recovery'];
+  const mults       = [1.0, 1.05, 1.10, 0.70];
+
+  return Array.from({ length: numWeeks }, (_, wi) => {
+    const weekStart = addDays(startDate, wi * 7);
+    const phase     = phases[wi % 4];
+    const mult      = mults[wi % 4];
+    const workouts  = dayNums.map(dow => ({
+      day_of_week:    dow,
+      date:           addDays(weekStart, dow - 1),
+      title:          'Easy Run',
+      type:           'easy',
+      role:           'easy',
+      distance_miles: Math.round(easyMi * mult * 4) / 4,
+      total_distance: Math.round(easyMi * mult * 4) / 4,
+      pace_guideline: 'Easy effort — conversational pace',
+      description:    'Easy run at conversational pace. Run by feel — comfortable enough to hold a conversation throughout.',
+      why:            `Week ${wi + 1} ${phase} — easy running.`,
+      change_reason:  `Week ${wi + 1} ${phase}.`,
+      warmup_miles:   null,
+      cooldown_miles: null,
+      main_set_miles: null,
+      is_rest_day:    false,
+      ai_adjustable:  true,
+    }));
+    return { week_number: wi + 1, week_start_date: weekStart, phase, workouts };
   });
 }
 
-// ── Fallback plan when OpenAI fails ──────────────────────────────────────────
-function fallbackPlan(botWorkouts: any[], startDate: string, numWeeks: number): any[] {
-  const phases = ['base', 'build', 'build', 'recovery'];
-  const multipliers = [1.0, 1.08, 1.15, 0.75];
-  const weeks = [];
+// ── Validate basic structure ──────────────────────────────────────────────────
 
-  for (let w = 0; w < numWeeks; w++) {
-    const weekStart = addDays(startDate, w * 7);
-    const phaseIdx = w % 4;
-    const phase = phases[phaseIdx];
-    const mult = multipliers[phaseIdx];
-    const weekNum = w + 1;
-
-    const workouts = (botWorkouts || []).map((wo: any) => {
-      const dist = wo.ai_adjustable ? Math.round((wo.distance_miles || 0) * mult * 4) / 4 : (wo.distance_miles || 0);
-      return {
-        day_of_week: wo.day_of_week,
-        date: addDays(weekStart, wo.day_of_week - 1),
-        title: phase === 'recovery' && wo.ai_adjustable ? 'Easy Recovery Run' : wo.title,
-        description: phase === 'recovery'
-          ? 'Easy recovery run. Keep effort conversational throughout.\n\nCoaching cue: If you feel tired, slow down. This run is about recovery, not fitness.'
-          : (wo.description || ''),
-        distance_miles: dist,
-        total_distance: dist,
-        pace_guideline: phase === 'recovery' ? 'Very easy, conversational pace' : (wo.pace_guideline || ''),
-        type: 'easy',
-        ai_adjustable: wo.ai_adjustable,
-        change_reason: phase === 'recovery'
-          ? `Week ${weekNum} recovery — absorb training adaptations.`
-          : `Week ${weekNum} ${phase} — ${mult > 1 ? `+${Math.round((mult - 1) * 100)}% volume` : 'base building'}.`,
-        why: phase === 'recovery' ? `Recovery week ${weekNum}.` : `Week ${weekNum} ${phase}.`,
-      };
-    });
-
-    weeks.push({ week_number: weekNum, week_start_date: weekStart, phase, workouts });
-  }
-  return weeks;
-}
-
-// ── Validate the top-level plan array ────────────────────────────────────────
 function validatePlan(arr: any[]): boolean {
-  return arr.every((w: any) => w.week_number && w.week_start_date && Array.isArray(w.workouts));
+  return Array.isArray(arr) && arr.every((w: any) =>
+    w.week_number && w.week_start_date && Array.isArray(w.workouts),
+  );
 }
 
 // ── Main generate function ────────────────────────────────────────────────────
-export async function generate(params: {
-  athleteProfile: any; bot: any; botWorkouts: any[];
-  raceCalendar: any[]; startDate?: string; existingWeeks?: any[];
-  recentActivities?: any[]; latestReadiness?: { score: number; label: string; recommended_intensity?: string } | null;
-  planType?: string; athleteTier?: string;
-}): Promise<{ plan: any[]; aiUsed: boolean }> {
-  const { athleteProfile, bot, botWorkouts, raceCalendar, recentActivities, latestReadiness, planType } = params;
-  const startDate = params.startDate || getWeekStartDate();
-  const coachKnowledge = await getFormattedKnowledge(bot.id);
 
-  // Determine number of weeks from goal races
-  const goalRaces = raceCalendar.filter((r: any) => r.is_goal_race);
-  let numWeeks = 8;
-  if (goalRaces.length > 0) {
-    const lastRace = goalRaces.sort((a: any, b: any) =>
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    )[0];
-    const start = new Date(startDate + 'T00:00:00Z');
-    const end = new Date(lastRace.date + 'T00:00:00Z');
-    const diff = Math.ceil((end.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000));
-    numWeeks = Math.min(Math.max(diff, 1), 24);
+export async function generate(params: {
+  athleteProfile:   any;
+  bot:              any;
+  botWorkouts:      any[];
+  raceCalendar:     any[];
+  startDate?:       string;
+  existingWeeks?:   any[];
+  recentActivities?: any[];
+  latestReadiness?: { score: number; label: string; recommended_intensity?: string } | null;
+  planType?:        string;
+  athleteTier?:     string;
+}): Promise<{ plan: any[]; aiUsed: boolean }> {
+  const { athleteProfile, raceCalendar } = params;
+  const startDate   = params.startDate ?? getWeekStartDate();
+  const today       = new Date().toISOString().slice(0, 10);
+
+  // ── Step A: Build deterministic skeleton ─────────────────────────────────────
+  let skeleton: PlanSkeleton;
+  try {
+    skeleton = buildPlanSkeleton(athleteProfile, startDate, raceCalendar);
+  } catch (err) {
+    console.error('[seasonPlan] planEngine failed, using fallback:', err);
+    const numWeeks = 8;
+    return {
+      plan: [...(params.existingWeeks ?? []).filter((w: any) => w.week_start_date < today),
+             ...fallbackPlan(startDate, numWeeks, athleteProfile)],
+      aiUsed: false,
+    };
   }
 
-  const personalityBlock = bot.personality_prompt
-    ? `COACHING PERSONALITY: ${bot.personality_prompt}\n\nRespond in this coaching voice at all times. Never break character.\n\n`
-    : '';
+  const { tier, phase, mpwBand, paceBands, eventPaces, warmup, cooldown } = skeleton;
+  const easyPg = paceBands?.easy ?? 'easy effort';
+  const recPg  = paceBands?.recovery ?? 'recovery effort';
 
-  const systemContent = personalityBlock + PLAN_SYSTEM_PROMPT;
-  const userContent = buildPlanPrompt({
-    bot, botWorkouts, athleteProfile, raceCalendar, coachKnowledge,
-    startDate, numWeeks, recentActivities, latestReadiness, planType,
+  // ── Step B: Convert skeleton to DB format, pre-fill easy descriptions ────────
+  const dbWeeks: any[] = skeleton.weeks.map((week, wi) => {
+    const weekStart = addDays(startDate, wi * 7);
+    return skeletonWeekToDb(week, easyPg, recPg, weekStart);
   });
 
-  let rawWeeks: any[] | null = null;
+  // ── Step C: Call GPT-4o for structured workout descriptions in parallel ───────
+  type DescTarget = { weekIdx: number; woIdx: number; planWo: PlannedWorkout };
+  const targets: DescTarget[] = [];
 
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: systemContent },
-          { role: 'user', content: userContent },
-        ],
-        response_format: { type: 'json_object' },
-      });
-      const text = completion.choices[0].message.content ?? '';
-      const parsed = JSON.parse(text);
-      const arr = Array.isArray(parsed)
-        ? parsed
-        : (parsed.weeks ?? parsed.plan ?? parsed.data ?? null);
-      if (Array.isArray(arr) && arr.length > 0) {
-        const normalized = normalizePlan(arr, startDate);
-        if (validatePlan(normalized)) {
-          rawWeeks = normalized;
-          break;
-        }
+  for (let wi = 0; wi < dbWeeks.length; wi++) {
+    for (let woi = 0; woi < dbWeeks[wi].workouts.length; woi++) {
+      const planWo: PlannedWorkout = dbWeeks[wi].workouts[woi]._planWorkout;
+      if (needsGptDescription(planWo)) {
+        targets.push({ weekIdx: wi, woIdx: woi, planWo });
       }
-    } catch (err) {
-      console.error(`[seasonPlan] OpenAI error attempt ${attempt + 1}:`, err);
     }
   }
 
-  const existingWeeks = params.existingWeeks || [];
-  const today = new Date().toISOString().split('T')[0];
-  const pastWeeks = existingWeeks.filter((w: any) => w.week_start_date < today);
+  console.log(`[seasonPlan] Generating GPT-4o descriptions for ${targets.length} structured workouts`);
 
-  if (rawWeeks) return { plan: [...pastWeeks, ...rawWeeks], aiUsed: true };
+  let aiUsed = false;
 
-  console.warn('[seasonPlan] OpenAI failed, using fallback');
-  return { plan: [...pastWeeks, ...fallbackPlan(botWorkouts, startDate, numWeeks)], aiUsed: false };
+  if (targets.length > 0) {
+    try {
+      const results = await Promise.all(
+        targets.map(t =>
+          generateWorkoutDescription(t.planWo, tier, mpwBand, phase, easyPg, recPg),
+        ),
+      );
+
+      for (let i = 0; i < targets.length; i++) {
+        const { weekIdx, woIdx } = targets[i];
+        const dbWo = dbWeeks[weekIdx].workouts[woIdx];
+        dbWo.description  = results[i].description;
+        dbWo.why          = results[i].why;
+        dbWo.change_reason = results[i].why;
+      }
+      aiUsed = true;
+    } catch (err) {
+      console.error('[seasonPlan] GPT-4o description batch failed:', err);
+      // Fallback: use code-generated descriptions for all remaining
+      for (const t of targets) {
+        const dbWo = dbWeeks[t.weekIdx].workouts[t.woIdx];
+        if (!dbWo.description) {
+          dbWo.description   = buildCodeDescription(t.planWo, easyPg, recPg);
+          dbWo.why           = `${t.planWo.title} supports ${phase} phase development.`;
+          dbWo.change_reason = dbWo.why;
+        }
+      }
+    }
+  }
+
+  // ── Strip internal _planWorkout references before saving ─────────────────────
+  for (const week of dbWeeks) {
+    for (const wo of week.workouts) {
+      delete wo._planWorkout;
+    }
+  }
+
+  // ── Step D: Validate and fix before saving ────────────────────────────────────
+  const validatedWeeks = validateAndFixPlan(dbWeeks, athleteProfile);
+
+  if (!validatePlan(validatedWeeks)) {
+    console.error('[seasonPlan] Plan failed validation after fix, using fallback');
+    return {
+      plan: [...(params.existingWeeks ?? []).filter((w: any) => w.week_start_date < today),
+             ...fallbackPlan(startDate, skeleton.totalWeeks, athleteProfile)],
+      aiUsed: false,
+    };
+  }
+
+  // ── Preserve past weeks ───────────────────────────────────────────────────────
+  const pastWeeks = (params.existingWeeks ?? []).filter((w: any) => w.week_start_date < today);
+
+  console.log(
+    `[seasonPlan] Plan complete — tier=${tier} phase=${phase} weeks=${validatedWeeks.length} ` +
+    `easeIn=${skeleton.weeksOfEaseIn} mpw=${skeleton.weeks[0]?.targetMiles ?? 0} aiDescriptions=${aiUsed}`,
+  );
+
+  return { plan: [...pastWeeks, ...validatedWeeks], aiUsed };
 }
