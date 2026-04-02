@@ -3,6 +3,10 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { apiFetch } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
+import {
+  classifyAthleteTier, derivePaceBands, deriveEventPaces,
+  type AthleteTier, type PaceBands, type EventPaces,
+} from '../../utils/paceCalculator';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,6 +67,165 @@ const EMPTY: OnboardingData = {
 };
 
 const TOTAL_STEPS = 16;
+
+// ── Plan selection helpers ────────────────────────────────────────────────────
+
+interface PlanCardPreviewRow { day: string; workout: string; pace?: string; }
+interface PlanCardConfig {
+  value: string;
+  label: string;
+  desc: string;
+  preview: PlanCardPreviewRow[];
+  phase: string;
+  phaseColor: string;
+}
+
+function buildPlanCards(
+  tier: AthleteTier,
+  raceDate: string,
+  bands: PaceBands,
+  events: EventPaces,
+): PlanCardConfig[] {
+  const weeksToRace = raceDate
+    ? (new Date(raceDate + 'T00:00:00Z').getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)
+    : null;
+
+  if (tier === 'beginner') {
+    const card3: PlanCardConfig = raceDate && (weeksToRace ?? 0) > 8
+      ? {
+          value: 'first_race',
+          label: 'First Race Plan',
+          desc: 'A gentle build toward your first race. Mostly easy, light structure in the final weeks.',
+          preview: [
+            { day: 'Mon', workout: 'Easy run · 20 min' },
+            { day: 'Wed', workout: 'Easy run · 25 min' },
+            { day: 'Sat', workout: 'Long run · Easy, no intervals' },
+          ],
+          phase: 'Base',
+          phaseColor: '#4ade80',
+        }
+      : {
+          value: 'custom',
+          label: 'Custom',
+          desc: 'Tell Pace what you want and it will build something for you.',
+          preview: [
+            { day: '', workout: 'Fully personalized' },
+            { day: '', workout: 'Built around your goals' },
+            { day: '', workout: 'Adapts as you progress' },
+          ],
+          phase: 'Ease-In',
+          phaseColor: '#6b7280',
+        };
+    return [
+      {
+        value: 'start_easy',
+        label: 'Start Easy',
+        desc: 'All easy running. No pace targets. Just build the habit of getting out the door consistently.',
+        preview: [
+          { day: 'Mon', workout: 'Easy run · 20–25 min' },
+          { day: 'Wed', workout: 'Easy run · 20–25 min' },
+          { day: 'Sat', workout: 'Easy run · 25 min' },
+        ],
+        phase: 'Ease-In',
+        phaseColor: '#6b7280',
+      },
+      {
+        value: 'build_base',
+        label: 'Build a Base',
+        desc: 'Easy running with one slightly longer run each week. Simple structure, no hard days.',
+        preview: [
+          { day: 'Mon', workout: 'Easy run · 25 min' },
+          { day: 'Thu', workout: 'Easy run · 25 min' },
+          { day: 'Sat', workout: 'Long run · 35 min' },
+        ],
+        phase: 'Ease-In → Base',
+        phaseColor: '#6b7280',
+      },
+      card3,
+    ];
+  }
+
+  if (tier === 'advanced') {
+    return [
+      {
+        value: 'base_phase',
+        label: 'Base Phase',
+        desc: 'Full coach param system, base phase. Aerobic foundation with structured bridge work.',
+        preview: [
+          { day: 'Mon', workout: 'Progressive tempo', pace: bands.needs_aerobic_pr ? undefined : bands.LT1 },
+          { day: 'Thu', workout: '60-sec hills' },
+          { day: 'Sat', workout: 'Long run · Easy' },
+        ],
+        phase: 'Base',
+        phaseColor: '#4ade80',
+      },
+      {
+        value: 'pre_competition',
+        label: 'Pre-Competition',
+        desc: 'Trim aerobic volume, add rhythm. Mile-pace 300s, threshold combos, event sharpening.',
+        preview: [
+          { day: 'Mon', workout: 'Tempo + 400s at 3K', pace: bands.needs_aerobic_pr ? undefined : bands.LT2 },
+          { day: 'Thu', workout: 'Mile-pace 300s', pace: events.mile_pace ?? undefined },
+          { day: 'Sat', workout: 'Long run · Easy' },
+        ],
+        phase: 'Pre-Competition',
+        phaseColor: '#f59e0b',
+      },
+      {
+        value: 'competition_sharp',
+        label: 'Competition Sharp',
+        desc: 'Race feel, goal pace work, low cost high quality. Peak sharpness for race day.',
+        preview: [
+          { day: 'Mon', workout: '800-600 sets + 150s' },
+          { day: 'Thu', workout: 'Goal pace tune-up', pace: events.pace_1500 ?? events.mile_pace ?? undefined },
+          { day: 'Sat', workout: 'Long run · Easy' },
+        ],
+        phase: 'Competition',
+        phaseColor: '#00E5A0',
+      },
+    ];
+  }
+
+  // intermediate
+  return [
+    {
+      value: 'aerobic_foundation',
+      label: 'Aerobic Foundation',
+      desc: 'Build your aerobic engine. Tempo runs, threshold work, long runs. No event-specific work yet.',
+      preview: [
+        { day: 'Mon', workout: 'Tempo run', pace: bands.needs_aerobic_pr ? undefined : bands.LT2 },
+        { day: 'Thu', workout: 'Threshold 1000s' },
+        { day: 'Sat', workout: 'Long run · Easy' },
+      ],
+      phase: 'Base',
+      phaseColor: '#4ade80',
+    },
+    {
+      value: 'race_development',
+      label: 'Race Development',
+      desc: 'Event-specific sharpening alongside aerobic work. Mile-pace reps, tempo, race rhythm.',
+      preview: [
+        { day: 'Mon', workout: 'Progressive tempo' },
+        { day: 'Thu', workout: 'Mile-pace 300s', pace: events.mile_pace ?? undefined },
+        { day: 'Sat', workout: 'Long run · Easy' },
+      ],
+      phase: 'Pre-Competition',
+      phaseColor: '#f59e0b',
+    },
+    {
+      value: 'balanced_build',
+      label: 'Balanced Build',
+      desc: 'A mix of aerobic base and event rhythm. Good if you want variety without specializing yet.',
+      preview: [
+        { day: 'Mon', workout: 'Threshold 1000s' },
+        { day: 'Thu', workout: 'Base 400s at 5K pace' },
+        { day: 'Sat', workout: 'Long run · Easy' },
+      ],
+      phase: 'Base',
+      phaseColor: '#4ade80',
+    },
+  ];
+}
 
 // ── Shared components ─────────────────────────────────────────────────────────
 
@@ -571,6 +734,30 @@ export function Onboarding() {
 
   const set = (patch: Partial<OnboardingData>) => setData(d => ({ ...d, ...patch }));
 
+  // Auto-select recommended plan card when arriving at step 15
+  useEffect(() => {
+    if (step !== 15 || data.planType) return;
+    const athleteRec: Record<string, unknown> = {
+      fitness_rating: data.fitnessRating,
+      experience_level: data.experience,
+      current_weekly_mileage: parseFloat(data.weeklyMileage) || 0,
+      pr_5k: data.pr5k || undefined,
+      pr_mile: data.prMile || undefined,
+      pr_800m: data.pr800m || undefined,
+      pr_1500m: data.pr1500m || undefined,
+      target_race_date: data.raceDate || undefined,
+    };
+    const tier = classifyAthleteTier(athleteRec);
+    const bands = derivePaceBands(athleteRec);
+    const events = deriveEventPaces(athleteRec);
+    const weeksToRace = data.raceDate
+      ? (new Date(data.raceDate + 'T00:00:00Z').getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)
+      : null;
+    const recIdx = weeksToRace === null ? 0 : weeksToRace > 12 ? 0 : weeksToRace >= 6 ? 1 : 2;
+    const cards = buildPlanCards(tier, data.raceDate, bands, events);
+    setData(d => ({ ...d, planType: cards[Math.min(recIdx, cards.length - 1)].value }));
+  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const toggleArr = <K extends keyof OnboardingData>(key: K, val: string) => {
     setData(d => {
       const arr = d[key] as string[];
@@ -631,9 +818,6 @@ export function Onboarding() {
       if (data.pr1500m) patch.pr_1500m = data.pr1500m;
       if (data.prMile) patch.pr_mile = data.prMile;
       if (data.pr5k) patch.pr_5k = data.pr5k;
-      if (data.pr10k) patch.pr_10k = data.pr10k;
-      if (data.prHalf) patch.pr_half_marathon = data.prHalf;
-      if (data.prMarathon) patch.pr_marathon = data.prMarathon;
       if (data.heightFt) patch.height_ft = parseInt(data.heightFt) || null;
       if (data.heightIn) patch.height_in = parseInt(data.heightIn) || null;
       if (data.weight) patch.weight_lbs = parseFloat(data.weight) || null;
@@ -786,8 +970,16 @@ export function Onboarding() {
           </h2>
           <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.4)', marginBottom: '32px' }}>Select all that apply.</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-            {['5K', '10K', 'Half Marathon', 'Marathon', 'Track', 'Cross Country', 'Other'].map(d => (
-              <Pill key={d} label={d} selected={data.distances.includes(d)} onClick={() => toggleArr('distances', d)} />
+            {[
+              { label: '800m',  value: '800m'  },
+              { label: 'Mile',  value: 'mile'  },
+              { label: '1500m', value: '1500m' },
+              { label: '3000m', value: '3000m' },
+              { label: '5K',    value: '5k'    },
+              { label: '10K',   value: '10k'   },
+              { label: 'Other', value: 'other' },
+            ].map(d => (
+              <Pill key={d.value} label={d.label} selected={data.distances.includes(d.value)} onClick={() => toggleArr('distances', d.value)} />
             ))}
           </div>
         </Shell>
@@ -877,13 +1069,10 @@ export function Onboarding() {
           <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.4)', marginBottom: '32px' }}>Optional — skip if you're just starting out.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {[
-              { label: '800m', key: 'pr800m' as const, placeholder: '2:10' },
-              { label: '1500m', key: 'pr1500m' as const, placeholder: '4:15' },
-              { label: 'Mile', key: 'prMile' as const, placeholder: '5:30' },
-              { label: '5K', key: 'pr5k' as const, placeholder: '22:30' },
-              { label: '10K', key: 'pr10k' as const, placeholder: '46:00' },
-              { label: 'Half Marathon', key: 'prHalf' as const, placeholder: '1:45:00' },
-              { label: 'Marathon', key: 'prMarathon' as const, placeholder: '3:45:00' },
+              { label: '800m',  key: 'pr800m'  as const, placeholder: '2:10'  },
+              { label: '1500m', key: 'pr1500m' as const, placeholder: '4:15'  },
+              { label: 'Mile',  key: 'prMile'  as const, placeholder: '5:30'  },
+              { label: '5K',    key: 'pr5k'    as const, placeholder: '22:30' },
             ].map(f => (
               <div key={f.key}>
                 <FieldLabel>{f.label}</FieldLabel>
@@ -981,7 +1170,7 @@ export function Onboarding() {
                 <FieldLabel>Distance</FieldLabel>
                 <select value={data.raceDistance} onChange={e => set({ raceDistance: e.target.value })} style={{ ...INPUT_STYLE }}>
                   <option value="">Select distance</option>
-                  {['800m', '1500m', 'Mile', '3000m', '5K', '10K', 'Half Marathon', 'Full Marathon', 'Other'].map(d => (
+                  {['800m', '1500m', 'Mile', '3000m', '5K', 'Other'].map(d => (
                     <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
@@ -1036,57 +1225,112 @@ export function Onboarding() {
         </Shell>
       );
 
-      // STEP 15 — Plan Selection
-      case 15: return (
-        <Shell step={step} onBack={back} onNext={next} nextDisabled={!data.planType}>
-          <h2 style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 700, letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: '12px' }}>
-            What kind of plan do you want?
-          </h2>
-          <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.4)', marginBottom: '32px' }}>
-            Choose the approach that fits where you are right now.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {[
-              {
-                value: 'foundation',
-                label: 'Foundation',
-                desc: 'Build your aerobic base. Easy miles, low intensity, sustainable habits. Best if you\'re just starting or returning.',
-              },
-              {
-                value: 'performance',
-                label: 'Performance',
-                desc: 'Balanced mix of easy runs and quality sessions. Tempo, progressions, weekly progression. For consistent runners building toward a race.',
-              },
-              {
-                value: 'competition',
-                label: 'Competition',
-                desc: 'Race-specific preparation. Interval training, event-pace workouts, structured sharpening. For athletes in active competition season.',
-              },
-            ].map(o => (
-              <button
-                key={o.value}
-                type="button"
-                onClick={() => set({ planType: o.value })}
-                style={{
-                  width: '100%',
-                  padding: '18px 20px',
-                  borderRadius: '12px',
-                  border: data.planType === o.value ? '2px solid #00E5A0' : '2px solid rgba(255,255,255,0.1)',
-                  background: data.planType === o.value ? 'rgba(0,229,160,0.08)' : 'rgba(255,255,255,0.03)',
-                  color: 'white',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  fontFamily: "'DM Sans', sans-serif",
-                }}
-              >
-                <p style={{ fontSize: '16px', fontWeight: 600, color: data.planType === o.value ? '#00E5A0' : 'white', marginBottom: '6px' }}>{o.label}</p>
-                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>{o.desc}</p>
-              </button>
-            ))}
-          </div>
-        </Shell>
-      );
+      // STEP 15 — Plan Selection (data-driven)
+      case 15: {
+        const athleteRec: Record<string, unknown> = {
+          fitness_rating: data.fitnessRating,
+          experience_level: data.experience,
+          current_weekly_mileage: parseFloat(data.weeklyMileage) || 0,
+          pr_5k: data.pr5k || undefined,
+          pr_mile: data.prMile || undefined,
+          pr_800m: data.pr800m || undefined,
+          pr_1500m: data.pr1500m || undefined,
+          target_race_date: data.raceDate || undefined,
+        };
+        const tier15 = classifyAthleteTier(athleteRec);
+        const bands15 = derivePaceBands(athleteRec);
+        const events15 = deriveEventPaces(athleteRec);
+        const weeksToRace15 = data.raceDate
+          ? (new Date(data.raceDate + 'T00:00:00Z').getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)
+          : null;
+        const recIdx15 = weeksToRace15 === null ? 0 : weeksToRace15 > 12 ? 0 : weeksToRace15 >= 6 ? 1 : 2;
+        const cards15 = buildPlanCards(tier15, data.raceDate, bands15, events15);
+
+        return (
+          <Shell step={step} onBack={back} onNext={next} nextDisabled={!data.planType}>
+            <h2 style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 700, letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: '12px' }}>
+              What kind of plan do you want?
+            </h2>
+            <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.4)', marginBottom: '32px' }}>
+              Choose the approach that fits where you are right now.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {cards15.map((card, idx) => {
+                const isSelected = data.planType === card.value;
+                const isRecommended = idx === Math.min(recIdx15, cards15.length - 1);
+                return (
+                  <button
+                    key={card.value}
+                    type="button"
+                    onClick={() => set({ planType: card.value })}
+                    style={{
+                      position: 'relative',
+                      width: '100%',
+                      padding: '16px 20px',
+                      borderRadius: '12px',
+                      border: isSelected ? '2px solid #00E5A0' : '2px solid rgba(255,255,255,0.1)',
+                      background: isSelected ? 'rgba(0,229,160,0.08)' : 'rgba(255,255,255,0.03)',
+                      color: 'white',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  >
+                    {/* Recommended tag */}
+                    {isRecommended && (
+                      <span style={{
+                        position: 'absolute', top: '12px', right: '14px',
+                        fontSize: '10px', fontWeight: 600, color: '#00E5A0',
+                        background: 'rgba(0,229,160,0.1)', borderRadius: '100px',
+                        padding: '3px 8px', letterSpacing: '0.04em',
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}>
+                        Recommended for you
+                      </span>
+                    )}
+                    {/* Title */}
+                    <p style={{ fontSize: '15px', fontWeight: 600, color: isSelected ? '#00E5A0' : 'white', marginBottom: '4px', paddingRight: isRecommended ? '148px' : '0' }}>
+                      {card.label}
+                    </p>
+                    {/* Description */}
+                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, marginBottom: '10px' }}>
+                      {card.desc}
+                    </p>
+                    {/* Week preview */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '10px' }}>
+                      {card.preview.map((row, ri) => (
+                        <div key={ri} style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                          {row.day && (
+                            <span style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(255,255,255,0.3)', width: '28px', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                              {row.day}
+                            </span>
+                          )}
+                          <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)' }}>{row.workout}</span>
+                          {row.pace && (
+                            <span style={{ fontSize: '11px', fontFamily: "'DM Mono', monospace", color: '#00E5A0' }}>{row.pace}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {/* Phase badge */}
+                    <span style={{
+                      display: 'inline-block',
+                      fontSize: '10px', fontWeight: 600,
+                      color: card.phaseColor,
+                      background: `${card.phaseColor}18`,
+                      borderRadius: '100px', padding: '2px 8px',
+                      letterSpacing: '0.03em',
+                    }}>
+                      {card.phase}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </Shell>
+        );
+      }
 
       // STEP 16 — Account Creation
       case 16: return (
