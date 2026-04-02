@@ -333,6 +333,7 @@ export function formatContextForPrompt(ctx: AthleteContext): string {
       `- Current phase: ${phaseLabel} (${phase})`,
       `- Fitness level: ${fitnessLevel}`,
       `- Weekly volume: ${mpw} mpw`,
+      `- Training days/week: ${ap.training_days_per_week ?? 'not specified'}`,
       `- Pace sources: aerobic systems from 3000m+ PRs only; event-specific from mile/1500/800 PRs`,
       ap.pr_5k ? `- Aerobic anchor: 5K ${ap.pr_5k}` : null,
       ap.pr_mile ? `- Event anchor: Mile ${ap.pr_mile}` : null,
