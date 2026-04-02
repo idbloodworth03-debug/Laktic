@@ -54,6 +54,25 @@ router.get(
       }
     }
 
+    // Short-circuit poll requests when nothing has changed
+    const lastSeenId = typeof req.query.lastSeenId === 'string' ? req.query.lastSeenId : null;
+    if (lastSeenId && page === 1 && !sortByRelevance) {
+      let latestQuery = supabase
+        .from('team_feed')
+        .select('id')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (activeTeamId) {
+        latestQuery = latestQuery.or(`scope.eq.public,team_id.eq.${activeTeamId}`);
+      } else {
+        latestQuery = latestQuery.eq('scope', 'public');
+      }
+      const { data: latestPost } = await latestQuery.maybeSingle();
+      if (latestPost?.id === lastSeenId) {
+        return res.json({ unchanged: true });
+      }
+    }
+
     // When sorting by relevance, fetch a larger pool so we can rank across recent posts
     const fetchLimit = sortByRelevance ? 100 : PAGE_SIZE;
 

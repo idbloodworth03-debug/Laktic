@@ -867,6 +867,7 @@ export function Community() {
   const [showCreate, setShowCreate] = useState(false);
   const [pendingPosts, setPendingPosts] = useState<any[]>([]);
   const knownPostIdsRef = useRef<Set<string>>(new Set());
+  const newestPostIdRef = useRef<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
@@ -877,6 +878,7 @@ export function Community() {
       const data = await apiFetch(`/api/community/feed?page=${pg}`);
       if (reset) knownPostIdsRef.current.clear();
       (data.posts ?? []).forEach((p: any) => knownPostIdsRef.current.add(p.id));
+      if (reset && data.posts?.length > 0) newestPostIdRef.current = data.posts[0].id;
       setPosts(prev => reset ? data.posts : [...prev, ...data.posts]);
       setHasMore(data.hasMore);
       setPage(pg);
@@ -887,11 +889,22 @@ export function Community() {
   useEffect(() => { loadPage(1, true); }, []);
 
   // 15-second poll: detect new posts + silently refresh counts
+  // Sends lastSeenId so the backend can short-circuit with { unchanged: true }
+  // when nothing new has arrived — keeps Railway logs silent on idle polls.
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const data = await apiFetch('/api/community/feed?page=1');
+        const lastSeenId = newestPostIdRef.current;
+        const url = lastSeenId
+          ? `/api/community/feed?page=1&lastSeenId=${encodeURIComponent(lastSeenId)}`
+          : '/api/community/feed?page=1';
+        const data = await apiFetch(url);
+
+        if (data.unchanged) return;
+
         const fresh: any[] = data.posts ?? [];
+
+        if (fresh.length > 0) newestPostIdRef.current = fresh[0].id;
 
         // Find posts not yet shown
         const newOnes = fresh.filter(p => !knownPostIdsRef.current.has(p.id));
