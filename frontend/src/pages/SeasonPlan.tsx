@@ -23,6 +23,30 @@ const PHASE_BORDER_COLOR: Record<string, string> = {
   recovery:   '#4B5563',
 };
 
+// ── Workout type detection + color system ─────────────────────────────────────
+type WorkoutType = 'easy' | 'tempo' | 'intervals' | 'long' | 'race' | 'rest' | 'default';
+
+function getWorkoutType(title: string, isRestDay: boolean): WorkoutType {
+  if (isRestDay) return 'rest';
+  const t = title.toLowerCase();
+  if (/race/.test(t)) return 'race';
+  if (/long run|long$/.test(t)) return 'long';
+  if (/tempo|threshold|comfortably hard|lactate/.test(t)) return 'tempo';
+  if (/interval|repeat|track|speed|fartlek|vo2|mile rep/.test(t)) return 'intervals';
+  if (/easy|recovery run|recovery|jog|aerobic/.test(t)) return 'easy';
+  return 'default';
+}
+
+const WORKOUT_TYPE_STYLE: Record<WorkoutType, { border: string; bg: string; dot: string }> = {
+  easy:      { border: 'rgba(74,222,128,0.45)',  bg: 'rgba(34,197,94,0.07)',   dot: '#4ade80' },
+  tempo:     { border: 'rgba(251,146,60,0.55)',  bg: 'rgba(251,146,60,0.07)',  dot: '#fb923c' },
+  intervals: { border: 'rgba(248,113,113,0.55)', bg: 'rgba(239,68,68,0.07)',   dot: '#f87171' },
+  long:      { border: 'rgba(192,132,252,0.55)', bg: 'rgba(168,85,247,0.07)',  dot: '#c084fc' },
+  race:      { border: 'rgba(0,229,160,0.75)',   bg: 'rgba(0,229,160,0.08)',   dot: '#00E5A0' },
+  rest:      { border: 'var(--color-border)',    bg: 'transparent',            dot: 'var(--color-text-tertiary)' },
+  default:   { border: 'rgba(255,255,255,0.1)', bg: 'var(--color-bg-secondary)', dot: 'var(--color-text-tertiary)' },
+};
+
 // Phase pill styles (week selector)
 const PHASE_PILL_STYLE = (phase: string, active: boolean, isToday: boolean): React.CSSProperties => {
   if (active) {
@@ -100,14 +124,7 @@ type CalWorkout = {
 
 // ── Workout detail modal ──────────────────────────────────────────────────────
 function WorkoutModal({ wo, onClose }: { wo: CalWorkout; onClose: () => void }) {
-  const phaseTextColor: Record<string, string> = {
-    base:       'var(--color-text-secondary)',
-    build:      '#60A5FA',
-    sharpening: '#C084FC',
-    taper:      '#FBBF24',
-    race:       'var(--color-accent)',
-    recovery:   'var(--color-text-secondary)',
-  };
+  const typeStyle = WORKOUT_TYPE_STYLE[getWorkoutType(wo.title, false)];
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
@@ -116,7 +133,8 @@ function WorkoutModal({ wo, onClose }: { wo: CalWorkout; onClose: () => void }) 
         className="relative w-full max-w-md p-6 fade-up"
         style={{
           background: 'var(--color-bg-secondary)',
-          border: '1px solid var(--color-border-light)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderLeft: `3px solid ${typeStyle.border}`,
           borderRadius: 20,
           boxShadow: '0 25px 60px rgba(0,0,0,0.7)',
         }}
@@ -130,30 +148,40 @@ function WorkoutModal({ wo, onClose }: { wo: CalWorkout; onClose: () => void }) 
           ×
         </button>
 
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-3">
           <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{wo.dateLabel}</span>
+          <span className="text-xs capitalize" style={{ color: 'var(--color-text-tertiary)' }}>· {wo.phase}</span>
+        </div>
+
+        {/* Type dot + title */}
+        <div className="flex items-start gap-2.5 mb-4">
           <span
-            className="text-xs font-medium capitalize"
-            style={{ color: phaseTextColor[wo.phase] ?? phaseTextColor.base }}
-          >
-            · {wo.phase}
+            className="shrink-0 rounded-full mt-1"
+            style={{ width: 7, height: 7, background: typeStyle.dot }}
+          />
+          <span className="text-base font-medium leading-snug" style={{ color: 'var(--color-text-primary)' }}>
+            {wo.title}
           </span>
         </div>
 
-        <h3 className="font-bold text-lg mb-3 leading-snug" style={{ color: 'var(--color-text-primary)' }}>{wo.title}</h3>
-
+        {/* Distance + pace */}
         {(wo.distance_miles || wo.pace_guideline) && (
-          <div className="flex gap-4 mb-4">
+          <div className="flex items-baseline gap-5 mb-4 pl-1">
             {wo.distance_miles && (
-              <div className="text-center">
-                <div className="font-mono text-xl font-bold" style={{ color: 'var(--color-accent)' }}>{wo.distance_miles}</div>
-                <div className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--color-text-tertiary)' }}>miles</div>
+              <div>
+                <div className="font-mono font-semibold" style={{ fontSize: 22, color: typeStyle.dot, lineHeight: 1 }}>
+                  {wo.distance_miles}
+                  <span className="text-xs font-normal ml-1" style={{ color: 'var(--color-text-tertiary)' }}>mi</span>
+                </div>
+                <div className="text-[10px] uppercase tracking-widest mt-1" style={{ color: 'var(--color-text-tertiary)' }}>distance</div>
               </div>
             )}
             {wo.pace_guideline && (
-              <div className="text-center">
-                <div className="font-mono text-sm font-semibold pt-1" style={{ color: 'var(--color-text-secondary)' }}>{wo.pace_guideline}</div>
-                <div className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--color-text-tertiary)' }}>pace</div>
+              <div>
+                <div className="font-mono text-sm font-medium" style={{ color: 'var(--color-text-secondary)', lineHeight: 1 }}>
+                  {wo.pace_guideline}
+                </div>
+                <div className="text-[10px] uppercase tracking-widest mt-1" style={{ color: 'var(--color-text-tertiary)' }}>pace</div>
               </div>
             )}
           </div>
@@ -165,13 +193,15 @@ function WorkoutModal({ wo, onClose }: { wo: CalWorkout; onClose: () => void }) 
 
         {wo.change_reason && (
           <p
-            className="text-xs italic pt-3"
+            className="text-xs pt-3"
             style={{
               color: 'var(--color-text-tertiary)',
-              borderTop: '1px solid var(--color-border)',
+              borderTop: '1px solid rgba(255,255,255,0.06)',
+              paddingLeft: 8,
+              borderLeft: `2px solid ${typeStyle.border}`,
             }}
           >
-            Why adjusted: {wo.change_reason}
+            Adjusted: {wo.change_reason}
           </p>
         )}
       </div>
@@ -936,6 +966,9 @@ export function SeasonPlan() {
                       const isCompleted = wo?.date ? completedDates.has(wo.date) : false;
                       const isToggling = wo?.date ? togglingDate === wo.date : false;
                       const canComplete = !!wo && !wo.is_rest_day && !!wo.date;
+                      const woType = wo
+                        ? WORKOUT_TYPE_STYLE[getWorkoutType(wo.title || '', !!wo.is_rest_day)]
+                        : WORKOUT_TYPE_STYLE.default;
 
                       return (
                         <div
@@ -944,18 +977,18 @@ export function SeasonPlan() {
                           className={`transition-all duration-150 ${expanded ? 'col-span-1 sm:col-span-2' : ''}`}
                           style={{
                             borderRadius: 12,
-                            border: `1px solid ${wo ? (isCompleted ? 'rgba(0,229,160,0.25)' : 'var(--color-border)') : 'var(--color-border)'}`,
-                            borderLeft: wo ? `4px solid ${isCompleted ? 'var(--color-accent)' : (PHASE_BORDER_COLOR[phase] ?? PHASE_BORDER_COLOR.base)}` : `1px dashed var(--color-border)`,
-                            background: wo ? (isCompleted ? 'rgba(0,229,160,0.04)' : 'var(--color-bg-secondary)') : 'transparent',
+                            border: `1px solid ${wo ? (isCompleted ? 'rgba(0,229,160,0.18)' : 'rgba(255,255,255,0.06)') : 'var(--color-border)'}`,
+                            borderLeft: wo ? `3px solid ${isCompleted ? 'var(--color-accent)' : woType.border}` : `1px dashed var(--color-border)`,
+                            background: wo ? (isCompleted ? 'rgba(0,229,160,0.04)' : woType.bg) : 'transparent',
                             padding: 16,
                             cursor: wo ? 'pointer' : 'default',
-                            opacity: wo ? 1 : 0.35,
+                            opacity: wo ? (isCompleted ? 0.55 : 1) : 0.3,
                           }}
                           onMouseEnter={e => {
-                            if (wo) (e.currentTarget as HTMLElement).style.borderColor = isCompleted ? 'rgba(0,229,160,0.4)' : 'var(--color-border-light)';
+                            if (wo && !isCompleted) (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.12)';
                           }}
                           onMouseLeave={e => {
-                            if (wo) (e.currentTarget as HTMLElement).style.borderColor = isCompleted ? 'rgba(0,229,160,0.25)' : 'var(--color-border)';
+                            if (wo && !isCompleted) (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.06)';
                           }}
                         >
                           <div className="flex items-center justify-between mb-2">
@@ -995,42 +1028,80 @@ export function SeasonPlan() {
                           </div>
                           {wo ? (
                             <>
-                              <div
-                                className="font-medium text-sm mb-1.5 truncate"
-                                style={{ color: isCompleted ? 'var(--color-text-secondary)' : 'var(--color-text-primary)', textDecoration: isCompleted ? 'line-through' : 'none', textDecorationColor: 'rgba(255,255,255,0.2)' }}
-                              >
-                                {wo.title}
+                              {/* Type dot + title */}
+                              <div className="flex items-start gap-2 mb-2">
+                                <span
+                                  className="shrink-0 rounded-full"
+                                  style={{
+                                    width: 6, height: 6, marginTop: 5,
+                                    background: isCompleted ? 'var(--color-text-tertiary)' : woType.dot,
+                                  }}
+                                />
+                                <span
+                                  className="text-sm leading-snug"
+                                  style={{
+                                    fontWeight: 500,
+                                    color: isCompleted ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)',
+                                    textDecoration: isCompleted ? 'line-through' : 'none',
+                                    textDecorationColor: 'rgba(255,255,255,0.15)',
+                                  }}
+                                >
+                                  {wo.title}
+                                </span>
                               </div>
-                              <div className="flex gap-2 flex-wrap">
-                                {wo.distance_miles && (
-                                  <span className="font-mono text-xs font-medium" style={{ color: isCompleted ? 'var(--color-text-tertiary)' : 'var(--color-accent)' }}>
-                                    {wo.distance_miles}mi
-                                  </span>
-                                )}
-                                {wo.pace_guideline && (
-                                  <span className="font-mono text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                                    {wo.pace_guideline}
-                                  </span>
-                                )}
-                              </div>
+                              {/* Distance + pace — prominent */}
+                              {(wo.distance_miles || wo.pace_guideline) && (
+                                <div className="flex items-baseline gap-3 pl-4">
+                                  {wo.distance_miles && (
+                                    <span
+                                      className="font-mono font-semibold leading-none"
+                                      style={{
+                                        fontSize: 15,
+                                        color: isCompleted ? 'var(--color-text-tertiary)' : woType.dot,
+                                      }}
+                                    >
+                                      {wo.distance_miles}
+                                      <span className="text-[10px] font-normal ml-0.5" style={{ color: 'var(--color-text-tertiary)' }}>mi</span>
+                                    </span>
+                                  )}
+                                  {wo.pace_guideline && (
+                                    <span
+                                      className="font-mono text-xs"
+                                      style={{ color: isCompleted ? 'rgba(255,255,255,0.18)' : 'var(--color-text-secondary)' }}
+                                    >
+                                      {wo.pace_guideline}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              {/* Expanded detail */}
                               {expanded && (
                                 <div
-                                  className="mt-3 pt-3"
-                                  style={{ borderTop: '1px solid rgba(42,42,42,0.7)' }}
+                                  className="mt-3 pt-3 space-y-2"
+                                  style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
                                 >
-                                  <p className="text-sm leading-relaxed mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-                                    {wo.description}
-                                  </p>
+                                  {wo.description && (
+                                    <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                                      {wo.description}
+                                    </p>
+                                  )}
                                   {wo.change_reason && (
-                                    <p className="text-xs italic" style={{ color: 'var(--color-text-tertiary)' }}>
-                                      Why: {wo.change_reason}
+                                    <p
+                                      className="text-xs"
+                                      style={{
+                                        color: 'var(--color-text-tertiary)',
+                                        paddingLeft: 8,
+                                        borderLeft: `2px solid ${woType.border}`,
+                                      }}
+                                    >
+                                      Adjusted: {wo.change_reason}
                                     </p>
                                   )}
                                 </div>
                               )}
                             </>
                           ) : (
-                            <div className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Rest</div>
+                            <div className="text-xs pl-1" style={{ color: 'var(--color-text-tertiary)' }}>Rest</div>
                           )}
                         </div>
                       );
