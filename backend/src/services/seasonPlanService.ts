@@ -24,7 +24,7 @@ Rules:
 ${RUNNING_EXPERT_BASELINE}`;
 
 function buildUserPrompt(params: any): string {
-  const { bot, botWorkouts, athleteProfile, raceCalendar, coachKnowledge, startDate, numWeeks, recentActivities, latestReadiness } = params;
+  const { bot, botWorkouts, athleteProfile, raceCalendar, coachKnowledge, startDate, numWeeks, recentActivities, latestReadiness, planType, athleteTier } = params;
   const todayDate = new Date().toISOString().split('T')[0];
 
   const ap = athleteProfile;
@@ -43,6 +43,7 @@ function buildUserPrompt(params: any): string {
     ap.current_weekly_mileage ? `Current Weekly Mileage (alt): ${ap.current_weekly_mileage} mi/wk` : null,
     ap.long_run_distance ? `Comfortable Long Run: ${ap.long_run_distance} miles` : null,
     ap.pr_800m ? `PR 800m: ${ap.pr_800m}` : null,
+    ap.pr_1500m ? `PR 1500m: ${ap.pr_1500m}` : null,
     ap.pr_mile ? `PR Mile: ${ap.pr_mile}` : null,
     ap.pr_5k ? `PR 5K: ${ap.pr_5k}` : null,
     ap.pr_10k ? `PR 10K: ${ap.pr_10k}` : null,
@@ -63,7 +64,12 @@ function buildUserPrompt(params: any): string {
     ? `\nCURRENT READINESS: ${latestReadiness.score}/100 — ${latestReadiness.label}. ${latestReadiness.score <= 40 ? 'Start conservatively this week.' : latestReadiness.score >= 80 ? 'Athlete is well-rested — can handle full load.' : ''}`
     : '';
 
-  return `COACH PHILOSOPHY:\n${bot.philosophy}\n\nCOACH KNOWLEDGE:\n${coachKnowledge}\n\nCOACH TEMPLATE WORKOUTS (for ai_adjustable=false days only — do NOT copy these to every week. Vary all ai_adjustable workouts based on the training phase and week number):\n${JSON.stringify(botWorkouts)}\n\nATHLETE PROFILE:\n${profileLines}\n${activitiesBlock}${readinessBlock}\n\nIMPORTANT: Tailor the plan specifically to this athlete's fitness level, available training days, goal, and any injuries. Every week must have different workouts from the previous week. Apply progressive overload — start conservative, build each week, recover every 4th week.\n\nRACE CALENDAR:\n${JSON.stringify(raceCalendar)}\n\nTODAY: ${todayDate} | GENERATE FROM: ${startDate} | TOTAL WEEKS: ${numWeeks}\n\nGenerate the full ${numWeeks}-week season plan now. Return ONLY valid JSON: { "plan": [...] }`;
+  const planMeta = [
+    athleteTier ? `Athlete Tier: ${athleteTier}` : null,
+    planType ? `Selected Plan Type: ${planType}` : null,
+  ].filter(Boolean).join('\n');
+
+  return `COACH PHILOSOPHY:\n${bot.philosophy}\n\nCOACH KNOWLEDGE:\n${coachKnowledge}\n\nCOACH TEMPLATE WORKOUTS (for ai_adjustable=false days only — do NOT copy these to every week. Vary all ai_adjustable workouts based on the training phase and week number):\n${JSON.stringify(botWorkouts)}\n\nATHLETE PROFILE:\n${profileLines}\n${activitiesBlock}${readinessBlock}\n${planMeta ? '\n' + planMeta + '\n' : ''}\nIMPORTANT: Tailor the plan specifically to this athlete's fitness level, available training days, goal, and any injuries. Every week must have different workouts from the previous week. Apply progressive overload — start conservative, build each week, recover every 4th week.\n\nRACE CALENDAR:\n${JSON.stringify(raceCalendar)}\n\nTODAY: ${todayDate} | GENERATE FROM: ${startDate} | TOTAL WEEKS: ${numWeeks}\n\nGenerate the full ${numWeeks}-week season plan now. Return ONLY valid JSON: { "plan": [...] }`;
 }
 
 function fallbackPlan(botWorkouts: any[], startDate: string, numWeeks: number): any[] {
@@ -130,8 +136,9 @@ export async function generate(params: {
   athleteProfile: any; bot: any; botWorkouts: any[];
   raceCalendar: any[]; startDate?: string; existingWeeks?: any[];
   recentActivities?: any[]; latestReadiness?: { score: number; label: string; recommended_intensity?: string } | null;
+  planType?: string; athleteTier?: string;
 }): Promise<{ plan: any[]; aiUsed: boolean }> {
-  const { athleteProfile, bot, botWorkouts, raceCalendar, recentActivities, latestReadiness } = params;
+  const { athleteProfile, bot, botWorkouts, raceCalendar, recentActivities, latestReadiness, planType, athleteTier } = params;
   const startDate = params.startDate || getWeekStartDate();
   const coachKnowledge = await getFormattedKnowledge(bot.id);
 
@@ -150,7 +157,7 @@ export async function generate(params: {
     : '';
 
   const systemContent = personalityBlock + SYSTEM_PROMPT;
-  const userContent = buildUserPrompt({ bot, botWorkouts, athleteProfile, raceCalendar, coachKnowledge, startDate, numWeeks, recentActivities, latestReadiness });
+  const userContent = buildUserPrompt({ bot, botWorkouts, athleteProfile, raceCalendar, coachKnowledge, startDate, numWeeks, recentActivities, latestReadiness, planType, athleteTier });
 
   let aiPlan: any[] | null = null;
 

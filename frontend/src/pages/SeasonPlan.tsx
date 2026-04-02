@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
 import { AppLayout, Button, Card, Badge, Spinner, Input } from '../components/ui';
+import { derivePaceBands, deriveEventPaces } from '../utils/paceCalculator';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -562,6 +563,11 @@ function TeamSwitcher({ onTeamChange }: { onTeamChange: () => void }) {
 export function SeasonPlan() {
   const { profile, clearAuth } = useAuthStore();
   const nav = useNavigate();
+
+  // Compute pace bands client-side from profile so workout cards can show target paces
+  const paceBands = useMemo(() => profile ? derivePaceBands(profile as Record<string, unknown>) : null, [profile]);
+  const eventPaces = useMemo(() => profile ? deriveEventPaces(profile as Record<string, unknown>) : null, [profile]);
+
   const [season, setSeason] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentWeek, setCurrentWeek] = useState(0);
@@ -1072,6 +1078,26 @@ export function SeasonPlan() {
                                       {wo.pace_guideline}
                                     </span>
                                   )}
+                                  {/* Computed target pace from PR data */}
+                                  {!isCompleted && (() => {
+                                    const wt = getWorkoutType(wo.title || '', !!wo.is_rest_day);
+                                    let target: string | null = null;
+                                    if (paceBands && !paceBands.needs_aerobic_pr) {
+                                      if (wt === 'easy' || wt === 'long') target = paceBands.easy;
+                                      else if (wt === 'tempo') target = paceBands.LT1;
+                                      else if (wt === 'intervals') target = paceBands.LT2;
+                                    }
+                                    if (!target && eventPaces) {
+                                      if (wt === 'intervals' && eventPaces.mile_pace) target = eventPaces.mile_pace;
+                                      else if (wt === 'race' && eventPaces.pace_5k) target = eventPaces.pace_5k;
+                                    }
+                                    if (!target) return null;
+                                    return (
+                                      <span className="font-mono text-[10px]" style={{ color: 'var(--color-accent)', opacity: 0.75 }}>
+                                        {target}
+                                      </span>
+                                    );
+                                  })()}
                                 </div>
                               )}
                               {/* Expanded detail */}

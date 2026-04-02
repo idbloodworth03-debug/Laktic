@@ -5,6 +5,8 @@ import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
 import { AppLayout, Card, Badge, Button, ReadinessRing, ProgressBar, Spinner, StatCard } from '../components/ui';
 import { UserAvatar } from '../components/UserAvatar';
+import { PaceZonesCard } from '../components/PaceZonesCard';
+import { PhaseIndicator } from '../components/PhaseIndicator';
 import { ArrowRight, ChevronRight, TrendingUp, TrendingDown, Minus, X } from 'lucide-react';
 
 interface ReadinessData {
@@ -85,6 +87,15 @@ export function AthleteDashboard() {
   const [races, setRaces] = useState<RaceEntry[]>([]);
   const [feed, setFeed] = useState<CommunityPost[]>([]);
   const [selectedDist, setSelectedDist] = useState(0);
+
+  // Profile completion banner
+  const [bannerDismissed, setBannerDismissed] = useState(() =>
+    localStorage.getItem('laktic_profile_banner_dismissed') === 'true'
+  );
+  const dismissBanner = () => {
+    localStorage.setItem('laktic_profile_banner_dismissed', 'true');
+    setBannerDismissed(true);
+  };
 
   // Readiness modal state
   const [showReadinessModal, setShowReadinessModal] = useState(false);
@@ -184,6 +195,14 @@ export function AthleteDashboard() {
   const readinessScore = readiness?.logged ? readiness.score : null;
   const selectedPred = predictions[selectedDist];
 
+  const profileIncomplete = !bannerDismissed && (
+    !profile?.pr_5k || !profile?.target_race_date || !(profile as any)?.current_weekly_mileage
+  );
+
+  const weeksToRace = races[0]?.race_date
+    ? Math.max(0, Math.round((new Date(races[0].race_date).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)))
+    : null;
+
   return (
     <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
       <div className="p-6 md:p-8">
@@ -196,6 +215,20 @@ export function AthleteDashboard() {
             Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, {profile?.name?.split(' ')[0]}.
           </h1>
         </div>
+
+        {/* Profile completion banner */}
+        {profileIncomplete && (
+          <div className="mb-6 flex items-center gap-4 bg-[var(--color-bg-secondary)] border border-[var(--color-accent)]/20 rounded-card px-5 py-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] flex-shrink-0" />
+            <p className="flex-1 text-sm text-[var(--color-text-secondary)]">
+              Complete your profile to get more accurate pace zones and a better plan.{' '}
+              <a href="/athlete/settings" className="text-[var(--color-accent)] font-medium hover:opacity-80 transition-opacity">Update profile →</a>
+            </p>
+            <button onClick={dismissBanner} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors p-1">
+              <X size={14} />
+            </button>
+          </div>
+        )}
 
         {/* 3-column grid */}
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,2.5fr)_minmax(0,3fr)_minmax(0,1.5fr)] gap-6">
@@ -279,6 +312,14 @@ export function AthleteDashboard() {
                 </a>
               ))}
             </div>
+
+            {/* Phase indicator */}
+            {season && (
+              <PhaseIndicator phase={season.phase} weeksToRace={weeksToRace} />
+            )}
+
+            {/* Pace zones */}
+            <PaceZonesCard />
           </div>
 
           {/* ── CENTER COLUMN — Community Feed ── */}

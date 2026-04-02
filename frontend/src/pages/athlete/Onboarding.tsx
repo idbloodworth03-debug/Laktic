@@ -18,6 +18,7 @@ interface OnboardingData {
   weeklyMileage: string;
   fitnessRating: number;
   pr800m: string;
+  pr1500m: string;
   prMile: string;
   pr5k: string;
   pr10k: string;
@@ -34,7 +35,10 @@ interface OnboardingData {
   raceDate: string;
   raceDistance: string;
   goalTime: string;
+  seasonStartDate: string;
+  seasonEndDate: string;
   biggestChallenges: string[]; // multi-select
+  planType: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -48,15 +52,17 @@ const EMPTY: OnboardingData = {
   seasonStatus: '',
   trainingDays: null, weeklyMileage: '',
   fitnessRating: 5,
-  pr800m: '', prMile: '', pr5k: '', pr10k: '', prHalf: '', prMarathon: '',
+  pr800m: '', pr1500m: '', prMile: '', pr5k: '', pr10k: '', prHalf: '', prMarathon: '',
   heightFt: '', heightIn: '', weight: '', sleep: '',
   hasInjuries: null, injuryNotes: '',
   hasGoalRace: null, raceName: '', raceDate: '', raceDistance: '', goalTime: '',
+  seasonStartDate: '', seasonEndDate: '',
   biggestChallenges: [],
+  planType: '',
   email: '', password: '', confirmPassword: '',
 };
 
-const TOTAL_STEPS = 14;
+const TOTAL_STEPS = 16;
 
 // ── Shared components ─────────────────────────────────────────────────────────
 
@@ -270,7 +276,12 @@ export function MeetPaceSplash() {
       console.log('[MeetPace] session after refresh:', session ? 'ok' : 'null');
       console.log('[MeetPace] calling plan generation...');
       try {
-        await apiFetch('/api/athlete/season/generate', { method: 'POST' });
+        const storedPlanType = sessionStorage.getItem('laktic_plan_type');
+        sessionStorage.removeItem('laktic_plan_type');
+        await apiFetch('/api/athlete/season/generate', {
+          method: 'POST',
+          body: storedPlanType ? JSON.stringify({ plan_type: storedPlanType }) : undefined,
+        });
         console.log('[MeetPace] plan generation succeeded');
       } catch (e: any) {
         console.error('[MeetPace] plan generation error:', e?.message);
@@ -543,8 +554,8 @@ export function Onboarding() {
     const stepParam = searchParams.get('step');
     if (stepParam === 'meetpace') {
       // Arriving from Strava OAuth callback — skip directly to Meet Pace
-      setStep(15);
-    } else if (stepParam === '14') {
+      setStep(17);
+    } else if (stepParam === '16') {
       // Returning from email confirmation ("Wrong email? Go back")
       const backup = localStorage.getItem('laktic_onboarding_form_backup');
       if (backup) {
@@ -554,7 +565,7 @@ export function Onboarding() {
           setData({ ...restored, email: '', password: '', confirmPassword: '' });
         } catch {}
       }
-      setStep(14);
+      setStep(16);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -617,6 +628,7 @@ export function Onboarding() {
       if (data.weeklyMileage) patch.current_weekly_mileage = parseFloat(data.weeklyMileage) || null;
       patch.fitness_rating = data.fitnessRating;
       if (data.pr800m) patch.pr_800m = data.pr800m;
+      if (data.pr1500m) patch.pr_1500m = data.pr1500m;
       if (data.prMile) patch.pr_mile = data.prMile;
       if (data.pr5k) patch.pr_5k = data.pr5k;
       if (data.pr10k) patch.pr_10k = data.pr10k;
@@ -633,6 +645,11 @@ export function Onboarding() {
       if (data.goalTime) patch.goal_time = data.goalTime;
       if (data.raceDistance) patch.target_race_distance = data.raceDistance;
       if (data.biggestChallenges.length) patch.biggest_challenges = data.biggestChallenges;
+      if (data.seasonStartDate) patch.season_start_date = data.seasonStartDate;
+      if (data.seasonEndDate) patch.season_end_date = data.seasonEndDate;
+
+      // Save plan type for MeetPaceSplash to pass to plan generation
+      if (data.planType) sessionStorage.setItem('laktic_plan_type', data.planType);
 
       if (authData.session) {
         // Session returned immediately (Supabase email confirmation is DISABLED in Supabase Auth settings).
@@ -672,8 +689,8 @@ export function Onboarding() {
     }
   };
 
-  // ── Step 15 splash ────────────────────────────────────────────────────────
-  if (step === 15) return <MeetPaceSplash />;
+  // ── Step 17 splash ────────────────────────────────────────────────────────
+  if (step === 17) return <MeetPaceSplash />;
 
   const renderStep = () => {
     switch (step) {
@@ -861,6 +878,7 @@ export function Onboarding() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {[
               { label: '800m', key: 'pr800m' as const, placeholder: '2:10' },
+              { label: '1500m', key: 'pr1500m' as const, placeholder: '4:15' },
               { label: 'Mile', key: 'prMile' as const, placeholder: '5:30' },
               { label: '5K', key: 'pr5k' as const, placeholder: '22:30' },
               { label: '10K', key: 'pr10k' as const, placeholder: '46:00' },
@@ -963,7 +981,7 @@ export function Onboarding() {
                 <FieldLabel>Distance</FieldLabel>
                 <select value={data.raceDistance} onChange={e => set({ raceDistance: e.target.value })} style={{ ...INPUT_STYLE }}>
                   <option value="">Select distance</option>
-                  {['5K', '10K', 'Half Marathon', 'Full Marathon', 'Other'].map(d => (
+                  {['800m', '1500m', 'Mile', '3000m', '5K', '10K', 'Half Marathon', 'Full Marathon', 'Other'].map(d => (
                     <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
@@ -977,8 +995,30 @@ export function Onboarding() {
         </Shell>
       );
 
-      // STEP 13 — Biggest Challenges (multi-select)
+      // STEP 13 — Season Window (optional)
       case 13: return (
+        <Shell step={step} onBack={back} onNext={next} onSkip={next} skipLabel="Skip for now">
+          <h2 style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 700, letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: '12px' }}>
+            When is your season?
+          </h2>
+          <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.4)', marginBottom: '32px' }}>
+            Optional — helps us plan your training arc across the full season.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+              <FieldLabel>Season start</FieldLabel>
+              <StyledInput type="date" value={data.seasonStartDate} onChange={e => set({ seasonStartDate: e.target.value })} />
+            </div>
+            <div>
+              <FieldLabel>Season end / last goal race</FieldLabel>
+              <StyledInput type="date" value={data.seasonEndDate} onChange={e => set({ seasonEndDate: e.target.value })} />
+            </div>
+          </div>
+        </Shell>
+      );
+
+      // STEP 14 — Biggest Challenges (multi-select)
+      case 14: return (
         <Shell step={step} onBack={back} onNext={next}>
           <h2 style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 700, letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: '12px' }}>
             What's your biggest challenge right now?
@@ -996,8 +1036,60 @@ export function Onboarding() {
         </Shell>
       );
 
-      // STEP 14 — Account Creation
-      case 14: return (
+      // STEP 15 — Plan Selection
+      case 15: return (
+        <Shell step={step} onBack={back} onNext={next} nextDisabled={!data.planType}>
+          <h2 style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 700, letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: '12px' }}>
+            What kind of plan do you want?
+          </h2>
+          <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.4)', marginBottom: '32px' }}>
+            Choose the approach that fits where you are right now.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {[
+              {
+                value: 'foundation',
+                label: 'Foundation',
+                desc: 'Build your aerobic base. Easy miles, low intensity, sustainable habits. Best if you\'re just starting or returning.',
+              },
+              {
+                value: 'performance',
+                label: 'Performance',
+                desc: 'Balanced mix of easy runs and quality sessions. Tempo, progressions, weekly progression. For consistent runners building toward a race.',
+              },
+              {
+                value: 'competition',
+                label: 'Competition',
+                desc: 'Race-specific preparation. Interval training, event-pace workouts, structured sharpening. For athletes in active competition season.',
+              },
+            ].map(o => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => set({ planType: o.value })}
+                style={{
+                  width: '100%',
+                  padding: '18px 20px',
+                  borderRadius: '12px',
+                  border: data.planType === o.value ? '2px solid #00E5A0' : '2px solid rgba(255,255,255,0.1)',
+                  background: data.planType === o.value ? 'rgba(0,229,160,0.08)' : 'rgba(255,255,255,0.03)',
+                  color: 'white',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                <p style={{ fontSize: '16px', fontWeight: 600, color: data.planType === o.value ? '#00E5A0' : 'white', marginBottom: '6px' }}>{o.label}</p>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>{o.desc}</p>
+              </button>
+            ))}
+          </div>
+        </Shell>
+      );
+
+      // STEP 16 — Account Creation
+      case 16: return (
         <Shell step={step} onBack={back} onNext={createAccount} nextLabel="Create Account"
           nextDisabled={!data.email || !data.password || data.password !== data.confirmPassword}
           nextLoading={loading}

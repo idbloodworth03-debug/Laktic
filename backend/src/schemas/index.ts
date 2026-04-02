@@ -100,6 +100,9 @@ export const athleteProfileUpdateSchema = z.object({
   runner_types: z.array(z.string().max(100)).max(10).nullish(),
   biggest_challenges: z.array(z.string().max(200)).max(20).nullish(),
   target_race_distance: z.string().max(100).nullish(),
+  pr_1500m: z.string().max(20).nullish(),
+  season_start_date: z.string().nullish(),
+  season_end_date: z.string().nullish(),
 });
 
 export const chatMessageSchema = z.object({

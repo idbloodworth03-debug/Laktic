@@ -11,6 +11,7 @@ import { athleteProfileSchema, athleteProfileUpdateSchema, chatMessageSchema, ra
 import { sendAthleteWelcomeEmail } from '../services/emailService';
 import { notifyPlanReady } from '../services/notificationService';
 import { loadAthleteContext, formatContextForPrompt } from '../utils/athleteContext';
+import { classifyAthleteTier, derivePaceBands, deriveEventPaces } from '../utils/athleteTier';
 import { updateWorkout, reduceWeekIntensity, markRestDay, addInjuryNote, flagCoach, saveMemory, summarizeSession } from '../utils/botActions';
 import { extractMemories } from '../utils/memoryExtractor';
 import OpenAI from 'openai';
@@ -334,6 +335,19 @@ router.post(
   })
 );
 
+// GET /api/athlete/pace-zones — return computed pace bands + event paces + tier
+router.get(
+  '/pace-zones',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const bands = derivePaceBands(req.athlete);
+    const eventPaces = deriveEventPaces(req.athlete);
+    const tier = classifyAthleteTier(req.athlete);
+    return res.json({ bands, eventPaces, tier });
+  })
+);
+
 // POST /api/athlete/season/generate — create the very first season plan for a new athlete
 router.post(
   '/season/generate',
@@ -402,6 +416,9 @@ router.post(
     console.log('[plan/generate] Generating plan for athlete:', athleteId);
     console.log('[plan/generate] Athlete context loaded:', JSON.stringify(req.athlete).slice(0, 200));
 
+    const planType: string | undefined = (req.body as any)?.plan_type ?? undefined;
+    const athleteTier = classifyAthleteTier(req.athlete);
+
     const generatePromise = generate({
       athleteProfile: req.athlete,
       bot,
@@ -410,6 +427,8 @@ router.post(
       startDate,
       recentActivities: recentActivities || [],
       latestReadiness: latestReadiness ?? null,
+      planType,
+      athleteTier,
     });
 
     const savePlan = async (plan: any[], aiUsed: boolean): Promise<string> => {

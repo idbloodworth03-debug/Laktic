@@ -195,6 +195,7 @@ export function formatContextForPrompt(ctx: AthleteContext): string {
   // Build PRs line
   const prs = [
     ap.pr_800m ? `800m ${ap.pr_800m}` : null,
+    ap.pr_1500m ? `1500m ${ap.pr_1500m}` : null,
     ap.pr_mile ? `Mile ${ap.pr_mile}` : null,
     ap.pr_5k ? `5K ${ap.pr_5k}` : null,
     ap.pr_10k ? `10K ${ap.pr_10k}` : null,
@@ -337,6 +338,7 @@ export function formatContextForPrompt(ctx: AthleteContext): string {
       `- Pace sources: aerobic systems from 3000m+ PRs only; event-specific from mile/1500/800 PRs`,
       ap.pr_5k ? `- Aerobic anchor: 5K ${ap.pr_5k}` : null,
       ap.pr_mile ? `- Event anchor: Mile ${ap.pr_mile}` : null,
+      ap.pr_1500m ? `- Event anchor: 1500m ${ap.pr_1500m}` : null,
       ap.pr_800m ? `- Event anchor: 800m ${ap.pr_800m}` : null,
     ].filter(Boolean).join('\n');
   }
