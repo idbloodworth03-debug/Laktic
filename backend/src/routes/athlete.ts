@@ -613,6 +613,42 @@ router.get(
   })
 );
 
+// ── Response length enforcement ───────────────────────────────────────────────
+
+const CONVERSATIONAL_WORD_LIMIT = 150;
+const WORKOUT_LIST_WORD_LIMIT = 300;
+
+function countWords(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+/** Heuristic: treat response as a workout list if it has 3+ bullet lines or 3+ distance mentions in list form */
+function isWorkoutList(text: string): boolean {
+  const bulletLines = (text.match(/\n- /g) || []).length;
+  const distanceMentions = (text.match(/\d+(\.\d+)?\s*mi/gi) || []).length;
+  return bulletLines >= 3 || (distanceMentions >= 3 && text.includes('\n'));
+}
+
+/** Trim response to the nearest complete sentence at or under `limit` words */
+function trimToWordLimit(text: string, limit: number): string {
+  if (countWords(text) <= limit) return text;
+  // Split on sentence-ending punctuation followed by whitespace
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  let result = '';
+  let wordCount = 0;
+  for (const sentence of sentences) {
+    const sentWords = sentence.trim().split(/\s+/).filter(Boolean).length;
+    if (wordCount + sentWords > limit) break;
+    result = result ? `${result} ${sentence}` : sentence;
+    wordCount += sentWords;
+  }
+  // Fallback: hard-cut at word limit if no sentence boundary found
+  if (!result) {
+    result = text.trim().split(/\s+/).slice(0, limit).join(' ');
+  }
+  return result;
+}
+
 // ── Agent tools definition ────────────────────────────────────────────────────
 
 const AGENT_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
@@ -856,6 +892,19 @@ ATHLETE: ${message}`;
     }
 
     if (!botReply) botReply = 'Sorry, I ran into a technical issue. Your plan has not been changed.';
+
+    // Enforce response length limits
+    const replyWordCount = countWords(botReply);
+    const replyIsWorkoutList = isWorkoutList(botReply);
+    const wordLimit = replyIsWorkoutList ? WORKOUT_LIST_WORD_LIMIT : CONVERSATIONAL_WORD_LIMIT;
+    if (replyWordCount > wordLimit) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(
+          `[pace] reply over limit: ${replyWordCount} words (limit: ${wordLimit}, workoutList: ${replyIsWorkoutList})`
+        );
+      }
+      botReply = trimToWordLimit(botReply, wordLimit);
+    }
 
     // Save athlete message
     await supabase.from('chat_messages').insert({
