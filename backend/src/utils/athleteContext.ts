@@ -138,6 +138,15 @@ export async function loadAthleteContext(
     .filter((a: any) => (a.start_date || '').slice(0, 10) >= weekStart)
     .reduce((sum: number, a: any) => sum + (a.distance_miles || 0), 0);
 
+  const persistentMemories = (persistentMemoriesRaw || []).map((r: any) => r.memory_text as string);
+  const conversationSummaries = (conversationSummariesRaw || []).map((r: any) => r.summary_text as string);
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(
+      `[athleteContext] athlete=${athleteId} memories=${persistentMemories.length} summaries=${conversationSummaries.length}`
+    );
+  }
+
   return {
     profile: profile || {},
     coachBot,
@@ -151,8 +160,8 @@ export async function loadAthleteContext(
     readinessHistory: readinessHistory || [],
     todayReadiness: todayReadiness || null,
     weeklyMileage,
-    persistentMemories: (persistentMemoriesRaw || []).map((r: any) => r.memory_text as string),
-    conversationSummaries: (conversationSummariesRaw || []).map((r: any) => r.summary_text as string),
+    persistentMemories,
+    conversationSummaries,
   };
 }
 

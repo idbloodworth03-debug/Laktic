@@ -11,7 +11,7 @@ import { athleteProfileSchema, athleteProfileUpdateSchema, chatMessageSchema, ra
 import { sendAthleteWelcomeEmail } from '../services/emailService';
 import { notifyPlanReady } from '../services/notificationService';
 import { loadAthleteContext, formatContextForPrompt } from '../utils/athleteContext';
-import { updateWorkout, reduceWeekIntensity, markRestDay, addInjuryNote, flagCoach, saveMemory } from '../utils/botActions';
+import { updateWorkout, reduceWeekIntensity, markRestDay, addInjuryNote, flagCoach, saveMemory, summarizeSession } from '../utils/botActions';
 import { extractMemories } from '../utils/memoryExtractor';
 import OpenAI from 'openai';
 import { env } from '../config/env';
@@ -691,6 +691,21 @@ const AGENT_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'summarize_session',
+      description: 'Save a 2-3 sentence summary of this coaching session to persistent memory. Call this at the end of a substantive conversation where training decisions, athlete concerns, or notable context was discussed.',
+      parameters: {
+        type: 'object',
+        properties: {
+          summary_text: { type: 'string', description: '2-3 sentence summary of what was discussed and any key decisions made' },
+          message_count: { type: 'number', description: 'Approximate number of messages exchanged in this session' },
+        },
+        required: ['summary_text', 'message_count'],
+      },
+    },
+  },
 ];
 
 // POST /api/athlete/chat
@@ -822,6 +837,9 @@ ATHLETE: ${message}`;
             case 'flag_coach':
               result = await flagCoach(req.athlete.id, args.message);
               break;
+            case 'summarize_session':
+              result = await summarizeSession(req.athlete.id, args.summary_text, args.message_count ?? 0);
+              break;
             default:
               result = { ok: false, message: `Unknown tool: ${toolName}` };
           }
@@ -860,10 +878,13 @@ ATHLETE: ${message}`;
     // Auto-extract memories every 10 messages (fire and forget — never delays response)
     const totalMessages = (chatHistory?.length ?? 0) + 2;
     if (totalMessages % 10 === 0) {
-      const recentSlice = (chatHistory || []).slice(-10).map((m: any) => ({
-        role: m.role as string,
-        content: m.content as string,
-      }));
+      // Include the current turn so extraction sees the messages that just triggered it
+      const fullHistory = [
+        ...(chatHistory || []).map((m: any) => ({ role: m.role as string, content: m.content as string })),
+        { role: 'athlete', content: message },
+        { role: 'bot', content: botReply },
+      ];
+      const recentSlice = fullHistory.slice(-10);
       extractMemories(recentSlice)
         .then(async (memories) => {
           for (const mem of memories) {
