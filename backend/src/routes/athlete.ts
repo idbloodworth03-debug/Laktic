@@ -11,6 +11,7 @@ import { athleteProfileSchema, athleteProfileUpdateSchema, chatMessageSchema, ra
 import { sendAthleteWelcomeEmail } from '../services/emailService';
 import { notifyPlanReady } from '../services/notificationService';
 import { loadAthleteContext, formatContextForPrompt } from '../utils/athleteContext';
+import { computeReadiness } from '../utils/readinessEngine';
 import { classifyAthleteTier, derivePaceBands, deriveEventPaces } from '../utils/athleteTier';
 import { predictRaceTime, getPredictionTrend, RACE_DISTANCES_M } from '../utils/performancePredictions';
 import { updateWorkout, reduceWeekIntensity, markRestDay, addInjuryNote, flagCoach, saveMemory, summarizeSession } from '../utils/botActions';
@@ -23,6 +24,10 @@ import { PACE_PERSONA } from '../utils/pacePersona';
 const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
 const router = Router();
+
+// In-memory readiness cache — 1 hour TTL per athlete
+const _readinessCache = new Map<string, { result: unknown; expiresAt: number }>();
+export function bustReadinessCache(athleteId: string) { _readinessCache.delete(athleteId); }
 
 // ── Helper: resolve the active season for the athlete's currently active team ──
 async function getActiveSeasonForTeam(
@@ -141,6 +146,28 @@ router.patch(
 
     if (error) return res.status(400).json({ error: error.message });
     res.json(data);
+  })
+);
+
+// GET /api/athlete/readiness
+router.get(
+  '/readiness',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const athleteId = req.athlete.id;
+    const bust = req.query.bust === '1';
+
+    if (!bust) {
+      const cached = _readinessCache.get(athleteId);
+      if (cached && Date.now() < cached.expiresAt) {
+        return res.json(cached.result);
+      }
+    }
+
+    const result = await computeReadiness(athleteId, supabase);
+    _readinessCache.set(athleteId, { result, expiresAt: Date.now() + 3_600_000 });
+    res.json(result);
   })
 );
 

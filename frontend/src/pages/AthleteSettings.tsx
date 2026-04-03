@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { apiFetch } from '../lib/api';
@@ -7,6 +7,7 @@ import { AppLayout, Card, Button, Badge, Spinner, Alert, Input } from '../compon
 import { StravaConnectButton } from '../components/StravaConnectButton';
 import { useNotifications } from '../hooks/useNotifications';
 import { AvatarUpload } from '../components/AvatarUpload';
+import { derivePaceBands } from '../utils/paceCalculator';
 
 interface StravaStatus {
   connected: boolean;
@@ -39,7 +40,73 @@ export function AthleteSettings() {
   const [disconnecting, setDisconnecting] = useState(false);
   const [alert, setAlert] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
 
-  // Public profile state
+  // ── Training profile sections ───────────────────────────────────────────────
+
+  // About You
+  const [aboutName, setAboutName] = useState((profile as any)?.name ?? '');
+  const [aboutAge, setAboutAge] = useState<string>((profile as any)?.age?.toString() ?? '');
+  const [aboutGender, setAboutGender] = useState((profile as any)?.gender ?? '');
+  const [aboutExp, setAboutExp] = useState((profile as any)?.experience_level ?? '');
+  const [savingAbout, setSavingAbout] = useState(false);
+  const [aboutSaved, setAboutSaved] = useState(false);
+
+  // Your Training
+  const [trainMpw, setTrainMpw] = useState<string>((profile as any)?.current_weekly_mileage?.toString() ?? '');
+  const [trainDays, setTrainDays] = useState<number>((profile as any)?.training_days_per_week ?? 4);
+  const [trainFitness, setTrainFitness] = useState<number>((profile as any)?.fitness_rating ?? 5);
+  const [trainSeasonStart, setTrainSeasonStart] = useState((profile as any)?.season_start_date ?? '');
+  const [trainSeasonEnd, setTrainSeasonEnd] = useState((profile as any)?.season_end_date ?? '');
+  const [savingTrain, setSavingTrain] = useState(false);
+  const [trainSaved, setTrainSaved] = useState(false);
+
+  // Your Races
+  const PRIMARY_EVENT_OPTIONS = ['800m', '1500m', 'Mile', '5K', '10K', 'Half Marathon', 'Marathon'];
+  const [raceEvents, setRaceEvents] = useState<string[]>((profile as any)?.primary_events ?? []);
+  const [raceDist, setRaceDist] = useState((profile as any)?.target_race_distance ?? '');
+  const [raceDate, setRaceDate] = useState((profile as any)?.target_race_date ?? '');
+  const [raceName, setRaceName] = useState((profile as any)?.target_race_name ?? '');
+  const [savingRaces, setSavingRaces] = useState(false);
+  const [racesSaved, setRacesSaved] = useState(false);
+
+  // Your PRs — with live pace zones debounced
+  const [pr800, setPr800] = useState((profile as any)?.pr_800m ?? '');
+  const [pr1500, setPr1500] = useState((profile as any)?.pr_1500m ?? '');
+  const [prMile, setPrMile] = useState((profile as any)?.pr_mile ?? '');
+  const [pr5k, setPr5k] = useState((profile as any)?.pr_5k ?? '');
+  const [paceBands, setPaceBands] = useState(() => derivePaceBands(profile as any ?? {}));
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [savingPrs, setSavingPrs] = useState(false);
+  const [prsSaved, setPrsSaved] = useState(false);
+
+  // Health
+  const [healthInjury, setHealthInjury] = useState((profile as any)?.injury_notes ?? '');
+  const [healthSleep, setHealthSleep] = useState((profile as any)?.sleep_average ?? '');
+  const [savingHealth, setSavingHealth] = useState(false);
+  const [healthSaved, setHealthSaved] = useState(false);
+
+  // Live pace zone recalculation when PRs change
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setPaceBands(derivePaceBands({ pr_800m: pr800, pr_1500m: pr1500, pr_mile: prMile, pr_5k: pr5k }));
+    }, 500);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [pr800, pr1500, prMile, pr5k]);
+
+  async function patchProfile(payload: Record<string, unknown>, setSaving: (v: boolean) => void, setSaved: (v: boolean) => void) {
+    setSaving(true);
+    try {
+      await apiFetch('/api/athlete/profile', { method: 'PATCH', body: JSON.stringify(payload) });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e: any) {
+      setAlert({ type: 'error', message: e.message || 'Failed to save.' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // ── Public profile state ────────────────────────────────────────────────────
   const [username, setUsername] = useState((profile as any)?.username ?? '');
   const [publicSections, setPublicSections] = useState<{ races: boolean; stats: boolean; milestones: boolean }>(
     (profile as any)?.public_sections ?? { races: true, stats: true, milestones: true }
@@ -177,6 +244,221 @@ export function AthleteSettings() {
             <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
           </div>
         )}
+
+        {/* ── 1. About You ──────────────────────────────────────────────── */}
+        <Card title="About You" className="mb-6">
+          <div className="flex flex-col gap-4">
+            <Input label="Full name" value={aboutName} onChange={e => setAboutName(e.target.value)} />
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Age" type="number" min={10} max={99} value={aboutAge} onChange={e => setAboutAge(e.target.value)} />
+              <div>
+                <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">Gender</label>
+                <select
+                  value={aboutGender}
+                  onChange={e => setAboutGender(e.target.value)}
+                  className="w-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
+                >
+                  <option value="">Prefer not to say</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="non-binary">Non-binary</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">Experience level</label>
+              <select
+                value={aboutExp}
+                onChange={e => setAboutExp(e.target.value)}
+                className="w-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
+              >
+                <option value="">Select level</option>
+                <option value="beginner">Beginner (0–2 years)</option>
+                <option value="intermediate">Intermediate (2–5 years)</option>
+                <option value="advanced">Advanced (5+ years)</option>
+                <option value="elite">Elite / Competitive</option>
+              </select>
+            </div>
+            <Button
+              variant="primary" size="sm" loading={savingAbout}
+              onClick={() => patchProfile({ name: aboutName, age: aboutAge ? parseInt(aboutAge) : null, gender: aboutGender || null, experience_level: aboutExp || null }, setSavingAbout, setAboutSaved)}
+            >
+              {aboutSaved ? 'Saved ✓' : 'Save'}
+            </Button>
+          </div>
+        </Card>
+
+        {/* ── 2. Your Training ──────────────────────────────────────────── */}
+        <Card title="Your Training" className="mb-6">
+          <div className="flex flex-col gap-4">
+            <Input label="Current weekly mileage (mi)" type="number" min={0} max={200} value={trainMpw} onChange={e => setTrainMpw(e.target.value)} />
+            <div>
+              <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-2">Training days per week</label>
+              <div className="flex gap-2 flex-wrap">
+                {[2, 3, 4, 5, 6, 7].map(d => (
+                  <button
+                    key={d}
+                    onClick={() => setTrainDays(d)}
+                    className={`w-9 h-9 rounded-full text-sm font-medium transition-all ${trainDays === d ? 'bg-[var(--color-accent)] text-black' : 'bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">
+                Self-rated fitness: <span className="font-mono text-[var(--color-accent)]">{trainFitness}/10</span>
+              </label>
+              <input
+                type="range" min={1} max={10} value={trainFitness}
+                onChange={e => setTrainFitness(parseInt(e.target.value))}
+                className="w-full accent-[var(--color-accent)]"
+              />
+              <div className="flex justify-between text-[10px] text-[var(--color-text-tertiary)] mt-1">
+                <span>Just starting</span><span>Peak shape</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Season start date" type="date" value={trainSeasonStart} onChange={e => setTrainSeasonStart(e.target.value)} />
+              <Input label="Season end date" type="date" value={trainSeasonEnd} onChange={e => setTrainSeasonEnd(e.target.value)} />
+            </div>
+            <Button
+              variant="primary" size="sm" loading={savingTrain}
+              onClick={() => patchProfile({
+                current_weekly_mileage: trainMpw ? parseFloat(trainMpw) : null,
+                training_days_per_week: trainDays,
+                fitness_rating: trainFitness,
+                season_start_date: trainSeasonStart || null,
+                season_end_date: trainSeasonEnd || null,
+              }, setSavingTrain, setTrainSaved)}
+            >
+              {trainSaved ? 'Saved ✓' : 'Save'}
+            </Button>
+          </div>
+        </Card>
+
+        {/* ── 3. Your Races ─────────────────────────────────────────────── */}
+        <Card title="Your Races" className="mb-6">
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-2">Primary events (select all that apply)</label>
+              <div className="flex flex-wrap gap-2">
+                {PRIMARY_EVENT_OPTIONS.map(ev => (
+                  <button
+                    key={ev}
+                    onClick={() => setRaceEvents(prev => prev.includes(ev) ? prev.filter(e => e !== ev) : [...prev, ev])}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${raceEvents.includes(ev) ? 'bg-[var(--color-accent)] text-black' : 'bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}
+                  >
+                    {ev}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">Target race distance</label>
+              <select
+                value={raceDist}
+                onChange={e => setRaceDist(e.target.value)}
+                className="w-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
+              >
+                <option value="">Select distance</option>
+                {PRIMARY_EVENT_OPTIONS.map(ev => <option key={ev} value={ev}>{ev}</option>)}
+              </select>
+            </div>
+            <Input label="Target race name" value={raceName} onChange={e => setRaceName(e.target.value)} placeholder="e.g. Boston Marathon" />
+            <Input label="Target race date" type="date" value={raceDate} onChange={e => setRaceDate(e.target.value)} />
+            <Button
+              variant="primary" size="sm" loading={savingRaces}
+              onClick={() => patchProfile({
+                primary_events: raceEvents,
+                target_race_distance: raceDist || null,
+                target_race_name: raceName || null,
+                target_race_date: raceDate || null,
+                has_target_race: !!(raceDate || raceName),
+              }, setSavingRaces, setRacesSaved)}
+            >
+              {racesSaved ? 'Saved ✓' : 'Save'}
+            </Button>
+          </div>
+        </Card>
+
+        {/* ── 4. Your PRs ───────────────────────────────────────────────── */}
+        <Card title="Your PRs" className="mb-6">
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="800m PR" value={pr800} onChange={e => setPr800(e.target.value)} placeholder="e.g. 2:05" />
+              <Input label="1500m PR" value={pr1500} onChange={e => setPr1500(e.target.value)} placeholder="e.g. 4:15" />
+              <Input label="Mile PR" value={prMile} onChange={e => setPrMile(e.target.value)} placeholder="e.g. 4:35" />
+              <Input label="5K PR" value={pr5k} onChange={e => setPr5k(e.target.value)} placeholder="e.g. 18:30" />
+            </div>
+
+            {/* Live pace zones */}
+            {!paceBands.needs_aerobic_pr ? (
+              <div className="bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-3">
+                  Live pace zones (from {paceBands.source_pr})
+                </p>
+                <div className="space-y-1.5">
+                  {[
+                    { label: 'LT2 / Race pace', val: paceBands.LT2 },
+                    { label: 'LT1 / Tempo', val: paceBands.LT1 },
+                    { label: 'Steady state', val: paceBands.steady },
+                    { label: 'Easy', val: paceBands.easy },
+                    { label: 'Recovery', val: paceBands.recovery },
+                  ].map(({ label, val }) => (
+                    <div key={label} className="flex items-baseline justify-between">
+                      <span className="text-xs text-[var(--color-text-tertiary)]">{label}</span>
+                      <span className="font-mono text-xs text-[var(--color-accent)]">{val}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-[var(--color-text-tertiary)]">Enter a 5K or longer PR to see live pace zones.</p>
+            )}
+
+            <Button
+              variant="primary" size="sm" loading={savingPrs}
+              onClick={() => patchProfile({ pr_800m: pr800 || null, pr_1500m: pr1500 || null, pr_mile: prMile || null, pr_5k: pr5k || null }, setSavingPrs, setPrsSaved)}
+            >
+              {prsSaved ? 'Saved ✓' : 'Save'}
+            </Button>
+          </div>
+        </Card>
+
+        {/* ── 5. Health ─────────────────────────────────────────────────── */}
+        <Card title="Health" className="mb-6">
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">Injury notes / limitations</label>
+              <textarea
+                value={healthInjury}
+                onChange={e => setHealthInjury(e.target.value)}
+                rows={3}
+                placeholder="e.g. Right knee — avoid hills over 5% grade"
+                className="w-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent)] resize-none"
+              />
+            </div>
+            <Input
+              label="Average sleep (hours)"
+              type="number"
+              min={0}
+              max={24}
+              step={0.5}
+              value={healthSleep}
+              onChange={e => setHealthSleep(e.target.value)}
+              placeholder="e.g. 7.5"
+            />
+            <Button
+              variant="primary" size="sm" loading={savingHealth}
+              onClick={() => patchProfile({ injury_notes: healthInjury || null, sleep_average: healthSleep || null }, setSavingHealth, setHealthSaved)}
+            >
+              {healthSaved ? 'Saved ✓' : 'Save'}
+            </Button>
+          </div>
+        </Card>
 
         <Card title="Public Profile" className="mb-6">
           <div className="mb-6 flex justify-center">

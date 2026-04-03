@@ -1,6 +1,7 @@
 import { supabase } from '../db/supabase';
 import { getFormattedKnowledge } from '../services/knowledgeService';
 import { predictRaceTime } from './performancePredictions';
+import { computeReadiness, ReadinessResult } from './readinessEngine';
 
 /** Derive current training phase from race calendar */
 export function derivePhase(upcomingRaces: any[]): string {
@@ -36,6 +37,7 @@ export interface AthleteContext {
   missedWorkouts: any[];
   readinessHistory: any[];
   todayReadiness: any | null;
+  computedReadiness: ReadinessResult | null;
   weeklyMileage: number;
   persistentMemories: string[];
   conversationSummaries: string[];
@@ -57,6 +59,7 @@ export async function loadAthleteContext(
     { data: todayReadiness },
     { data: persistentMemoriesRaw },
     { data: conversationSummariesRaw },
+    computedReadiness,
   ] = await Promise.all([
     supabase.from('athlete_profiles').select('*').eq('id', athleteId).single(),
     supabase
@@ -99,6 +102,7 @@ export async function loadAthleteContext(
       .eq('athlete_id', athleteId)
       .order('created_at', { ascending: false })
       .limit(3),
+    computeReadiness(athleteId, supabase).catch(() => null),
   ]);
 
   const activeSeason = seasonRow
@@ -182,6 +186,7 @@ export async function loadAthleteContext(
     missedWorkouts,
     readinessHistory: readinessHistory || [],
     todayReadiness: todayReadiness || null,
+    computedReadiness: computedReadiness || null,
     weeklyMileage,
     persistentMemories,
     conversationSummaries,
@@ -289,9 +294,23 @@ export function formatContextForPrompt(ctx: AthleteContext): string {
         ctx.missedWorkouts.map((wo: any) => `  ${wo.date}: ${wo.title} (${wo.distance_miles} mi)`).join('\n')
       : '';
 
+  const computedReadinessBlock = ctx.computedReadiness
+    ? [
+        `READINESS TODAY (computed from ATL/CTL/TSB):`,
+        `- Score: ${ctx.computedReadiness.score}/100 — ${ctx.computedReadiness.label}`,
+        `- ATL: ${ctx.computedReadiness.signals.atl} | CTL: ${ctx.computedReadiness.signals.ctl} | TSB (form): ${ctx.computedReadiness.signals.tsb}`,
+        `- Consecutive training days: ${ctx.computedReadiness.signals.consecutiveTrainingDays}`,
+        `- Compliance (14 days): ${ctx.computedReadiness.signals.complianceRate}%`,
+        ctx.computedReadiness.signals.recentPaceDeviation !== null
+          ? `- Recent pace vs avg: ${ctx.computedReadiness.signals.recentPaceDeviation > 0 ? '+' : ''}${ctx.computedReadiness.signals.recentPaceDeviation}% (positive = slower/more fatigue)`
+          : null,
+        `- Recommendation: ${ctx.computedReadiness.recommendation}`,
+      ].filter(Boolean).join('\n')
+    : null;
+
   const readinessBlock = ctx.todayReadiness
-    ? `TODAY'S READINESS: ${ctx.todayReadiness.score}/100 — ${ctx.todayReadiness.label} (Recommended: ${ctx.todayReadiness.recommended_intensity ?? 'moderate'})`
-    : 'No readiness logged today';
+    ? `TODAY'S SUBJECTIVE READINESS: ${ctx.todayReadiness.score}/100 — ${ctx.todayReadiness.label} (Recommended: ${ctx.todayReadiness.recommended_intensity ?? 'moderate'})`
+    : null;
 
   const readinessHistoryBlock =
     ctx.readinessHistory.length > 1
@@ -407,7 +426,8 @@ export function formatContextForPrompt(ctx: AthleteContext): string {
     activitiesBlock,
     missedBlock ? '\n' + missedBlock : '',
     '',
-    readinessBlock,
+    computedReadinessBlock ?? 'No readiness data yet — fewer than 3 activities in last 14 days',
+    readinessBlock ? '\n' + readinessBlock : '',
     readinessHistoryBlock ? '\n' + readinessHistoryBlock : '',
     trainingPhaseBlock ? '\n' + trainingPhaseBlock : '',
     predictionsBlock ? '\n' + predictionsBlock : '',

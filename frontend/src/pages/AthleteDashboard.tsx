@@ -10,12 +10,24 @@ import { PhaseIndicator } from '../components/PhaseIndicator';
 import { RacePredictionsCard } from '../components/RacePredictionsCard';
 import { ArrowRight, ChevronRight, TrendingUp, TrendingDown, Minus, X } from 'lucide-react';
 
+interface ReadinessSignals {
+  atl: number;
+  ctl: number;
+  tsb: number;
+  consecutiveTrainingDays: number;
+  daysSinceLastRun: number;
+  recentPaceDeviation: number | null;
+  sleepHours: number | null;
+  complianceRate: number;
+}
+
 interface ReadinessData {
   score: number;
   label: string;
-  recommended_intensity: string;
-  explanation: string;
-  logged: boolean;
+  color: string;
+  recommendation: string;
+  signals: ReadinessSignals;
+  needsMoreData?: boolean;
 }
 
 interface WorkoutDay {
@@ -98,6 +110,8 @@ export function AthleteDashboard() {
     setBannerDismissed(true);
   };
 
+  const [readinessExpanded, setReadinessExpanded] = useState(false);
+
   // Readiness modal state
   const [showReadinessModal, setShowReadinessModal] = useState(false);
   const [readinessRating, setReadinessRating] = useState<number | null>(null);
@@ -118,7 +132,7 @@ export function AthleteDashboard() {
 
   useEffect(() => {
     Promise.allSettled([
-      apiFetch('/api/recovery/today').then(d => setReadiness(d)).catch(() => {}),
+      apiFetch('/api/athlete/readiness').then(d => setReadiness(d)).catch(() => {}),
       apiFetch('/api/athlete/season').then(d => {
         if (!d?.season) return; // no plan yet — dashboard shows empty state
         const s = d.season;
@@ -166,9 +180,8 @@ export function AthleteDashboard() {
       });
       console.log('[readiness] response:', JSON.stringify(data));
       // Guard: only update state if the response has the expected shape
-      if (data && typeof data.score === 'number') {
-        setReadiness({ ...data, logged: true });
-      }
+      // Bust cache and refetch computed readiness
+      apiFetch('/api/athlete/readiness?bust=1').then(d => setReadiness(d)).catch(() => {});
       setReadinessSuccess(true);
       setTimeout(() => {
         setShowReadinessModal(false);
@@ -193,7 +206,7 @@ export function AthleteDashboard() {
     );
   }
 
-  const readinessScore = readiness?.logged ? readiness.score : null;
+  const readinessScore = readiness?.score ?? null;
   const selectedPred = predictions[selectedDist];
 
   const profileIncomplete = !bannerDismissed && (
@@ -213,7 +226,11 @@ export function AthleteDashboard() {
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
           <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">
-            Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, {profile?.name?.split(' ')[0]}.
+            {(() => {
+              const firstName = profile?.name?.split(' ')[0] ?? '';
+              const tod = new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening';
+              return firstName ? `Good ${tod}, ${firstName}.` : `Good ${tod}.`;
+            })()}
           </h1>
         </div>
 
@@ -240,38 +257,67 @@ export function AthleteDashboard() {
             {/* Daily Readiness */}
             <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-5 shadow-card" style={{ background: 'linear-gradient(135deg, var(--color-bg-secondary) 0%, rgba(0,229,160,0.04) 100%)' }}>
               <p className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-4">Daily Readiness</p>
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-6 mb-4">
                 {readinessScore !== null ? (
                   <ReadinessRing score={readinessScore} size={96} />
                 ) : (
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="w-24 h-24 rounded-full bg-[var(--color-bg-tertiary)] border-2 border-dashed border-[var(--color-border-light)] flex items-center justify-center">
-                      <span className="font-mono text-2xl text-[var(--color-text-tertiary)]">--</span>
-                    </div>
-                    <span className="text-[11px] text-[var(--color-text-tertiary)]">Not logged</span>
+                  <div className="w-24 h-24 rounded-full bg-[var(--color-bg-tertiary)] border-2 border-dashed border-[var(--color-border-light)] flex items-center justify-center">
+                    <span className="font-mono text-2xl text-[var(--color-text-tertiary)]">--</span>
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  {readiness?.logged ? (
+                  {readiness ? (
                     <>
-                      <p className="text-sm font-medium text-[var(--color-text-primary)] mb-1">
-                        {(!readiness.recommended_intensity || readiness.recommended_intensity === 'rest')
-                          ? 'Rest day'
-                          : `${readiness.recommended_intensity.charAt(0).toUpperCase()}${readiness.recommended_intensity.slice(1)} effort`}
+                      <p className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">
+                        {readiness.label} Readiness
                       </p>
-                      <p className="text-xs text-[var(--color-text-tertiary)] leading-relaxed">{readiness.explanation}</p>
+                      <p className="text-xs text-[var(--color-text-tertiary)] leading-relaxed">
+                        {readiness.recommendation}
+                      </p>
                     </>
                   ) : (
-                    <>
-                      <p className="text-sm font-medium text-[var(--color-text-primary)] mb-1">Log your readiness</p>
-                      <p className="text-xs text-[var(--color-text-tertiary)] mb-1">Tap below to get your personalized intensity recommendation for today.</p>
-                      <p className="text-[11px] text-[var(--color-accent)]/70 mb-3">Takes 10 seconds — tells you exactly how hard to train.</p>
-                      <button onClick={() => setShowReadinessModal(true)}>
-                        <Button variant="primary" size="sm">Log Readiness</Button>
-                      </button>
-                    </>
+                    <p className="text-xs text-[var(--color-text-tertiary)]">Computing readiness...</p>
                   )}
                 </div>
+              </div>
+
+              {/* Expandable signals */}
+              {readiness?.signals && (
+                <div className="border-t border-[var(--color-border)] pt-3">
+                  <button
+                    onClick={() => setReadinessExpanded(e => !e)}
+                    className="flex items-center gap-1 text-[11px] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
+                  >
+                    <span>What affects this?</span>
+                    <span>{readinessExpanded ? '▲' : '▼'}</span>
+                  </button>
+                  {readinessExpanded && (
+                    <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
+                      {[
+                        { label: 'ATL (acute)', val: readiness.signals.atl },
+                        { label: 'CTL (fitness)', val: readiness.signals.ctl },
+                        { label: 'TSB (form)', val: readiness.signals.tsb },
+                        { label: 'Compliance', val: `${readiness.signals.complianceRate}%` },
+                        { label: 'Training streak', val: `${readiness.signals.consecutiveTrainingDays}d` },
+                        { label: 'Last run', val: readiness.signals.daysSinceLastRun < 999 ? `${readiness.signals.daysSinceLastRun}d ago` : '—' },
+                      ].map(({ label, val }) => (
+                        <div key={label} className="flex items-baseline justify-between">
+                          <span className="text-[10px] text-[var(--color-text-tertiary)]">{label}</span>
+                          <span className="font-mono text-[11px] text-[var(--color-accent)]">{val}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Add feel button */}
+              <div className="mt-3 flex justify-end">
+                <button onClick={() => setShowReadinessModal(true)}
+                  className="text-[11px] text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)] transition-colors"
+                >
+                  + Add today's feel
+                </button>
               </div>
             </div>
 
