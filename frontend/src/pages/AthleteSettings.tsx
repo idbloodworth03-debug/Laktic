@@ -54,8 +54,9 @@ export function AthleteSettings() {
   const [trainMpw, setTrainMpw] = useState<string>((profile as any)?.current_weekly_mileage?.toString() ?? '');
   const [trainDays, setTrainDays] = useState<number>((profile as any)?.training_days_per_week ?? 4);
   const [trainFitness, setTrainFitness] = useState<number>((profile as any)?.fitness_rating ?? 5);
-  const [trainSeasonStart, setTrainSeasonStart] = useState((profile as any)?.season_start_date ?? '');
-  const [trainSeasonEnd, setTrainSeasonEnd] = useState((profile as any)?.season_end_date ?? '');
+  const clampToToday = (d: string) => { const t = new Date().toISOString().split('T')[0]; return d && d < t ? t : d; };
+  const [trainSeasonStart, setTrainSeasonStart] = useState(clampToToday((profile as any)?.season_start_date ?? ''));
+  const [trainSeasonEnd, setTrainSeasonEnd] = useState(clampToToday((profile as any)?.season_end_date ?? ''));
   const [savingTrain, setSavingTrain] = useState(false);
   const [trainSaved, setTrainSaved] = useState(false);
 
@@ -129,8 +130,8 @@ export function AthleteSettings() {
     setTrainMpw(p.current_weekly_mileage != null ? String(p.current_weekly_mileage) : '');
     setTrainDays(p.training_days_per_week ?? 4);
     setTrainFitness(p.fitness_rating ?? 5);
-    setTrainSeasonStart(p.season_start_date ?? '');
-    setTrainSeasonEnd(p.season_end_date ?? '');
+    setTrainSeasonStart(clampToToday(p.season_start_date ?? ''));
+    setTrainSeasonEnd(clampToToday(p.season_end_date ?? ''));
     setRaceEvents(Array.isArray(p.primary_events) ? p.primary_events : []);
     setRaceDist(p.target_race_distance ?? '');
     setRaceDate(p.target_race_date ?? '');
@@ -390,8 +391,8 @@ export function AthleteSettings() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Season start date" type="date" min={new Date().toISOString().split('T')[0]} value={trainSeasonStart} onChange={e => { const today = new Date().toISOString().split('T')[0]; setTrainSeasonStart(e.target.value < today ? today : e.target.value); }} />
-              <Input label="Season end date" type="date" min={new Date().toISOString().split('T')[0]} value={trainSeasonEnd} onChange={e => { const today = new Date().toISOString().split('T')[0]; setTrainSeasonEnd(e.target.value < today ? today : e.target.value); }} />
+              <Input label="Season start date" type="date" min={new Date().toISOString().split('T')[0]} value={trainSeasonStart} onChange={e => setTrainSeasonStart(clampToToday(e.target.value))} onBlur={e => setTrainSeasonStart(clampToToday(e.target.value))} />
+              <Input label="Season end date" type="date" min={new Date().toISOString().split('T')[0]} value={trainSeasonEnd} onChange={e => setTrainSeasonEnd(clampToToday(e.target.value))} onBlur={e => setTrainSeasonEnd(clampToToday(e.target.value))} />
             </div>
             <Button
               variant="primary" size="sm" loading={savingTrain}
