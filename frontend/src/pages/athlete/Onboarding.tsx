@@ -703,6 +703,15 @@ export function Onboarding() {
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
 
+  // FIX 3 — email confirmation inline state
+  const [showConfirmationScreen, setShowConfirmationScreen] = useState(false);
+  const [confirmChecking, setConfirmChecking] = useState(false);
+  const [confirmError, setConfirmError] = useState('');
+  const [confirmResendCountdown, setConfirmResendCountdown] = useState(0);
+  const [confirmResending, setConfirmResending] = useState(false);
+  const [confirmResendMsg, setConfirmResendMsg] = useState('');
+  const advancedConfirmRef = useRef(false);
+
   // If already completed onboarding, skip straight to dashboard
   // (skip this check when arriving from Strava callback via ?step=meetpace)
   useEffect(() => {
@@ -773,6 +782,141 @@ export function Onboarding() {
   const next = () => transition(() => setStep(s => s + 1));
   const back = () => transition(() => setStep(s => s - 1));
 
+  // FIX 4 — advance after confirmed: refresh + profile load with retry + patch
+  const advanceAfterConfirm = async (session: import('@supabase/supabase-js').Session) => {
+    if (advancedConfirmRef.current) return;
+    advancedConfirmRef.current = true;
+
+    sessionStorage.removeItem('laktic_pending_email');
+    sessionStorage.removeItem('laktic_pending_password');
+
+    try {
+      await supabase.auth.refreshSession();
+      await new Promise<void>(r => setTimeout(r, 500));
+
+      // Fetch profile with up to 3 retries
+      let profile: any = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          profile = await apiFetch('/api/athlete/profile');
+          if (profile) break;
+        } catch {}
+        if (attempt < 2) await new Promise<void>(r => setTimeout(r, 1000));
+      }
+
+      // Still null — try creating a basic profile row
+      if (!profile) {
+        const onboardingStr = sessionStorage.getItem('laktic_onboarding');
+        const fallbackName = onboardingStr
+          ? (JSON.parse(onboardingStr).name as string | undefined) ?? data.name
+          : data.name || (session.user.email?.split('@')[0] ?? 'Athlete');
+        try {
+          profile = await apiFetch('/api/athlete/profile', {
+            method: 'POST',
+            body: JSON.stringify({ name: fallbackName }),
+          });
+        } catch {
+          // May already exist — try one last GET
+          try { profile = await apiFetch('/api/athlete/profile'); } catch {}
+        }
+      }
+
+      if (!profile) {
+        setConfirmError('Could not load your profile. Please refresh the page and try again.');
+        advancedConfirmRef.current = false;
+        return;
+      }
+
+      setAuth(session, 'athlete', profile);
+
+      // Apply the full onboarding patch saved before signup
+      const onboardingStr = sessionStorage.getItem('laktic_onboarding');
+      if (onboardingStr) {
+        try {
+          const { patch } = JSON.parse(onboardingStr) as { patch?: Record<string, unknown> };
+          if (patch) {
+            await apiFetch('/api/athlete/profile', { method: 'PATCH', body: JSON.stringify(patch) });
+          }
+        } catch {}
+        sessionStorage.removeItem('laktic_onboarding');
+      }
+
+      nav('/signup/strava', { replace: true });
+    } catch {
+      setConfirmError('Something went wrong. Please try again.');
+      advancedConfirmRef.current = false;
+    }
+  };
+
+  // FIX 3 — onAuthStateChange auto-advance when confirmation screen is showing
+  useEffect(() => {
+    if (!showConfirmationScreen) return;
+
+    // Check already-confirmed session immediately (Supabase email confirm disabled)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.email_confirmed_at) advanceAfterConfirm(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user?.email_confirmed_at) advanceAfterConfirm(session);
+    });
+    return () => subscription.unsubscribe();
+  }, [showConfirmationScreen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Resend countdown tick
+  useEffect(() => {
+    if (!showConfirmationScreen || confirmResendCountdown <= 0) return;
+    const t = setTimeout(() => setConfirmResendCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [showConfirmationScreen, confirmResendCountdown]);
+
+  const handleManualConfirmCheck = async () => {
+    setConfirmChecking(true);
+    setConfirmError('');
+    try {
+      const { data: refreshData } = await supabase.auth.refreshSession();
+      if (refreshData.session?.user?.email_confirmed_at) {
+        await advanceAfterConfirm(refreshData.session);
+        return;
+      }
+
+      const pendingEmail = sessionStorage.getItem('laktic_pending_email');
+      const pendingPassword = sessionStorage.getItem('laktic_pending_password');
+      if (pendingEmail && pendingPassword) {
+        const { data: signInData } = await supabase.auth.signInWithPassword({
+          email: pendingEmail,
+          password: pendingPassword,
+        });
+        if (signInData.session?.user?.email_confirmed_at) {
+          await advanceAfterConfirm(signInData.session);
+          return;
+        }
+      }
+
+      setConfirmError("Your email isn't confirmed yet. Check your inbox and click the link.");
+    } catch {
+      setConfirmError("Your email isn't confirmed yet. Check your inbox and click the link.");
+    } finally {
+      setConfirmChecking(false);
+    }
+  };
+
+  const handleConfirmResend = async () => {
+    if (confirmResendCountdown > 0 || !data.email) return;
+    setConfirmResending(true);
+    setConfirmResendMsg('');
+    try {
+      const { error: resendErr } = await supabase.auth.resend({ type: 'signup', email: data.email });
+      if (resendErr) throw resendErr;
+      setConfirmResendMsg('Email resent. Check your inbox.');
+      setConfirmResendCountdown(30);
+    } catch {
+      setConfirmResendMsg('Could not resend. Please wait and try again.');
+    } finally {
+      setConfirmResending(false);
+    }
+  };
+
   // ── Account creation ──────────────────────────────────────────────────────
   const createAccount = async () => {
     setError('');
@@ -835,43 +979,102 @@ export function Onboarding() {
       // Save plan type for MeetPaceSplash to pass to plan generation
       if (data.planType) sessionStorage.setItem('laktic_plan_type', data.planType);
 
-      if (authData.session) {
-        // Session returned immediately (Supabase email confirmation is DISABLED in Supabase Auth settings).
-        // NOTE: In production, enable "Confirm email" in Supabase Auth > Settings > Email so users
-        // are always required to confirm before getting a session.
-        // Create the profile now while we have the auth token, then still show the confirm screen.
-        try {
-          const profile = await apiFetch('/api/athlete/profile', {
-            method: 'POST',
-            body: JSON.stringify({ name: data.name }),
-          });
-          setAuth(authData.session, 'athlete', profile);
-          await apiFetch('/api/athlete/profile', { method: 'PATCH', body: JSON.stringify(patch) });
-        } catch {
-          // Profile may already exist — continue to confirm screen anyway
-        }
-      } else {
-        // Email confirmation required — save all data so EmailConfirmationPending can finish setup
-        sessionStorage.setItem('laktic_onboarding', JSON.stringify({ name: data.name, patch }));
-      }
+      // Save onboarding data — advanceAfterConfirm applies the patch after confirmation
+      sessionStorage.setItem('laktic_onboarding', JSON.stringify({ name: data.name, patch }));
 
       // Save form answers (no passwords) so "Wrong email? Go back" can restore them
       localStorage.setItem('laktic_onboarding_form_backup', JSON.stringify({ ...data, password: '', confirmPassword: '' }));
 
-      // Set a persistent flag so RequireAthlete blocks dashboard access until
-      // the user reaches MeetPaceSplash (cleared there). Works even when Supabase
-      // returns a session immediately (email confirmation disabled in dashboard).
+      // Block dashboard until MeetPaceSplash clears this flag
       localStorage.setItem('laktic_awaiting_confirmation', 'true');
 
-      // Always redirect to the email confirmation screen.
-      // EmailConfirmationPending will auto-advance immediately if email is already confirmed.
-      nav('/signup/confirm', { state: { email: data.email, name: data.name } });
+      // FIX 3 — always show confirmation screen inline; never skip past it
+      advancedConfirmRef.current = false;
+      setConfirmResendCountdown(30);
+      setConfirmError('');
+      setShowConfirmationScreen(true);
     } catch (e: any) {
       setError(e.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  // FIX 3 — inline email confirmation screen
+  if (showConfirmationScreen) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", color: 'white', padding: '24px' }}>
+        <div style={{ maxWidth: '420px', width: '100%', textAlign: 'center' }}>
+
+          <div style={{ width: '80px', height: '80px', borderRadius: '20px', background: 'rgba(0,229,160,0.08)', border: '1px solid rgba(0,229,160,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 32px' }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#00E5A0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              <polyline points="22,6 12,13 2,6" />
+            </svg>
+          </div>
+
+          <h1 style={{ fontSize: 'clamp(26px, 4vw, 34px)', fontWeight: 700, letterSpacing: '-0.025em', marginBottom: '12px' }}>
+            Check your email
+          </h1>
+          <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, marginBottom: '32px' }}>
+            We sent a confirmation link to{' '}
+            {data.email ? (
+              <strong style={{ color: 'rgba(255,255,255,0.75)' }}>{data.email}</strong>
+            ) : (
+              'your email address'
+            )}
+            .<br />Click the link to activate your account.
+          </p>
+
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '28px', fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#00E5A0', flexShrink: 0, animation: 'pulse 2s infinite' }} />
+            Waiting for confirmation — this page updates automatically.
+          </div>
+
+          <button
+            type="button"
+            onClick={handleManualConfirmCheck}
+            disabled={confirmChecking}
+            style={{ width: '100%', padding: '16px', borderRadius: '12px', background: confirmChecking ? 'rgba(0,229,160,0.7)' : '#00E5A0', color: '#000', fontSize: '17px', fontWeight: 600, letterSpacing: '-0.01em', border: 'none', cursor: confirmChecking ? 'not-allowed' : 'pointer', marginBottom: '12px', opacity: confirmChecking ? 0.7 : 1 }}
+          >
+            {confirmChecking ? 'Checking...' : "I've Confirmed My Email"}
+          </button>
+
+          {confirmError && (
+            <p style={{ fontSize: '14px', color: '#f87171', marginBottom: '16px' }}>{confirmError}</p>
+          )}
+
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)', marginBottom: '8px' }}>
+            Didn't get the email?{' '}
+            <button
+              type="button"
+              onClick={handleConfirmResend}
+              disabled={confirmResendCountdown > 0 || confirmResending}
+              style={{ color: '#00E5A0', background: 'none', border: 'none', cursor: confirmResendCountdown > 0 || confirmResending ? 'not-allowed' : 'pointer', opacity: confirmResendCountdown > 0 || confirmResending ? 0.5 : 1, fontSize: '13px' }}
+            >
+              {confirmResending
+                ? 'sending...'
+                : confirmResendCountdown > 0
+                ? `resend in ${confirmResendCountdown}s`
+                : 'resend email'}
+            </button>
+          </p>
+
+          {confirmResendMsg && (
+            <p style={{ fontSize: '13px', color: '#00E5A0', marginBottom: '8px' }}>{confirmResendMsg}</p>
+          )}
+
+          <button
+            type="button"
+            onClick={() => { setShowConfirmationScreen(false); setStep(16); advancedConfirmRef.current = false; }}
+            style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer', marginTop: '8px' }}
+          >
+            Wrong email? Go back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // ── Step 17 splash ────────────────────────────────────────────────────────
   if (step === 17) return <MeetPaceSplash />;
