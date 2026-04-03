@@ -26,13 +26,47 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <style>
       @keyframes lk-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+      @keyframes lk-runner-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+      @keyframes lk-arm-r { 0%,100% { transform: rotate(-28deg); } 50% { transform: rotate(32deg); } }
+      @keyframes lk-arm-l { 0%,100% { transform: rotate(32deg); } 50% { transform: rotate(-28deg); } }
+      @keyframes lk-leg-r { 0%,100% { transform: rotate(-38deg); } 50% { transform: rotate(34deg); } }
+      @keyframes lk-leg-l { 0%,100% { transform: rotate(34deg); } 50% { transform: rotate(-38deg); } }
+      @keyframes lk-logo-fade { 0% { opacity:0; transform:translateY(8px); } 100% { opacity:1; transform:translateY(0); } }
+      .lk-runner-figure { animation: lk-runner-bob 0.44s ease-in-out infinite; }
+      .lk-arm-r { transform-origin: 0 0; animation: lk-arm-r 0.44s ease-in-out infinite; }
+      .lk-arm-l { transform-origin: 0 0; animation: lk-arm-l 0.44s ease-in-out infinite; }
+      .lk-leg-r { transform-origin: 0 0; animation: lk-leg-r 0.44s ease-in-out infinite; }
+      .lk-leg-l { transform-origin: 0 0; animation: lk-leg-l 0.44s ease-in-out infinite; }
+      .lk-logo-text { animation: lk-logo-fade 0.5s ease 0.2s both; font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 20px; color: #00E5A0; letter-spacing: -0.02em; margin-top: 12px; }
     </style>
   </head>
   <body>
     <div id="root">
       <!-- Loading screen — replaced when React mounts -->
-      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0a0a0a;">
-        <img src="/icon.png" alt="Laktic" style="width:72px;height:72px;border-radius:16px;animation:lk-pulse 1.6s ease-in-out infinite;" />
+      <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0a0a0a;">
+        <svg class="lk-runner-figure" viewBox="0 0 60 95" width="60" height="95" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;">
+          <!-- head -->
+          <circle cx="30" cy="9" r="7.5" fill="none" stroke="#00E5A0" stroke-width="2.5"/>
+          <!-- body -->
+          <line x1="30" y1="17" x2="30" y2="52" stroke="#00E5A0" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- right arm, pivot at (30,28) -->
+          <g transform="translate(30,28)" class="lk-arm-r">
+            <line x1="0" y1="0" x2="15" y2="16" stroke="#00E5A0" stroke-width="2.2" stroke-linecap="round"/>
+          </g>
+          <!-- left arm, pivot at (30,28) -->
+          <g transform="translate(30,28)" class="lk-arm-l">
+            <line x1="0" y1="0" x2="-15" y2="16" stroke="#00E5A0" stroke-width="2.2" stroke-linecap="round"/>
+          </g>
+          <!-- right leg, pivot at (30,52) -->
+          <g transform="translate(30,52)" class="lk-leg-r">
+            <line x1="0" y1="0" x2="14" y2="24" stroke="#00E5A0" stroke-width="2.5" stroke-linecap="round"/>
+          </g>
+          <!-- left leg, pivot at (30,52) -->
+          <g transform="translate(30,52)" class="lk-leg-l">
+            <line x1="0" y1="0" x2="-14" y2="24" stroke="#00E5A0" stroke-width="2.5" stroke-linecap="round"/>
+          </g>
+        </svg>
+        <div class="lk-logo-text">Laktic</div>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
