@@ -264,6 +264,11 @@ export const WORKOUT_LIBRARY = {
     phase: 'base',
     category: 'aerobic',
     description: 'Continuous run at halfway between LT1 and LT2. 15% less volume than progressive tempo.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: Continuous tempo run at the midpoint between LT1 and LT2 — comfortably hard, where you can speak a word or two but not hold a conversation. Target: {lt1_pace} building toward {lt2_pace}.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: Lock in the midpoint effort from the first half-mile and hold it. This is not a progressive run — even effort from start to finish. If pace drifts faster on its own, back off.',
     pace_source: '3000m+ only',
     volume_by_mpw: {
       under_30:  { min_mi: 3.75, max_mi: 4.75 },
@@ -280,6 +285,11 @@ export const WORKOUT_LIBRARY = {
     phase: 'base',
     category: 'aerobic',
     description: 'Start at LT1 effort, build to LT2 by the end.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: Begin at LT1 effort ({lt1_pace}) for the first third. Build steadily through the middle. Finish the final mile at LT2 pace ({lt2_pace}). Every mile should feel slightly harder than the last.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: Don\'t rush the build. The value is in the progression, not grinding the final miles. If you hit LT2 too early, back off and rebuild. The last mile at LT2 should feel earned, not desperate.',
     pace_source: '3000m+ only',
     volume_by_mpw: {
       under_30:  { min_mi: 3.75, max_mi: 4.75 },
@@ -296,6 +306,11 @@ export const WORKOUT_LIBRARY = {
     phase: 'base',
     category: 'aerobic',
     description: '1000m repetitions at LT2 pace.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: 1000m repetitions at LT2 pace ({lt2_pace}). 60–90 seconds easy jog recovery between each rep. Maintain the same split across every rep — consistency matters more than any individual rep.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: LT2 is not a sprint. It\'s a controlled, sustained effort you could hold for 30–40 minutes. If your splits drift faster as the session goes on, you started too hard. Aim for a perfectly even set.',
     pace_source: '3000m+ only',
     reps_by_mpw: {
       under_30:  { min: 3, max: 5 },
@@ -312,6 +327,11 @@ export const WORKOUT_LIBRARY = {
     phase: 'base',
     category: 'aerobic',
     description: '1600m repetitions at LT2 pace.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: 1600m repetitions at LT2 pace ({lt2_pace}). 60–90 seconds easy jog recovery between reps. Each mile should feel controlled and repeatable — not race-pace effort.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: Longer threshold reps build your ability to sustain threshold pace for extended periods — essential for any 1500m or mile race. Consistency across every rep is the marker of a good session.',
     pace_source: '3000m+ only',
     reps_by_mpw: {
       under_30:  { min: 2, max: 3 },
@@ -330,6 +350,11 @@ export const WORKOUT_LIBRARY = {
     phase: 'base',
     category: 'specific_bridge',
     description: '400m repetitions starting at 5K pace, progressing toward 3K pace over the session.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: 400m repetitions starting at 5K pace and progressing toward 3K pace across the session. Early reps should feel controlled and fast — not all-out. Equal-time rest between reps.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: This workout bridges aerobic and event-specific work. Don\'t start at 3K pace — start comfortably at 5K effort and let the session build organically. The final 2–3 reps should feel genuinely fast but controlled.',
     pace_source: '3000m+ only',
     reps_by_mpw: {
       under_30:  { min: 6, max: 6 },
@@ -348,6 +373,11 @@ export const WORKOUT_LIBRARY = {
     description:
       'Half normal 1000m threshold volume at LT2, followed by 800-600-400-200-200 cutdown ' +
       'from 3K pace down toward 800 pace. Threshold portion = 50% of normal session volume. Cutdown fixed at 2200m total.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: First block: 1000m reps at LT2 ({lt2_pace}), 60–90s jog recovery. Then 3–4 minutes easy jog transition. Second block: 800–600–400–200–200 cutdown from 3K pace down to 800 pace ({pace_800}). 90s or 200m jog between cutdown reps.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: This is a bridge session — aerobic work first to prime your system, then event-specific rhythm. Don\'t attack the cutdown fresh. The goal is controlled race-rhythm work on already-working legs.',
     pace_source: '3000m+ for threshold portion; mile/800 PR for cutdown',
     rest: 'Threshold: 60-90s jog. Transition: 3-4min easy. Cutdown: 200m jog or 90s hybrid.',
     tags: ['bridge', 'aerobic_to_specific'],
@@ -357,6 +387,11 @@ export const WORKOUT_LIBRARY = {
     phase: 'base',
     category: 'specific_bridge',
     description: 'Half normal tempo volume, then 600m repetitions at 3K pace.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: Half your normal tempo volume at LT1-to-LT2 effort ({lt1_pace}–{lt2_pace}), then 600m repetitions at 3K pace. Equal-time rest between 600s.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: The tempo portion is a primer — aerobic stress without depleting you for the 600s. Treat the 600s as quality bridge work: controlled and rhythmic, not sprint efforts. If the 600s feel labored, back off 2–3 seconds per mile.',
     pace_source: '3000m+ for tempo; 3000m+ PR for 600s at 3K pace',
     reps_600_by_mpw: {
       under_30:  2,
@@ -375,6 +410,11 @@ export const WORKOUT_LIBRARY = {
     description:
       '60-second hill repetitions at strong aerobic power effort. ' +
       'If no hill available, substitute 400s at 5K-3K pace.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: 60-second hill repetitions at strong aerobic power effort. Drive your arms, stay tall, maintain quick turnover. Jog back down for full recovery between reps. No hill available? Substitute 400m reps at 5K-to-3K effort.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: Hills are strength work disguised as running. Don\'t sprint to the top — run at a sustained, powerful aerobic effort. The grade does the work. Full jog recovery down is non-negotiable.',
     pace_source: 'Effort-based (no specific pace target)',
     reps_by_mpw: {
       under_30:  { min: 4, max: 5 },
@@ -394,6 +434,11 @@ export const WORKOUT_LIBRARY = {
     category: 'aerobic_support',
     description:
       'Tempo at LT1/LT2 midpoint (80% of base volume), then 400m repetitions at 3K pace.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: 80% of your base tempo volume at LT1-to-LT2 midpoint ({lt1_pace}–{lt2_pace}), then 400m repetitions at 3K pace. 200m jog recovery between 400s.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: This is a pre-competition aerobic bridge — shorter tempo to preserve legs for the 400s, which simulate race-intensity rhythm. Nail the tempo first, then let the 400s flow naturally from controlled aerobic fatigue.',
     pace_source: '3000m+ for tempo; 3000m+ for 400s at 3K pace',
     tempo_volume_by_mpw: {
       under_30:  { min_mi: 2.5, max_mi: 3.1 },
@@ -418,6 +463,11 @@ export const WORKOUT_LIBRARY = {
     category: 'aerobic_support',
     description:
       'Progressive tempo (80% of base volume) then 150m repetitions at mile-to-800 rhythm.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: 80% of base progressive tempo volume — start at LT1 ({lt1_pace}), build to LT2 ({lt2_pace}) — then 150m repetitions at mile-to-800 rhythm ({mile_pace}). Full walk or jog recovery between 150s.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: The 150s are rhythm pieces, not sprints. Run them at a controlled, fast-but-smooth effort. The goal is neuromuscular freshness after aerobic fatigue — teaching your legs to turn over quickly even when tired.',
     pace_source: '3000m+ for tempo; mile/800 PR for 150s',
     reps_150_by_mpw: {
       under_30:  4,
@@ -436,6 +486,11 @@ export const WORKOUT_LIBRARY = {
     description:
       '1000m reps where first 200m is at 3K pace then settles to threshold. ' +
       '90% of base 1000 volume rounded down. Add 4x400 at mile pace (trim to 3x400 for low-readiness athletes).',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: 1000m reps — first 200m at 3K effort, then settle to LT2 ({lt2_pace}) for the remaining 800m. 5 minutes full recovery between 1000s. Then 4 x 400m at mile pace ({mile_pace}), 90 seconds–2 minutes between 400s.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: The fast-first 200m teaches your body to handle surges before settling. It\'s harder than it sounds — genuinely commit to 3K effort on that first 200m, not mile effort. The settle to threshold should feel like a relief, not a struggle.',
     pace_source: '3000m+ for threshold; mile PR for 400s',
     rest: '5min between 1000s. 90s-2min on 400s.',
     tags: ['bridge', 'special_aerobic'],
@@ -446,6 +501,11 @@ export const WORKOUT_LIBRARY = {
     category: 'aerobic_support',
     description:
       '1600m threshold reps (90% of base volume, rounded down), then alternating 200s at mile and 800 pace.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: 1600m threshold reps at LT2 ({lt2_pace}), 60–90s jog between reps. Then alternating 200m reps — odd reps at mile pace ({mile_pace}), even reps at 800 pace ({pace_800}). 75 seconds standing rest between 200s.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: The alternating 200s calibrate your pace feel — training your body to shift between mile and 800 rhythm. Keep the 800-pace reps smooth and controlled, not maximal. If they feel labored, the threshold portion was too hard.',
     pace_source: '3000m+ for threshold; mile/800 PR for 200s',
     reps_200_by_mpw: {
       under_30:  4,
@@ -464,6 +524,11 @@ export const WORKOUT_LIBRARY = {
     phase: 'pre_competition',
     category: 'specific',
     description: '300m repetitions at mile pace.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: 300m repetitions at mile pace ({mile_pace}). 50m walk + 50m jog recovery between reps. Each rep should feel controlled and fast — not a sprint.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: Mile-pace 300s are your event rhythm builder. Run relaxed and tall — tight mechanics slow you down. If the reps feel labored by rep 5, you started too fast. These should feel fast but never desperate.',
     pace_source: 'Mile/1500 PR',
     reps_by_mpw: {
       under_30:  8,
@@ -481,6 +546,11 @@ export const WORKOUT_LIBRARY = {
     category: 'specific',
     description:
       '25% of normal 1000m threshold volume, then 800s at 3200 pace, then 400s at mile pace.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: 25% of normal threshold 1000m volume at LT2 ({lt2_pace}), 60–90s recovery. Then 800m reps at 3200 pace, ~2 minutes recovery. Then 2–3 x 400m at mile pace ({mile_pace}), 90 seconds–2 minutes recovery.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: Three energy systems in one session. The threshold portion is a primer — controlled aerobic work. The 800s are the core. The 400s are event rhythm finish. Resist the urge to run the threshold portion hard. You need the legs for the 800s.',
     pace_source: '3000m+ for threshold; 3000m+ for 800s; mile PR for 400s',
     threshold_reps_by_mpw: {
       under_30:  1,
@@ -506,6 +576,11 @@ export const WORKOUT_LIBRARY = {
     category: 'specific',
     description:
       'Sets of 400-300-200. 400 at mile pace cutting down toward 800 pace on the 200.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: Sets of 400-300-200. 400m at mile pace ({mile_pace}), 90s rest, 300m cutting down toward 800 pace, 90s rest, 200m at 800 pace ({pace_800}). 3 minutes between sets.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: Each set is a mini-race model — start at mile effort, accelerate through the 300, finish fast at 800 effort. The 3-minute recovery between sets is full recovery. Don\'t approach the next set still breathing hard.',
     pace_source: 'Mile/800 PR',
     sets_by_mpw: {
       under_30:  2,
@@ -522,6 +597,11 @@ export const WORKOUT_LIBRARY = {
     phase: 'pre_competition',
     category: 'specific',
     description: 'Sets of 4x250m at mile pace.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: Sets of 4 x 250m at mile pace ({mile_pace}). 60 seconds between reps within each set. 3 minutes full recovery between sets.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: 250m is the sweet spot for mile rhythm — long enough to lock in the effort, short enough to stay relaxed. Focus on running smooth and tall rather than straining for speed. The pace should feel fast but controlled, not forced.',
     pace_source: 'Mile/1500 PR',
     sets_by_mpw: {
       under_30:  2,
@@ -541,6 +621,11 @@ export const WORKOUT_LIBRARY = {
     category: 'specific',
     description:
       'Sets of (800m at threshold + 600m at 3200 pace) then 150s at mile-800 rhythm.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: Sets of (800m at threshold, 90s rest, 600m at 3200 pace, 2 min rest), then 150m reps at mile-800 rhythm ({mile_pace}). 200m jog + 50m walk between 150s.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: This session bridges threshold and race rhythm. The 600m after each 800m teaches you to push when tired — critical for mid-race surges. The 150s are sharpeners: run them smooth and fast, not desperate.',
     pace_source: '3000m+ for threshold; 3000m+ for 3200 pace; mile/800 PR for 150s',
     sets_and_150s_by_mpw: {
       under_30:  { sets: 2, reps_150: 2 },
@@ -559,6 +644,11 @@ export const WORKOUT_LIBRARY = {
     description:
       'Race-model session: 1x1000m threshold, 2x150m at mile pace, 1x800m at goal 1500 pace, ' +
       '1-3x400m at goal pace (by band), finish 1x300m cutdown.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: 1 x 1000m at LT2 ({lt2_pace}). 2 x 150m at mile pace ({mile_pace}). 1 x 800m at goal 1500 pace. 6 minutes easy jog. Goal-pace 400s. 90 seconds between 400s. 1 x 300m cutdown to 800 pace ({pace_800}).\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: This session is a dress rehearsal for race day. Every element simulates something you\'ll face in competition — threshold control, rhythm shifts, goal-pace execution, and a closing surge. The 800m is the centerpiece. Treat it like a race effort.',
     pace_source: 'Goal 1500m performance for race-pace elements; 3000m+ for threshold',
     reps_400_by_mpw: {
       under_30:  1,
@@ -576,6 +666,11 @@ export const WORKOUT_LIBRARY = {
     category: 'specific',
     description:
       'Pre-comp 300s minus 3 reps at mile pace, then add 2x300m at 800 pace.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: Mile-pace 300s (fewer than pre-competition count), standard 50m walk + 50m jog recovery. Then 2 x 300m at 800 pace ({pace_800}) — 3 minutes full recovery between the fast 300s.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: The 800-pace 300s at the end are the sharpening element. Don\'t blow yourself up on the mile-pace reps — they\'re a warm-up for the real work. Save something real for those final two.',
     pace_source: 'Mile/800 PR',
     total_volume_by_mpw: {
       under_30:  { mile_reps: 5, pace_800_reps: 2, total_m: 2100 },
@@ -593,9 +688,71 @@ export const WORKOUT_LIBRARY = {
     category: 'specific',
     description:
       'Competition version of sets_400_300_200. Reduce total sets by one vs Pre-Competition band.',
+    full_description:
+      'Warmup: {warmup_distance} miles easy at {easy_pace}.\n\n' +
+      'Main Set: Sets of 400-300-200, competition version (one fewer set than pre-competition). 400m at mile pace ({mile_pace}), 90s rest, 300m cutting down, 90s rest, 200m at 800 pace ({pace_800}). 3 minutes between sets.\n\n' +
+      'Cooldown: {cooldown_distance} miles easy.\n\n' +
+      'Coaching Cue: Fewer sets, same quality. In competition phase you\'re sharpening — not building. Each set should feel crisp and controlled. If the 200s feel labored, you started the set too hard.',
     pace_source: 'Mile/800 PR',
     rest: '90s between reps. 3min between sets.',
     tags: ['specific', 'comp_sharpening', 'cutdown'],
+  },
+
+  // ── BEGINNER ────────────────────────────────────────────────────────────────
+
+  easy_run_beginner: {
+    phase: 'ease_in',
+    category: 'easy',
+    description: 'Basic easy run for beginners at conversational pace.',
+    full_description:
+      'Main Set: Easy run at conversational pace ({easy_pace}). You should be able to speak in full sentences throughout. If you\'re breathing too hard to talk, slow down — the pace doesn\'t matter, the effort does.\n\n' +
+      'Coaching Cue: New runners almost always run their easy days too fast. The value of this run is time on feet at low stress — not the pace on the screen. Slower is better right now. The fitness will come.',
+    pace_source: 'Easy effort only',
+    tags: ['easy', 'beginner'],
+  },
+
+  walk_run_intervals: {
+    phase: 'ease_in',
+    category: 'easy',
+    description: 'Walk/run intervals for building run tolerance gradually.',
+    full_description:
+      'Main Set: Alternate between easy running and walking. Run segments at comfortable, conversational pace ({easy_pace}). Walk segments are active recovery — not a rest. Keep moving forward the whole time.\n\n' +
+      'Coaching Cue: The walk breaks are not failure — they are the workout. This method builds running fitness while keeping stress low enough to recover between sessions. Stick to the structure and resist the urge to skip the walks.',
+    pace_source: 'Easy effort only',
+    tags: ['easy', 'beginner', 'walk_run'],
+  },
+
+  long_run_easy: {
+    phase: 'ease_in',
+    category: 'long_run',
+    description: 'Easy long run for beginners — building aerobic endurance at comfortable effort.',
+    full_description:
+      'Main Set: Easy long run at comfortable, conversational pace ({easy_pace}). Never split. Keep effort low enough to hold a conversation from the first mile to the last. Distance matters more than pace today.\n\n' +
+      'Coaching Cue: The long run is your most important weekly session. Don\'t add pace or surges — every extra intensity costs you recovery and limits your next week. Easy and steady wins here. If it feels too easy, it\'s probably right.',
+    pace_source: 'Easy effort only',
+    tags: ['long_run', 'beginner', 'aerobic'],
+  },
+
+  strides_intro: {
+    phase: 'ease_in',
+    category: 'speed_dev',
+    description: 'Introduction to controlled fast running — strides with full recovery.',
+    full_description:
+      'Main Set: After your easy run, complete 4–6 x 100m strides at a controlled, relaxed fast effort. Accelerate smoothly over the first 30m, hold smooth form for 40m, then relax through the last 30m. Walk back to the start for full recovery between each stride.\n\n' +
+      'Coaching Cue: Strides are not sprints — they\'re controlled accelerations. They should feel fast but never desperate. Focus on tall posture and quick, light foot contact. If they feel labored, slow down — you\'re learning to run fast, not racing.',
+    pace_source: 'Controlled fast effort — not a sprint',
+    tags: ['speed_dev', 'beginner', 'strides'],
+  },
+
+  aerobic_progression: {
+    phase: 'base',
+    category: 'aerobic',
+    description: 'Progression run for beginners — easy start building to a controlled comfortably hard finish.',
+    full_description:
+      'Main Set: Start at your easy pace ({easy_pace}) and gradually build effort over the final 10–15 minutes. The last few minutes should feel like a controlled, comfortably hard effort — not a race. Think of it as a 3-gear run: easy, medium, then comfortably hard.\n\n' +
+      'Coaching Cue: The progression should feel natural, not forced. If you\'re working hard after just a few minutes of building, back off and rebuild more gradually. The goal is a smooth, organic negative split — not a hard finish that leaves you destroyed.',
+    pace_source: '3000m+ only (for the faster portions)',
+    tags: ['aerobic', 'beginner', 'progression'],
   },
 
 } as const;

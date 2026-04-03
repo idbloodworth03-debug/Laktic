@@ -118,6 +118,8 @@ type CalWorkout = {
   distance_miles?: number;
   pace_guideline?: string;
   description?: string;
+  library_description?: string;
+  workout_key?: string;
   change_reason?: string;
   why?: string;
   phase: string;
@@ -126,15 +128,41 @@ type CalWorkout = {
   type?: string;
 };
 
+// ── Placeholder substitution ──────────────────────────────────────────────────
+function replacePlaceholders(
+  text: string,
+  paceBands: { LT2: string; LT1: string; steady: string; easy: string; recovery: string; needs_aerobic_pr: boolean } | null | undefined,
+  eventPaces: { mile_pace: string | null; pace_1500: string | null; pace_800: string | null; pace_5k: string | null } | null | undefined,
+  wo: CalWorkout,
+): string {
+  const warmup  = wo.type === 'long_run' || wo.type === 'easy' ? '' : '1';
+  const cooldown = wo.type === 'long_run' || wo.type === 'easy' ? '' : '1';
+  let out = text;
+  if (paceBands && !paceBands.needs_aerobic_pr) {
+    out = out.replace(/\{lt2_pace\}/g, paceBands.LT2);
+    out = out.replace(/\{lt1_pace\}/g, paceBands.LT1);
+    out = out.replace(/\{easy_pace\}/g, paceBands.easy);
+  }
+  if (eventPaces?.mile_pace) out = out.replace(/\{mile_pace\}/g, eventPaces.mile_pace);
+  if (eventPaces?.pace_800)  out = out.replace(/\{pace_800\}/g, eventPaces.pace_800);
+  out = out.replace(/\{warmup_distance\}/g, warmup || '1');
+  out = out.replace(/\{cooldown_distance\}/g, cooldown || '1');
+  // Remove any remaining unmatched placeholders
+  out = out.replace(/\{[a-z_]+\}/g, '');
+  return out;
+}
+
 // ── Description section parser ────────────────────────────────────────────────
-type DescSection = { label: string; text: string; color: string };
+type DescSection = { label: string; text: string; color: string; italic?: boolean; noBorder?: boolean };
 
 function parseDescription(desc: string): DescSection[] | null {
-  const SECTION_PATTERNS: { re: RegExp; label: string; color: string }[] = [
-    { re: /^Warmup:/i,        label: 'Warmup',       color: '#9ca3af' },
-    { re: /^Main\s*[Ss]et:/i, label: 'Main Set',     color: '#00E5A0' },
-    { re: /^Cooldown:/i,      label: 'Cooldown',     color: '#9ca3af' },
-    { re: /^Coaching\s*[Cc]ue:/i, label: 'Pace Says', color: '#f59e0b' },
+  const SECTION_PATTERNS: { re: RegExp; label: string; color: string; italic?: boolean; noBorder?: boolean }[] = [
+    { re: /^Warmup:/i,                     label: 'Warmup',           color: '#9ca3af' },
+    { re: /^Main\s*[Ss]et:/i,             label: 'Main Set',          color: '#00E5A0' },
+    { re: /^Cooldown:/i,                   label: 'Cooldown',          color: '#9ca3af' },
+    { re: /^Coaching\s*[Cc]ue:/i,         label: 'Pace Says',         color: '#f59e0b' },
+    { re: /^Focus:/i,                      label: 'Focus',             color: 'var(--color-text-tertiary)', italic: true, noBorder: true },
+    { re: /^Why\s+it'?s?\s+in\s+your\s+plan:/i, label: 'Why This Workout', color: 'var(--color-text-tertiary)', italic: true, noBorder: true },
   ];
 
   // Split on double-newlines first (canonical format from new prompt)
@@ -157,7 +185,7 @@ function parseDescription(desc: string): DescSection[] | null {
   }
 
   // Fallback: try inline section splitting (old format)
-  const inlineParts = desc.split(/(?=Warmup:|Main\s*[Ss]et:|Cooldown:|Coaching\s*[Cc]ue:)/i).filter(Boolean);
+  const inlineParts = desc.split(/(?=Warmup:|Main\s*[Ss]et:|Cooldown:|Coaching\s*[Cc]ue:|Focus:|Why\s+it)/i).filter(Boolean);
   if (inlineParts.length >= 2) {
     return inlineParts.map(part => {
       for (const p of SECTION_PATTERNS) {
@@ -187,7 +215,9 @@ interface WorkoutModalProps {
 
 function WorkoutModal({ wo, onClose, isCompleted, onComplete, togglingComplete, paceBands, eventPaces, onAskPace, primaryPrediction }: WorkoutModalProps) {
   const typeStyle = WORKOUT_TYPE_STYLE[getWorkoutType(wo.title, false)];
-  const sections = wo.description ? parseDescription(wo.description) : null;
+  const rawDesc = wo.description || wo.library_description || '';
+  const resolvedDesc = rawDesc ? replacePlaceholders(rawDesc, paceBands, eventPaces, wo) : '';
+  const sections = resolvedDesc ? parseDescription(resolvedDesc) : null;
 
   // Derive display paces
   const wt = getWorkoutType(wo.title, false);
@@ -279,7 +309,7 @@ function WorkoutModal({ wo, onClose, isCompleted, onComplete, togglingComplete, 
         <div className="px-5 py-4 space-y-5">
 
           {/* The Workout */}
-          {wo.description && (
+          {resolvedDesc && (
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-tertiary)' }}>The Workout</p>
               {sections ? (
@@ -287,18 +317,23 @@ function WorkoutModal({ wo, onClose, isCompleted, onComplete, togglingComplete, 
                   {sections.map((s, i) => (
                     <div
                       key={i}
-                      className="pl-3 py-1"
-                      style={{ borderLeft: `2px solid ${s.color}` }}
+                      className={s.noBorder ? 'py-1' : 'pl-3 py-1'}
+                      style={s.noBorder ? undefined : { borderLeft: `2px solid ${s.color}` }}
                     >
                       {s.label && (
                         <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: s.color }}>{s.label}</p>
                       )}
-                      <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{s.text}</p>
+                      <p
+                        className="text-sm leading-relaxed"
+                        style={{ color: 'var(--color-text-secondary)', fontStyle: s.italic ? 'italic' : undefined }}
+                      >
+                        {s.text}
+                      </p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{wo.description}</p>
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{resolvedDesc}</p>
               )}
             </div>
           )}
@@ -434,6 +469,8 @@ function PlanMonthView({ plan }: { plan: any[] }) {
           distance_miles: wo.distance_miles ?? wo.total_distance,
           pace_guideline: wo.pace_guideline,
           description: wo.description,
+          library_description: wo.library_description,
+          workout_key: wo.workout_key,
           change_reason: wo.change_reason,
           why: wo.why,
           phase: week.phase || 'base',
@@ -1228,6 +1265,8 @@ export function SeasonPlan() {
                               distance_miles: wo.distance_miles ?? wo.total_distance,
                               pace_guideline: wo.pace_guideline,
                               description: wo.description,
+                              library_description: wo.library_description,
+                              workout_key: wo.workout_key,
                               change_reason: wo.change_reason,
                               why: wo.why,
                               phase: week.phase || 'base',

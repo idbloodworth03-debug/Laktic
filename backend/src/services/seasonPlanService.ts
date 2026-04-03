@@ -127,6 +127,7 @@ function skeletonWeekToDb(
                         : wo.role === 'long_run'
                           ? buildCodeDescription(wo, easyPg, recPg)
                           : '',  // filled by GPT-4o
+    library_description: wo.libraryDescription ?? '',
     why:              '',       // filled by GPT-4o
     change_reason:    '',       // filled by GPT-4o
     warmup_miles:     wo.warmupMiles  > 0 ? wo.warmupMiles  : null,

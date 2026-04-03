@@ -65,6 +65,7 @@ export interface PlannedWorkout {
   warmupMiles:        number;
   cooldownMiles:      number;
   isRestDay:          boolean;
+  libraryDescription?: string;
 }
 
 export interface PlanWeek {
@@ -686,6 +687,7 @@ function buildWeekWorkouts(
     mainSetMiles: number; warmupMiles: number; cooldownMiles: number;
     paceGuideline: string; mainSetDescription: string;
     isRestDay: boolean; isEasy: boolean;
+    libraryDescription?: string;
   }
 
   const raw: RawWo[] = [];
@@ -746,11 +748,12 @@ function buildWeekWorkouts(
       const capped    = Math.min(mainSetMiles, targetMiles * 0.35);
       const total     = r25(wc.warmup_mi + capped + wc.cooldown_mi);
       qualityMilesUsed += total;
+      const libDesc   = (WORKOUT_LIBRARY as Record<string, any>)[key]?.full_description as string | undefined;
       raw.push({ day, dayOfWeek, role: 'aerobic', workoutKey: key,
         title: WORKOUT_TITLE[key] ?? key,
         mainSetMiles: capped, warmupMiles: wc.warmup_mi, cooldownMiles: wc.cooldown_mi,
         paceGuideline: buildPaceGuideline('aerobic', paceBands, eventPaces),
-        mainSetDescription, isRestDay: false, isEasy: false });
+        mainSetDescription, isRestDay: false, isEasy: false, libraryDescription: libDesc });
       continue;
     }
 
@@ -765,11 +768,12 @@ function buildWeekWorkouts(
           const { mainSetMiles, mainSetDescription } = getWorkoutDistances(key, mpwBand, paceBands, eventPaces);
           const capped    = Math.min(mainSetMiles, targetMiles * 0.35);
           qualityMilesUsed += r25(wc.warmup_mi + capped + wc.cooldown_mi);
+          const libDescFb = (WORKOUT_LIBRARY as Record<string, any>)[key]?.full_description as string | undefined;
           raw.push({ day, dayOfWeek, role: 'aerobic', workoutKey: key,
             title: WORKOUT_TITLE[key] ?? key,
             mainSetMiles: capped, warmupMiles: wc.warmup_mi, cooldownMiles: wc.cooldown_mi,
             paceGuideline: buildPaceGuideline('aerobic', paceBands, eventPaces),
-            mainSetDescription, isRestDay: false, isEasy: false });
+            mainSetDescription, isRestDay: false, isEasy: false, libraryDescription: libDescFb });
         } else {
           easyCount++;
           raw.push({ day, dayOfWeek, role: 'easy', workoutKey: null, title: 'Easy Run',
@@ -784,11 +788,12 @@ function buildWeekWorkouts(
       const { mainSetMiles, mainSetDescription } = getWorkoutDistances(key, mpwBand, paceBands, eventPaces);
       const capped    = Math.min(mainSetMiles, targetMiles * 0.35);
       qualityMilesUsed += r25(wc.warmup_mi + capped + wc.cooldown_mi);
+      const libDescS  = (WORKOUT_LIBRARY as Record<string, any>)[key]?.full_description as string | undefined;
       raw.push({ day, dayOfWeek, role: 'specific', workoutKey: key,
         title: WORKOUT_TITLE[key] ?? key,
         mainSetMiles: capped, warmupMiles: wc.warmup_mi, cooldownMiles: wc.cooldown_mi,
         paceGuideline: buildPaceGuideline('specific', paceBands, eventPaces),
-        mainSetDescription, isRestDay: false, isEasy: false });
+        mainSetDescription, isRestDay: false, isEasy: false, libraryDescription: libDescS });
       continue;
     }
 
@@ -840,7 +845,8 @@ function buildWeekWorkouts(
       workoutKey: wo.workoutKey, title: wo.title, totalDistance: total,
       paceGuideline: wo.paceGuideline, mainSetDistance: wo.mainSetMiles,
       mainSetDescription: wo.mainSetDescription, warmupMiles: wo.warmupMiles,
-      cooldownMiles: wo.cooldownMiles, isRestDay: false };
+      cooldownMiles: wo.cooldownMiles, isRestDay: false,
+      libraryDescription: (wo as any).libraryDescription };
   });
 
   return result;
