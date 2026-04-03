@@ -390,26 +390,36 @@ export function AthleteSettings() {
                 <span>Just starting</span><span>Peak shape</span>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Input label="Season start date" type="date" min={new Date().toISOString().split('T')[0]} value={trainSeasonStart} onChange={e => setTrainSeasonStart(clampToToday(e.target.value))} onBlur={e => setTrainSeasonStart(clampToToday(e.target.value))} />
-              <Input label="Season end date" type="date" min={new Date().toISOString().split('T')[0]} value={trainSeasonEnd} onChange={e => setTrainSeasonEnd(clampToToday(e.target.value))} onBlur={e => setTrainSeasonEnd(clampToToday(e.target.value))} />
-            </div>
-            <Button
-              variant="primary" size="sm" loading={savingTrain}
-              onClick={() => {
-                const today = new Date().toISOString().split('T')[0];
-                if ((trainSeasonStart && trainSeasonStart < today) || (trainSeasonEnd && trainSeasonEnd < today)) return;
-                patchProfile({
-                  current_weekly_mileage: trainMpw ? parseFloat(trainMpw) : null,
-                  training_days_per_week: trainDays,
-                  fitness_rating: trainFitness,
-                  season_start_date: trainSeasonStart || null,
-                  season_end_date: trainSeasonEnd || null,
-                }, setSavingTrain, setTrainSaved);
-              }}
-            >
-              {trainSaved ? 'Saved ✓' : 'Save'}
-            </Button>
+            {(() => {
+              const today = new Date().toISOString().split('T')[0];
+              const startErr = trainSeasonStart && trainSeasonStart < today ? 'Date cannot be in the past' : undefined;
+              const endErr = trainSeasonEnd && trainSeasonEnd < today ? 'Date cannot be in the past' : undefined;
+              const hasDateErr = !!(startErr || endErr);
+              return (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input label="Season start date" type="date" min={today} value={trainSeasonStart} error={startErr} onChange={e => setTrainSeasonStart(e.target.value)} />
+                    <Input label="Season end date" type="date" min={today} value={trainSeasonEnd} error={endErr} onChange={e => setTrainSeasonEnd(e.target.value)} />
+                  </div>
+                  <Button
+                    variant="primary" size="sm" loading={savingTrain}
+                    disabled={hasDateErr}
+                    onClick={() => {
+                      if (hasDateErr) return;
+                      patchProfile({
+                        current_weekly_mileage: trainMpw ? parseFloat(trainMpw) : null,
+                        training_days_per_week: trainDays,
+                        fitness_rating: trainFitness,
+                        season_start_date: trainSeasonStart || null,
+                        season_end_date: trainSeasonEnd || null,
+                      }, setSavingTrain, setTrainSaved);
+                    }}
+                  >
+                    {trainSaved ? 'Saved ✓' : 'Save'}
+                  </Button>
+                </>
+              );
+            })()}
           </div>
         </Card>
 
