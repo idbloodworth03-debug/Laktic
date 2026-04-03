@@ -84,6 +84,10 @@ export function AthleteSettings() {
   const [savingHealth, setSavingHealth] = useState(false);
   const [healthSaved, setHealthSaved] = useState(false);
 
+  // Profile load state
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState('');
+
   // Live pace zone recalculation when PRs change
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -96,7 +100,9 @@ export function AthleteSettings() {
   async function patchProfile(payload: Record<string, unknown>, setSaving: (v: boolean) => void, setSaved: (v: boolean) => void) {
     setSaving(true);
     try {
-      await apiFetch('/api/athlete/profile', { method: 'PATCH', body: JSON.stringify(payload) });
+      const updated = await apiFetch('/api/athlete/profile', { method: 'PATCH', body: JSON.stringify(payload) });
+      // Re-populate fields from the response so local state reflects what was persisted
+      populateFromProfile(updated);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e: any) {
@@ -112,6 +118,47 @@ export function AthleteSettings() {
     (profile as any)?.public_sections ?? { races: true, stats: true, milestones: true }
   );
   const [savingProfile, setSavingProfile] = useState(false);
+
+  // Populate every field from a fresh profile object
+  function populateFromProfile(p: Record<string, any>) {
+    if (!p) return;
+    setAboutName(p.name ?? p.full_name ?? '');
+    setAboutAge(p.age != null ? String(p.age) : '');
+    setAboutGender(p.gender ?? '');
+    setAboutExp(p.experience_level ?? '');
+    setTrainMpw(p.current_weekly_mileage != null ? String(p.current_weekly_mileage) : '');
+    setTrainDays(p.training_days_per_week ?? 4);
+    setTrainFitness(p.fitness_rating ?? 5);
+    setTrainSeasonStart(p.season_start_date ?? '');
+    setTrainSeasonEnd(p.season_end_date ?? '');
+    setRaceEvents(Array.isArray(p.primary_events) ? p.primary_events : []);
+    setRaceDist(p.target_race_distance ?? '');
+    setRaceDate(p.target_race_date ?? '');
+    setRaceName(p.target_race_name ?? '');
+    setPr800(p.pr_800m ?? '');
+    setPr1500(p.pr_1500m ?? '');
+    setPrMile(p.pr_mile ?? '');
+    setPr5k(p.pr_5k ?? '');
+    setHealthInjury(p.injury_notes ?? '');
+    setHealthSleep(p.sleep_average ?? '');
+    setUsername(p.username ?? '');
+    setPublicSections(p.public_sections ?? { races: true, stats: true, milestones: true });
+  }
+
+  // Fetch fresh profile on mount and pre-fill all fields
+  useEffect(() => {
+    apiFetch('/api/athlete/profile')
+      .then((p: Record<string, any>) => {
+        populateFromProfile(p);
+        setProfileError('');
+      })
+      .catch(() => {
+        setProfileError('Could not load your profile data. Please refresh.');
+      })
+      .finally(() => {
+        setProfileLoading(false);
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchStravaStatus();
@@ -239,12 +286,34 @@ export function AthleteSettings() {
       <div className="max-w-3xl mx-auto px-6 py-8">
         <h1 className="font-display text-3xl font-bold mb-6">Settings</h1>
 
+        {profileError && (
+          <div className="mb-6">
+            <Alert type="error" message={profileError} onClose={() => setProfileError('')} />
+          </div>
+        )}
+
         {alert && (
           <div className="mb-6">
             <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
           </div>
         )}
 
+        {/* ── Profile sections — skeleton while loading ──────────────────── */}
+        {profileLoading ? (
+          <div className="space-y-6 mb-6">
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={i} className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-5 animate-pulse">
+                <div className="h-4 w-28 bg-[var(--color-bg-tertiary)] rounded mb-5" />
+                <div className="space-y-3">
+                  <div className="h-9 bg-[var(--color-bg-tertiary)] rounded-lg" />
+                  <div className="h-9 bg-[var(--color-bg-tertiary)] rounded-lg" />
+                  <div className="h-8 w-20 bg-[var(--color-bg-tertiary)] rounded-lg mt-2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
         {/* ── 1. About You ──────────────────────────────────────────────── */}
         <Card title="About You" className="mb-6">
           <div className="flex flex-col gap-4">
@@ -459,6 +528,8 @@ export function AthleteSettings() {
             </Button>
           </div>
         </Card>
+          </>
+        )}
 
         <Card title="Public Profile" className="mb-6">
           <div className="mb-6 flex justify-center">
