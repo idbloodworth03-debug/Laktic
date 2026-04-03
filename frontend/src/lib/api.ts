@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient';
 const BASE = import.meta.env.VITE_API_URL as string || 'http://localhost:3001';
 
 function redirectToSignIn() {
-  window.location.href = '/signin';
+  window.location.href = '/login';
 }
 
 async function buildHeaders(token: string | null, incoming: HeadersInit = {}): Promise<Record<string, string>> {
