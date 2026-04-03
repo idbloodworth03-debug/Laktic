@@ -390,8 +390,8 @@ export function AthleteSettings() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Season start date" type="date" value={trainSeasonStart} onChange={e => setTrainSeasonStart(e.target.value)} />
-              <Input label="Season end date" type="date" value={trainSeasonEnd} onChange={e => setTrainSeasonEnd(e.target.value)} />
+              <Input label="Season start date" type="date" min={new Date().toISOString().split('T')[0]} value={trainSeasonStart} onChange={e => setTrainSeasonStart(e.target.value)} />
+              <Input label="Season end date" type="date" min={new Date().toISOString().split('T')[0]} value={trainSeasonEnd} onChange={e => setTrainSeasonEnd(e.target.value)} />
             </div>
             <Button
               variant="primary" size="sm" loading={savingTrain}
