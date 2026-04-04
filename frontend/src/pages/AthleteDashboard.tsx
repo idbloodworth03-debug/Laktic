@@ -8,7 +8,7 @@ import { UserAvatar } from '../components/UserAvatar';
 import { PaceZonesCard } from '../components/PaceZonesCard';
 import { PhaseIndicator } from '../components/PhaseIndicator';
 import { RacePredictionsCard } from '../components/RacePredictionsCard';
-import { ArrowRight, ChevronRight, TrendingUp, TrendingDown, Minus, X } from 'lucide-react';
+import { ArrowRight, ChevronRight, TrendingUp, TrendingDown, Minus, X, Play } from 'lucide-react';
 
 interface ReadinessSignals {
   atl: number;
@@ -219,7 +219,7 @@ export function AthleteDashboard() {
 
   return (
     <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
-      <div className="p-6 md:p-8">
+      <div className="p-6 md:p-8 pb-36 md:pb-8">
         {/* Header */}
         <div className="mb-8 fade-up">
           <p className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-1">
@@ -556,6 +556,18 @@ export function AthleteDashboard() {
           </div>
         </div>
       )}
+
+      {/* Track Run — mobile only, fixed above bottom tab bar */}
+      <div className="md:hidden fixed left-4 right-4 z-30" style={{ bottom: '76px' }}>
+        <button
+          onClick={() => nav('/athlete/activities')}
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-full font-semibold text-[15px] text-white"
+          style={{ background: '#111', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 4px 24px rgba(0,0,0,0.5)' }}
+        >
+          <Play size={16} fill="white" />
+          Track Run
+        </button>
+      </div>
     </AppLayout>
   );
 }
