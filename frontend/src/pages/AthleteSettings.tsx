@@ -57,8 +57,9 @@ export function AthleteSettings() {
   const todayStr = new Date().toISOString().split('T')[0];
   const [trainSeasonStart, setTrainSeasonStart] = useState((profile as any)?.season_start_date ?? '');
   const [trainSeasonEnd, setTrainSeasonEnd] = useState((profile as any)?.season_end_date ?? '');
-  const seasonStartErr = trainSeasonStart && trainSeasonStart < todayStr ? 'Date cannot be in the past' : undefined;
-  const seasonEndErr = trainSeasonEnd && trainSeasonEnd < todayStr ? 'Date cannot be in the past' : undefined;
+  const isPastDate = (d: string) => { if (!d) return false; const today = new Date(); today.setHours(0,0,0,0); return new Date(d + 'T00:00:00') < today; };
+  const seasonStartErr = isPastDate(trainSeasonStart) ? 'Date cannot be in the past' : undefined;
+  const seasonEndErr = isPastDate(trainSeasonEnd) ? 'Date cannot be in the past' : undefined;
   const seasonDatesInvalid = !!(seasonStartErr || seasonEndErr);
   const [savingTrain, setSavingTrain] = useState(false);
   const [trainSaved, setTrainSaved] = useState(false);
@@ -397,6 +398,11 @@ export function AthleteSettings() {
               <Input label="Season start date" type="date" min={todayStr} value={trainSeasonStart} error={seasonStartErr} onChange={e => setTrainSeasonStart(e.target.value)} />
               <Input label="Season end date" type="date" min={todayStr} value={trainSeasonEnd} error={seasonEndErr} onChange={e => setTrainSeasonEnd(e.target.value)} />
             </div>
+            {seasonDatesInvalid && (
+              <p style={{ color: '#EF4444', fontSize: '13px', fontWeight: 600 }}>
+                Season dates cannot be in the past. Please select today or a future date.
+              </p>
+            )}
             <Button
               variant="primary" size="sm" loading={savingTrain}
               disabled={seasonDatesInvalid}
