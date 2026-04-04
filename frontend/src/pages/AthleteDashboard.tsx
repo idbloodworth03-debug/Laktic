@@ -560,7 +560,7 @@ export function AthleteDashboard() {
       {/* Track Run — mobile only, fixed above bottom tab bar */}
       <div className="md:hidden fixed left-4 right-4 z-30" style={{ bottom: '76px' }}>
         <button
-          onClick={() => nav('/athlete/activities')}
+          onClick={() => nav('/athlete/track')}
           className="w-full flex items-center justify-center gap-2 py-4 rounded-full font-semibold text-[15px]"
           style={{ background: '#00E5A0', boxShadow: '0 4px 24px rgba(0,229,160,0.35)' }}
         >

@@ -1345,4 +1345,50 @@ router.get(
   })
 );
 
+// POST /api/athlete/activities — Save a manually tracked run
+router.post(
+  '/activities',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const {
+      name,
+      start_date,
+      distance_meters,
+      moving_time_seconds,
+      elapsed_time_seconds,
+      average_speed,
+      total_elevation_gain,
+      average_heartrate,
+      route_coordinates,
+    } = req.body;
+
+    if (!distance_meters || !moving_time_seconds || !start_date) {
+      return res.status(400).json({ error: 'distance_meters, moving_time_seconds, and start_date are required' });
+    }
+
+    const { data, error } = await supabase
+      .from('athlete_activities')
+      .insert({
+        athlete_id: req.athlete.id,
+        source: 'manual',
+        activity_type: 'Run',
+        name: name || 'Manual Run',
+        start_date,
+        distance_meters,
+        moving_time_seconds,
+        elapsed_time_seconds: elapsed_time_seconds ?? moving_time_seconds,
+        average_speed: average_speed ?? (distance_meters / moving_time_seconds),
+        total_elevation_gain: total_elevation_gain ?? 0,
+        average_heartrate: average_heartrate ?? null,
+        raw_data: route_coordinates ? { route_coordinates } : null,
+      })
+      .select()
+      .single();
+
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ activity: data });
+  })
+);
+
 export default router;
