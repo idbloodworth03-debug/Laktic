@@ -1347,7 +1347,7 @@ export function SeasonPlan() {
                                     textDecorationColor: 'rgba(255,255,255,0.15)',
                                   }}
                                 >
-                                  {wo.title}
+                                  {wo.distance_miles ? `${wo.distance_miles} mile run` : wo.title}
                                 </span>
                               </div>
                               {/* Distance + pace — prominent */}
