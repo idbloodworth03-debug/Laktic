@@ -39,6 +39,21 @@ type NutritionAdvice = {
   generated_at: string;
 };
 
+// Unit conversion helpers
+const lbsToKg = (lbs: number) => lbs * 0.453592;
+const kgToLbs = (kg: number) => Math.round(kg * 2.20462 * 10) / 10;
+const cmToFtIn = (cm: number) => {
+  const totalIn = cm / 2.54;
+  return { ft: Math.floor(totalIn / 12), inches: Math.round(totalIn % 12) };
+};
+const ftInToCm = (ft: number, inches: number) => Math.round((ft * 12 + inches) * 2.54);
+const mlToOz = (ml: number) => Math.round(ml * 0.033814 * 10) / 10;
+const ozToMl = (oz: number) => Math.round(oz / 0.033814);
+const cToF = (c: number) => Math.round((c * 9/5 + 32) * 10) / 10;
+const fToC = (f: number) => Math.round(((f - 32) * 5/9) * 10) / 10;
+const kmhToMph = (kmh: number) => Math.round(kmh * 0.621371 * 10) / 10;
+const lToOz = (l: number) => Math.round(l * 33.814);
+
 type Tab = 'metrics' | 'advice' | 'calculator';
 
 export function NutritionPage() {
@@ -49,8 +64,13 @@ export function NutritionPage() {
 
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
-  // Body metrics
+  // Body metrics — stored internally in metric, displayed in US units
   const [metrics, setMetrics] = useState<BodyMetrics>({ weight_kg: null, height_cm: null, sweat_rate_ml_per_hr: null });
+  // US unit form inputs
+  const [weightLbs, setWeightLbs] = useState('');
+  const [heightFt, setHeightFt] = useState('');
+  const [heightIn, setHeightIn] = useState('');
+  const [sweatOz, setSweatOz] = useState('');
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [metricsSaving, setMetricsSaving] = useState(false);
   const [metricsView, setMetricsView] = useState<'form' | 'card'>('form');
@@ -64,7 +84,7 @@ export function NutritionPage() {
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [durationHours, setDurationHours] = useState('0');
   const [durationMinutes, setDurationMinutes] = useState('');
-  const [customTempC, setCustomTempC] = useState('');
+  const [customTempF, setCustomTempF] = useState('');
   const [recommendation, setRecommendation] = useState<FuelRecommendation | null>(null);
   const [calcLoading, setCalcLoading] = useState(false);
 
@@ -84,6 +104,13 @@ export function NutritionPage() {
       const data = await apiFetch('/api/athlete/body-metrics');
       if (data && data.weight_kg != null) {
         setMetrics(data);
+        setWeightLbs(String(kgToLbs(data.weight_kg)));
+        if (data.height_cm) {
+          const { ft, inches } = cmToFtIn(data.height_cm);
+          setHeightFt(String(ft));
+          setHeightIn(String(inches));
+        }
+        if (data.sweat_rate_ml_per_hr) setSweatOz(String(mlToOz(data.sweat_rate_ml_per_hr)));
         setMetricsView('card');
       }
     } catch {
@@ -97,10 +124,16 @@ export function NutritionPage() {
     setMetricsSaving(true);
     try {
       const payload: Partial<BodyMetrics> = {};
-      if (metrics.weight_kg != null) payload.weight_kg = metrics.weight_kg;
-      if (metrics.height_cm != null) payload.height_cm = metrics.height_cm;
-      if (metrics.sweat_rate_ml_per_hr != null) payload.sweat_rate_ml_per_hr = metrics.sweat_rate_ml_per_hr;
+      if (weightLbs) payload.weight_kg = Math.round(lbsToKg(parseFloat(weightLbs)) * 10) / 10;
+      if (heightFt || heightIn) payload.height_cm = ftInToCm(parseInt(heightFt || '0'), parseInt(heightIn || '0'));
+      if (sweatOz) payload.sweat_rate_ml_per_hr = ozToMl(parseFloat(sweatOz));
       await apiFetch('/api/athlete/body-metrics', { method: 'PUT', body: JSON.stringify(payload) });
+      // Update internal metric state for display
+      setMetrics({
+        weight_kg: payload.weight_kg ?? null,
+        height_cm: payload.height_cm ?? null,
+        sweat_rate_ml_per_hr: payload.sweat_rate_ml_per_hr ?? null,
+      });
       setMetricsView('card');
       setAlert({ type: 'success', message: 'Body metrics saved.' });
     } catch (e: any) {
@@ -142,7 +175,7 @@ export function NutritionPage() {
     }
     setCalcLoading(true);
     try {
-      const tempParam = customTempC !== '' ? `&temp_c=${customTempC}` : (weather ? `&temp_c=${weather.temp_c}` : '');
+      const tempParam = customTempF !== '' ? `&temp_c=${fToC(parseFloat(customTempF))}` : (weather ? `&temp_c=${weather.temp_c}` : '');
       const rec = await apiFetch(`/api/athlete/fueling-calculator?duration_min=${dur}${tempParam}`);
       setRecommendation(rec);
     } catch (e: any) {
@@ -152,18 +185,20 @@ export function NutritionPage() {
     }
   }
 
-  // Computed metrics for the stats card
+  // Computed metrics for the stats card (display in US units)
   const bmi = (metrics.weight_kg && metrics.height_cm)
     ? Math.round((metrics.weight_kg / Math.pow(metrics.height_cm / 100, 2)) * 10) / 10
     : null;
-  const waterPerHour = metrics.sweat_rate_ml_per_hr
-    ? Math.round((metrics.sweat_rate_ml_per_hr / 1000) * 10) / 10
+  // sweat rate in oz/hr
+  const waterPerHourOz = metrics.sweat_rate_ml_per_hr
+    ? mlToOz(metrics.sweat_rate_ml_per_hr)
     : null;
-  const dailyBaseline = metrics.weight_kg
-    ? Math.round(metrics.weight_kg * 0.033 * 10) / 10
+  // daily baseline in oz (weight_kg * 0.033 L/kg → convert L to oz)
+  const dailyBaselineOz = metrics.weight_kg
+    ? lToOz(Math.round(metrics.weight_kg * 0.033 * 10) / 10)
     : null;
-  const raceDayTarget = dailyBaseline
-    ? Math.round(dailyBaseline * 1.5 * 10) / 10
+  const raceDayTargetOz = dailyBaselineOz
+    ? Math.round(dailyBaselineOz * 1.5)
     : null;
 
   const TAB_LABELS: Record<Tab, string> = { metrics: 'Body Metrics', advice: 'AI Nutrition', calculator: 'Calculator' };
@@ -218,10 +253,10 @@ export function NutritionPage() {
                   {/* Stats grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {[
-                      { label: 'Weight', value: `${metrics.weight_kg} kg` },
-                      { label: 'Height', value: metrics.height_cm ? `${metrics.height_cm} cm` : '—' },
+                      { label: 'Weight', value: metrics.weight_kg ? `${kgToLbs(metrics.weight_kg)} lbs` : '—' },
+                      { label: 'Height', value: metrics.height_cm ? (() => { const { ft, inches } = cmToFtIn(metrics.height_cm!); return `${ft}'${inches}"`; })() : '—' },
                       { label: 'BMI', value: bmi ? String(bmi) : '—' },
-                      { label: 'Sweat Rate', value: metrics.sweat_rate_ml_per_hr ? `${metrics.sweat_rate_ml_per_hr} ml/hr` : '—' },
+                      { label: 'Sweat Rate', value: metrics.sweat_rate_ml_per_hr ? `${mlToOz(metrics.sweat_rate_ml_per_hr)} oz/hr` : '—' },
                     ].map(s => (
                       <div key={s.label} className="rounded-lg p-3" style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}>
                         <div className="text-[10px] uppercase tracking-wide mb-1" style={{ color: 'var(--color-text-tertiary)' }}>{s.label}</div>
@@ -234,21 +269,21 @@ export function NutritionPage() {
                   <div className="rounded-xl p-4" style={{ background: 'rgba(0,229,160,0.05)', border: '1px solid rgba(0,229,160,0.15)' }}>
                     <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--color-accent)' }}>Your Hydration Profile</div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {waterPerHour != null && (
+                      {waterPerHourOz != null && (
                         <div>
-                          <div className="font-mono text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{waterPerHour} L/hr</div>
+                          <div className="font-mono text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{waterPerHourOz} oz/hr</div>
                           <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>Water per hour running</div>
                         </div>
                       )}
-                      {dailyBaseline != null && (
+                      {dailyBaselineOz != null && (
                         <div>
-                          <div className="font-mono text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{dailyBaseline} L</div>
+                          <div className="font-mono text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{dailyBaselineOz} oz</div>
                           <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>Daily baseline hydration</div>
                         </div>
                       )}
-                      {raceDayTarget != null && (
+                      {raceDayTargetOz != null && (
                         <div>
-                          <div className="font-mono text-xl font-bold" style={{ color: 'var(--color-accent)' }}>{raceDayTarget} L</div>
+                          <div className="font-mono text-xl font-bold" style={{ color: 'var(--color-accent)' }}>{raceDayTargetOz} oz</div>
                           <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>Race day target</div>
                         </div>
                       )}
@@ -256,7 +291,12 @@ export function NutritionPage() {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button variant="ghost" size="sm" onClick={() => setMetricsView('form')}>Edit Metrics</Button>
+                    <Button variant="ghost" size="sm" onClick={() => {
+                      if (metrics.weight_kg) setWeightLbs(String(kgToLbs(metrics.weight_kg)));
+                      if (metrics.height_cm) { const { ft, inches } = cmToFtIn(metrics.height_cm); setHeightFt(String(ft)); setHeightIn(String(inches)); }
+                      if (metrics.sweat_rate_ml_per_hr) setSweatOz(String(mlToOz(metrics.sweat_rate_ml_per_hr)));
+                      setMetricsView('form');
+                    }}>Edit Metrics</Button>
                   </div>
                 </div>
               </Card>
@@ -268,34 +308,47 @@ export function NutritionPage() {
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <Input
-                      label="Weight (kg)"
+                      label="Weight (lbs)"
                       type="number"
-                      min={20} max={300} step={0.1}
-                      value={metrics.weight_kg ?? ''}
-                      onChange={e => setMetrics(m => ({ ...m, weight_kg: e.target.value ? parseFloat(e.target.value) : null }))}
-                      placeholder="e.g. 68"
+                      min={50} max={650} step={0.5}
+                      value={weightLbs}
+                      onChange={e => setWeightLbs(e.target.value)}
+                      placeholder="e.g. 150"
                     />
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-tertiary)' }}>Height</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number" min={3} max={8}
+                          value={heightFt}
+                          onChange={e => setHeightFt(e.target.value)}
+                          placeholder="ft"
+                          className="w-full outline-none text-sm"
+                          style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '10px 12px', color: 'var(--color-text-primary)' }}
+                        />
+                        <input
+                          type="number" min={0} max={11}
+                          value={heightIn}
+                          onChange={e => setHeightIn(e.target.value)}
+                          placeholder="in"
+                          className="w-full outline-none text-sm"
+                          style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '10px 12px', color: 'var(--color-text-primary)' }}
+                        />
+                      </div>
+                    </div>
                     <Input
-                      label="Height (cm)"
+                      label="Sweat rate (oz/hr)"
                       type="number"
-                      min={100} max={250}
-                      value={metrics.height_cm ?? ''}
-                      onChange={e => setMetrics(m => ({ ...m, height_cm: e.target.value ? parseFloat(e.target.value) : null }))}
-                      placeholder="e.g. 175"
-                    />
-                    <Input
-                      label="Sweat rate (ml/hr)"
-                      type="number"
-                      min={100} max={3000} step={50}
-                      value={metrics.sweat_rate_ml_per_hr ?? ''}
-                      onChange={e => setMetrics(m => ({ ...m, sweat_rate_ml_per_hr: e.target.value ? parseFloat(e.target.value) : null }))}
-                      placeholder="e.g. 500"
+                      min={3} max={100} step={1}
+                      value={sweatOz}
+                      onChange={e => setSweatOz(e.target.value)}
+                      placeholder="e.g. 17"
                     />
                   </div>
                   <div className="text-xs rounded-lg p-3" style={{ color: 'var(--color-text-secondary)', background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}>
-                    <strong style={{ color: 'var(--color-text-primary)' }}>Tip:</strong> Average sweat rate is 400–1,000 ml/hr.
-                    If you finish runs feeling very thirsty with visible salt on skin, try 800–1,200.
-                    If you rarely feel thirsty, use 300–500.
+                    <strong style={{ color: 'var(--color-text-primary)' }}>Tip:</strong> Average sweat rate is 13–34 oz/hr.
+                    If you finish runs feeling very thirsty with visible salt on skin, try 27–40 oz/hr.
+                    If you rarely feel thirsty, use 10–17 oz/hr.
                   </div>
                   <div className="flex justify-end">
                     <Button onClick={saveMetrics} loading={metricsSaving}>Save Metrics</Button>
@@ -383,7 +436,7 @@ export function NutritionPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="font-mono text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
-                        {weather.temp_c}°C
+                        {cToF(weather.temp_c)}°F
                       </div>
                       <div className="text-sm" style={{ color: 'var(--color-text-tertiary)' }}>{weather.description}</div>
                       {weather.location_name && (
@@ -391,7 +444,7 @@ export function NutritionPage() {
                       )}
                     </div>
                     <div className="text-right text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
-                      Wind: {weather.windspeed_kmh} km/h
+                      Wind: {kmhToMph(weather.windspeed_kmh)} mph
                     </div>
                   </div>
                 ) : (
@@ -433,11 +486,11 @@ export function NutritionPage() {
                       </div>
                     </div>
                     <Input
-                      label="Temperature (°C) — leave blank to use live weather"
-                      type="number" min={-30} max={55}
-                      value={customTempC}
-                      onChange={e => setCustomTempC(e.target.value)}
-                      placeholder={weather ? `${weather.temp_c}°C (live)` : 'optional'}
+                      label="Temperature (°F) — leave blank to use live weather"
+                      type="number" min={-20} max={130}
+                      value={customTempF}
+                      onChange={e => setCustomTempF(e.target.value)}
+                      placeholder={weather ? `${cToF(weather.temp_c)}°F (live)` : 'optional'}
                     />
                   </div>
                   <Button onClick={runCalculator} loading={calcLoading} disabled={parseInt(durationHours) === 0 && (!durationMinutes || parseInt(durationMinutes) === 0)}>
@@ -448,7 +501,7 @@ export function NutritionPage() {
                     <div className="mt-2 flex flex-col gap-3">
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         {[
-                          { label: 'Hydration needed', value: `${recommendation.hydration_ml} ml`, hint: 'Sip every 15-20 min during your run' },
+                          { label: 'Hydration needed', value: `${mlToOz(recommendation.hydration_ml)} oz`, hint: 'Sip every 15-20 min during your run' },
                           { label: 'Calories burned', value: recommendation.cals_burned.toLocaleString(), hint: 'Estimated energy used — replenish within 45 min' },
                           { label: 'Post-run target', value: `${recommendation.post_run.calories} kcal`, hint: 'Recovery meal target — prioritise carbs + protein' },
                           { label: 'Carbs / Protein', value: `${recommendation.post_run.carbs_g}g / ${recommendation.post_run.protein_g}g`, hint: '≈ 2 bagels + banana | 2 eggs + Greek yogurt' },
@@ -464,7 +517,7 @@ export function NutritionPage() {
                         {recommendation.post_run.tip}
                       </div>
                       {recommendation.heat_multiplier > 1 && (
-                        <Alert type="info" message={`Heat adjustment applied (${recommendation.temp_c}°C) — hydration target increased by ${Math.round((recommendation.heat_multiplier - 1) * 100)}%.`} onClose={() => {}} />
+                        <Alert type="info" message={`Heat adjustment applied (${recommendation.temp_c != null ? cToF(recommendation.temp_c) : '—'}°F) — hydration target increased by ${Math.round((recommendation.heat_multiplier - 1) * 100)}%.`} onClose={() => {}} />
                       )}
                     </div>
                   )}
