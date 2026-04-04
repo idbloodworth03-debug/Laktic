@@ -432,9 +432,13 @@ function SidebarContent({ role, name, onLogout, collapsed, onToggle }: SidebarCo
       {/* Wordmark + collapse */}
       <div className={`flex items-center border-b border-[var(--color-border)] py-5 ${collapsed ? 'px-4 justify-center' : 'px-5 justify-between'}`}>
         {!collapsed && (
-          <a href={role === 'coach' ? '/coach/dashboard' : '/athlete/dashboard'} style={{ textDecoration: 'none', cursor: 'pointer', display: 'inline-block', pointerEvents: 'auto' }}>
-            <span className="font-sans font-semibold text-[15px] tracking-tight text-gradient">LAKTIC</span>
-          </a>
+          <span
+            onClick={() => { window.location.href = role === 'coach' ? '/coach/dashboard' : '/athlete/dashboard'; }}
+            style={{ cursor: 'pointer' }}
+            className="font-sans font-semibold text-[15px] tracking-tight text-gradient"
+          >
+            LAKTIC
+          </span>
         )}
         <button onClick={onToggle} className="w-7 h-7 flex items-center justify-center rounded-btn text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-all duration-150">
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
