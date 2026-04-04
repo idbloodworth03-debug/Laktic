@@ -432,8 +432,8 @@ function SidebarContent({ role, name, onLogout, collapsed, onToggle }: SidebarCo
       {/* Wordmark + collapse */}
       <div className={`flex items-center border-b border-[var(--color-border)] py-5 ${collapsed ? 'px-4 justify-center' : 'px-5 justify-between'}`}>
         {!collapsed && (
-          <a href={role === 'coach' ? '/coach/dashboard' : '/athlete/dashboard'} className="font-sans font-semibold text-[15px] tracking-tight text-gradient" style={{ textDecoration: 'none', cursor: 'pointer' }}>
-            LAKTIC
+          <a href={role === 'coach' ? '/coach/dashboard' : '/athlete/dashboard'} style={{ textDecoration: 'none', cursor: 'pointer', display: 'inline-block', pointerEvents: 'auto' }}>
+            <span className="font-sans font-semibold text-[15px] tracking-tight text-gradient">LAKTIC</span>
           </a>
         )}
         <button onClick={onToggle} className="w-7 h-7 flex items-center justify-center rounded-btn text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-all duration-150">
