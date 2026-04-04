@@ -597,7 +597,7 @@ function PlanMonthView({ plan }: { plan: any[] }) {
                               border: `1px solid ${cal.border}`,
                             }}
                           >
-                            {wo.title}{wo.distance_miles ? ` · ${wo.distance_miles}mi` : ''}
+                            {wo.distance_miles ? `${wo.distance_miles} mile run` : wo.title}
                           </div>
                         );
                       })}
