@@ -561,11 +561,11 @@ export function AthleteDashboard() {
       <div className="md:hidden fixed left-4 right-4 z-30" style={{ bottom: '76px' }}>
         <button
           onClick={() => nav('/athlete/activities')}
-          className="w-full flex items-center justify-center gap-2 py-4 rounded-full font-semibold text-[15px] text-white"
-          style={{ background: '#111', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 4px 24px rgba(0,0,0,0.5)' }}
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-full font-semibold text-[15px]"
+          style={{ background: '#00E5A0', boxShadow: '0 4px 24px rgba(0,229,160,0.35)' }}
         >
-          <Play size={16} fill="white" />
-          Track Run
+          <Play size={16} fill="black" />
+          <span style={{ color: '#000' }}>Track Run</span>
         </button>
       </div>
     </AppLayout>
