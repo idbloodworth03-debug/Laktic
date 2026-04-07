@@ -712,13 +712,17 @@ export function Onboarding() {
   const [confirmResendMsg, setConfirmResendMsg] = useState('');
   const advancedConfirmRef = useRef(false);
 
-  // If already completed onboarding, skip straight to dashboard
-  // (skip this check when arriving from Strava callback via ?step=meetpace)
+  // If already completed onboarding, skip straight to dashboard.
+  // Only fires when a real session exists — apiFetch redirects unauthenticated
+  // users so it must never be called here for brand-new visitors.
   useEffect(() => {
     if (searchParams.get('step') === 'meetpace') return;
-    apiFetch('/api/athlete/profile').then((profile: any) => {
-      if (profile?.onboarding_completed) nav('/athlete/dashboard', { replace: true });
-    }).catch(() => {});
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      apiFetch('/api/athlete/profile').then((profile: any) => {
+        if (profile?.onboarding_completed) nav('/athlete/dashboard', { replace: true });
+      }).catch(() => {});
+    });
   }, [nav]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // URL-driven step jumps (used by Strava callback and "Wrong email? Go back")
