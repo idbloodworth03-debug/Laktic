@@ -54,8 +54,10 @@ export function AthleteSettings() {
   const [trainMpw, setTrainMpw] = useState<string>((profile as any)?.current_weekly_mileage?.toString() ?? '');
   const [trainDays, setTrainDays] = useState<number>((profile as any)?.training_days_per_week ?? 4);
   const [trainFitness, setTrainFitness] = useState<number>((profile as any)?.fitness_rating ?? 5);
-  const [trainSeasonStart, setTrainSeasonStart] = useState((profile as any)?.season_start_date ?? '');
-  const [trainSeasonEnd, setTrainSeasonEnd] = useState((profile as any)?.season_end_date ?? '');
+  const today = new Date().toISOString().split('T')[0];
+  const clampToToday = (d: string) => (d && d < today ? today : d);
+  const [trainSeasonStart, setTrainSeasonStart] = useState(clampToToday((profile as any)?.season_start_date ?? ''));
+  const [trainSeasonEnd, setTrainSeasonEnd] = useState(clampToToday((profile as any)?.season_end_date ?? ''));
   const [savingTrain, setSavingTrain] = useState(false);
   const [trainSaved, setTrainSaved] = useState(false);
 
@@ -399,8 +401,8 @@ export function AthleteSettings() {
                 current_weekly_mileage: trainMpw ? parseFloat(trainMpw) : null,
                 training_days_per_week: trainDays,
                 fitness_rating: trainFitness,
-                season_start_date: trainSeasonStart || null,
-                season_end_date: trainSeasonEnd || null,
+                season_start_date: trainSeasonStart && trainSeasonStart >= today ? trainSeasonStart : null,
+                season_end_date: trainSeasonEnd && trainSeasonEnd >= today ? trainSeasonEnd : null,
               }, setSavingTrain, setTrainSaved)}
             >
               {trainSaved ? 'Saved ✓' : 'Save'}
