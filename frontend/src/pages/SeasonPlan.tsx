@@ -893,13 +893,12 @@ export function SeasonPlan() {
         if (data.status === 'complete') {
           clearInterval(interval);
           setPollJobId(null);
-          setSeason(null);
           const { season: updated } = await apiFetch('/api/athlete/season');
           setSeason(updated);
           setCurrentWeek(0);
           setRegenerating(false);
           setRegenSuccess(true);
-          setTimeout(() => setRegenSuccess(false), 5000);
+          setTimeout(() => setRegenSuccess(false), 2000);
         } else if (data.status === 'failed') {
           clearInterval(interval);
           setPollJobId(null);
@@ -965,21 +964,28 @@ export function SeasonPlan() {
   const regenerate = async () => {
     setConfirmRegen(false);
     setRegenError(null);
+    const prevSeason = season;
     setRegenerating(true);
+    setSeason(null);
     try {
       const data = await apiFetch('/api/athlete/season/regenerate', { method: 'POST' });
       if (data.status === 'generating' && data.jobId) {
+        // Timeout path — keep spinner up, poll until complete
         setPollJobId(data.jobId);
-      } else {
-        setSeason(null);
-        const { season: updated } = await apiFetch('/api/athlete/season');
-        setSeason(updated);
+      } else if (data.season_plan) {
+        // Sync path — backend returned the new plan directly
+        setSeason({ ...(prevSeason ?? {}), season_plan: data.season_plan });
         setCurrentWeek(0);
         setRegenerating(false);
         setRegenSuccess(true);
-        setTimeout(() => setRegenSuccess(false), 5000);
+        setTimeout(() => setRegenSuccess(false), 2000);
+      } else {
+        // Response came back but no plan data — force reload as fallback
+        window.location.reload();
       }
     } catch (e: any) {
+      // Restore the previous plan view so the athlete isn't stuck on a blank screen
+      setSeason(prevSeason);
       setRegenerating(false);
       setRegenError(e?.message || 'Something went wrong. Please try again.');
     }

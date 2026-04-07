@@ -510,6 +510,7 @@ router.post(
   requireAthlete,
   aiLimiter,
   asyncHandler(async (req: AuthRequest, res) => {
+    console.log('[regenerate] endpoint hit for athlete:', req.athlete?.id);
     // 24h rate limit: no regenerate job in last 24 hours
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: recentJob } = await supabase
@@ -614,10 +615,12 @@ router.post(
 
     try {
       const { plan, aiUsed } = await Promise.race([generatePromise, timeoutPromise]);
+      console.log('[regenerate] new plan generated, weeks:', plan?.length);
       await savePlan(plan, aiUsed);
-      return res.json({ status: 'complete', jobId, weeksRegenerated: plan.length, aiUsed });
+      return res.json({ status: 'complete', jobId, weeksRegenerated: plan.length, aiUsed, season_plan: plan });
     } catch (err: any) {
       if (err.message !== 'TIMEOUT') {
+        console.error('[regenerate] error:', err);
         await supabase
           .from('plan_jobs')
           .update({ status: 'failed', error: err.message, updated_at: new Date().toISOString() })

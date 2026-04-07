@@ -234,6 +234,8 @@ export async function generate(params: {
     };
   }
 
+  console.log('[planEngine] skeleton week 1 workouts:', skeleton.weeks[0]?.workouts.map(w => w.title));
+
   const { tier, phase, mpwBand, paceBands, eventPaces, warmup, cooldown } = skeleton;
   const easyPg = paceBands?.easy ?? 'easy effort';
   const recPg  = paceBands?.recovery ?? 'recovery effort';
