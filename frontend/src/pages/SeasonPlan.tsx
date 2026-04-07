@@ -893,8 +893,10 @@ export function SeasonPlan() {
         if (data.status === 'complete') {
           clearInterval(interval);
           setPollJobId(null);
+          setSeason(null);
           const { season: updated } = await apiFetch('/api/athlete/season');
           setSeason(updated);
+          setCurrentWeek(0);
           setRegenerating(false);
           setRegenSuccess(true);
           setTimeout(() => setRegenSuccess(false), 5000);
@@ -969,8 +971,10 @@ export function SeasonPlan() {
       if (data.status === 'generating' && data.jobId) {
         setPollJobId(data.jobId);
       } else {
+        setSeason(null);
         const { season: updated } = await apiFetch('/api/athlete/season');
         setSeason(updated);
+        setCurrentWeek(0);
         setRegenerating(false);
         setRegenSuccess(true);
         setTimeout(() => setRegenSuccess(false), 5000);
