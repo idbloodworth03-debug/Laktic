@@ -58,8 +58,22 @@ export function AthleteSettings() {
   const clampToToday = (d: string) => (!d || d < today ? today : d);
   const [trainSeasonStart, setTrainSeasonStart] = useState(clampToToday((profile as any)?.season_start_date ?? ''));
   const [trainSeasonEnd, setTrainSeasonEnd] = useState(clampToToday((profile as any)?.season_end_date ?? ''));
+  const [seasonStartError, setSeasonStartError] = useState('');
+  const [seasonEndError, setSeasonEndError] = useState('');
   const [savingTrain, setSavingTrain] = useState(false);
   const [trainSaved, setTrainSaved] = useState(false);
+
+  const handleSeasonDate = (val: string, setter: (v: string) => void, errSetter: (e: string) => void) => {
+    if (!val) return;
+    if (val < today) {
+      setter(today);
+      errSetter('Date cannot be in the past. Reset to today.');
+      setTimeout(() => errSetter(''), 3000);
+    } else {
+      setter(val);
+      errSetter('');
+    }
+  };
 
   // Your Races
   const PRIMARY_EVENT_OPTIONS = ['800m', '1500m', 'Mile', '5K', '10K', 'Half Marathon', 'Marathon'];
@@ -392,8 +406,24 @@ export function AthleteSettings() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Season start date" type="date" min={new Date().toISOString().split('T')[0]} value={trainSeasonStart} onChange={e => { if (e.target.value >= new Date().toISOString().split('T')[0]) setTrainSeasonStart(e.target.value); }} />
-              <Input label="Season end date" type="date" min={new Date().toISOString().split('T')[0]} value={trainSeasonEnd} onChange={e => { if (e.target.value >= new Date().toISOString().split('T')[0]) setTrainSeasonEnd(e.target.value); }} />
+              <Input
+                label="Season start date"
+                type="date"
+                min={today}
+                value={trainSeasonStart}
+                onChange={e => handleSeasonDate(e.target.value, setTrainSeasonStart, setSeasonStartError)}
+                onBlur={e => handleSeasonDate(e.target.value, setTrainSeasonStart, setSeasonStartError)}
+                error={seasonStartError}
+              />
+              <Input
+                label="Season end date"
+                type="date"
+                min={today}
+                value={trainSeasonEnd}
+                onChange={e => handleSeasonDate(e.target.value, setTrainSeasonEnd, setSeasonEndError)}
+                onBlur={e => handleSeasonDate(e.target.value, setTrainSeasonEnd, setSeasonEndError)}
+                error={seasonEndError}
+              />
             </div>
             <Button
               variant="primary" size="sm" loading={savingTrain}
