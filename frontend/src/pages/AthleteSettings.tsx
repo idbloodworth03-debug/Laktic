@@ -63,6 +63,10 @@ export function AthleteSettings() {
   const [savingTrain, setSavingTrain] = useState(false);
   const [trainSaved, setTrainSaved] = useState(false);
 
+  // Reactively clamp: any time state is set to a past date (from DB, user input, HMR, anywhere), reset it
+  useEffect(() => { if (trainSeasonStart && trainSeasonStart < today) setTrainSeasonStart(today); }, [trainSeasonStart]);
+  useEffect(() => { if (trainSeasonEnd && trainSeasonEnd < today) setTrainSeasonEnd(today); }, [trainSeasonEnd]);
+
   const handleSeasonDate = (val: string, setter: (v: string) => void, errSetter: (e: string) => void) => {
     if (!val) { setter(''); errSetter(''); return; }
     if (val < today) {
