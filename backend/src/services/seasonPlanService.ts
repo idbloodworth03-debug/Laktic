@@ -216,6 +216,7 @@ export async function generate(params: {
   planType?:        string;
   athleteTier?:     string;
 }): Promise<{ plan: any[]; aiUsed: boolean }> {
+  console.log('[seasonPlan] generate() called — build 2026-04-06-v2');
   const { athleteProfile, raceCalendar } = params;
   const startDate   = params.startDate ?? getWeekStartDate();
   const today       = new Date().toISOString().slice(0, 10);

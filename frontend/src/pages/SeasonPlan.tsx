@@ -597,7 +597,7 @@ function PlanMonthView({ plan }: { plan: any[] }) {
                               border: `1px solid ${cal.border}`,
                             }}
                           >
-                            {wo.distance_miles ? `${wo.distance_miles} mile run` : wo.title}
+                            {wo.title}
                           </div>
                         );
                       })}
@@ -1357,7 +1357,7 @@ export function SeasonPlan() {
                                     textDecorationColor: 'rgba(255,255,255,0.15)',
                                   }}
                                 >
-                                  {wo.distance_miles ? `${wo.distance_miles} mile run` : wo.title}
+                                  {wo.title}
                                 </span>
                               </div>
                               {/* Distance + pace — prominent */}
