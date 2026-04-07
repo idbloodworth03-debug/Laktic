@@ -131,8 +131,8 @@ export function AthleteSettings() {
     setTrainMpw(p.current_weekly_mileage != null ? String(p.current_weekly_mileage) : '');
     setTrainDays(p.training_days_per_week ?? 4);
     setTrainFitness(p.fitness_rating ?? 5);
-    setTrainSeasonStart(p.season_start_date ?? '');
-    setTrainSeasonEnd(p.season_end_date ?? '');
+    setTrainSeasonStart(clampToToday(p.season_start_date ?? ''));
+    setTrainSeasonEnd(clampToToday(p.season_end_date ?? ''));
     setRaceEvents(Array.isArray(p.primary_events) ? p.primary_events : []);
     setRaceDist(p.target_race_distance ?? '');
     setRaceDate(p.target_race_date ?? '');
