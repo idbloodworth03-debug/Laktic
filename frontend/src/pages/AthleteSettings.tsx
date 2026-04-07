@@ -55,7 +55,7 @@ export function AthleteSettings() {
   const [trainDays, setTrainDays] = useState<number>((profile as any)?.training_days_per_week ?? 4);
   const [trainFitness, setTrainFitness] = useState<number>((profile as any)?.fitness_rating ?? 5);
   const today = new Date().toISOString().split('T')[0];
-  const clampToToday = (d: string) => (d && d < today ? today : d);
+  const clampToToday = (d: string) => (!d || d < today ? today : d);
   const [trainSeasonStart, setTrainSeasonStart] = useState(clampToToday((profile as any)?.season_start_date ?? ''));
   const [trainSeasonEnd, setTrainSeasonEnd] = useState(clampToToday((profile as any)?.season_end_date ?? ''));
   const [savingTrain, setSavingTrain] = useState(false);
