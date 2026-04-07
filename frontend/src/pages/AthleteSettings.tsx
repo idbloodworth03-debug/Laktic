@@ -67,18 +67,6 @@ export function AthleteSettings() {
   useEffect(() => { if (trainSeasonStart && trainSeasonStart < today) setTrainSeasonStart(today); }, [trainSeasonStart]);
   useEffect(() => { if (trainSeasonEnd && trainSeasonEnd < today) setTrainSeasonEnd(today); }, [trainSeasonEnd]);
 
-  const handleSeasonDate = (val: string, setter: (v: string) => void, errSetter: (e: string) => void) => {
-    if (!val) { setter(''); errSetter(''); return; }
-    if (val < today) {
-      setter(today); // always call setter so React forces DOM to revert
-      errSetter('Date cannot be in the past. Reset to today.');
-      setTimeout(() => errSetter(''), 3000);
-    } else {
-      setter(val);
-      errSetter('');
-    }
-  };
-
   // Your Races
   const PRIMARY_EVENT_OPTIONS = ['800m', '1500m', 'Mile', '5K', '10K', 'Half Marathon', 'Marathon'];
   const [raceEvents, setRaceEvents] = useState<string[]>((profile as any)?.primary_events ?? []);
@@ -415,8 +403,23 @@ export function AthleteSettings() {
                 type="date"
                 min={today}
                 value={trainSeasonStart}
-                onChange={e => handleSeasonDate(e.target.value, setTrainSeasonStart, setSeasonStartError)}
-                onBlur={e => handleSeasonDate(e.target.value, setTrainSeasonStart, setSeasonStartError)}
+                onChange={e => {
+                  if (e.target.value && e.target.value < today) {
+                    e.target.value = today;
+                    setTrainSeasonStart(today);
+                    setSeasonStartError('Date cannot be in the past.');
+                    setTimeout(() => setSeasonStartError(''), 3000);
+                  } else {
+                    setTrainSeasonStart(e.target.value);
+                    setSeasonStartError('');
+                  }
+                }}
+                onBlur={e => {
+                  if (e.target.value && e.target.value < today) {
+                    e.target.value = today;
+                    setTrainSeasonStart(today);
+                  }
+                }}
                 error={seasonStartError}
               />
               <Input
@@ -424,20 +427,43 @@ export function AthleteSettings() {
                 type="date"
                 min={today}
                 value={trainSeasonEnd}
-                onChange={e => handleSeasonDate(e.target.value, setTrainSeasonEnd, setSeasonEndError)}
-                onBlur={e => handleSeasonDate(e.target.value, setTrainSeasonEnd, setSeasonEndError)}
+                onChange={e => {
+                  if (e.target.value && e.target.value < today) {
+                    e.target.value = today;
+                    setTrainSeasonEnd(today);
+                    setSeasonEndError('Date cannot be in the past.');
+                    setTimeout(() => setSeasonEndError(''), 3000);
+                  } else {
+                    setTrainSeasonEnd(e.target.value);
+                    setSeasonEndError('');
+                  }
+                }}
+                onBlur={e => {
+                  if (e.target.value && e.target.value < today) {
+                    e.target.value = today;
+                    setTrainSeasonEnd(today);
+                  }
+                }}
                 error={seasonEndError}
               />
             </div>
             <Button
               variant="primary" size="sm" loading={savingTrain}
-              onClick={() => patchProfile({
+              onClick={() => {
+                // Hard block: if either date is still past (e.g. browser bypassed onChange), fix and abort
+                const startPast = trainSeasonStart && trainSeasonStart < today;
+                const endPast = trainSeasonEnd && trainSeasonEnd < today;
+                if (startPast) { setTrainSeasonStart(today); setSeasonStartError('Date cannot be in the past.'); setTimeout(() => setSeasonStartError(''), 3000); }
+                if (endPast) { setTrainSeasonEnd(today); setSeasonEndError('Date cannot be in the past.'); setTimeout(() => setSeasonEndError(''), 3000); }
+                if (startPast || endPast) return;
+                patchProfile({
                 current_weekly_mileage: trainMpw ? parseFloat(trainMpw) : null,
                 training_days_per_week: trainDays,
                 fitness_rating: trainFitness,
-                season_start_date: trainSeasonStart && trainSeasonStart >= today ? trainSeasonStart : null,
-                season_end_date: trainSeasonEnd && trainSeasonEnd >= today ? trainSeasonEnd : null,
-              }, setSavingTrain, setTrainSaved)}
+                season_start_date: trainSeasonStart || null,
+                season_end_date: trainSeasonEnd || null,
+              }, setSavingTrain, setTrainSaved);
+              }}
             >
               {trainSaved ? 'Saved ✓' : 'Save'}
             </Button>
