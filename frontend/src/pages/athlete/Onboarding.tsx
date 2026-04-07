@@ -1399,11 +1399,11 @@ export function Onboarding() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div>
               <FieldLabel>Season start</FieldLabel>
-              <StyledInput type="date" value={data.seasonStartDate} onChange={e => set({ seasonStartDate: e.target.value })} />
+              <StyledInput type="date" min={new Date().toISOString().split('T')[0]} value={data.seasonStartDate} onChange={e => { if (!e.target.value || e.target.value >= new Date().toISOString().split('T')[0]) set({ seasonStartDate: e.target.value }); }} onBlur={e => { if (e.target.value && e.target.value < new Date().toISOString().split('T')[0]) set({ seasonStartDate: new Date().toISOString().split('T')[0] }); }} />
             </div>
             <div>
               <FieldLabel>Season end / last goal race</FieldLabel>
-              <StyledInput type="date" value={data.seasonEndDate} onChange={e => set({ seasonEndDate: e.target.value })} />
+              <StyledInput type="date" min={new Date().toISOString().split('T')[0]} value={data.seasonEndDate} onChange={e => { if (!e.target.value || e.target.value >= new Date().toISOString().split('T')[0]) set({ seasonEndDate: e.target.value }); }} onBlur={e => { if (e.target.value && e.target.value < new Date().toISOString().split('T')[0]) set({ seasonEndDate: new Date().toISOString().split('T')[0] }); }} />
             </div>
           </div>
         </Shell>

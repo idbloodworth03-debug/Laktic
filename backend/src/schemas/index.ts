@@ -101,8 +101,8 @@ export const athleteProfileUpdateSchema = z.object({
   biggest_challenges: z.array(z.string().max(200)).max(20).nullish(),
   target_race_distance: z.string().max(100).nullish(),
   pr_1500m: z.string().max(20).nullish(),
-  season_start_date: z.string().nullish(),
-  season_end_date: z.string().nullish(),
+  season_start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(d => d >= new Date().toISOString().split('T')[0], { message: 'season_start_date cannot be in the past' }).nullish(),
+  season_end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(d => d >= new Date().toISOString().split('T')[0], { message: 'season_end_date cannot be in the past' }).nullish(),
 });
 
 export const chatMessageSchema = z.object({
