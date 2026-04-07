@@ -58,6 +58,8 @@ export function AthleteSettings() {
   const clampToToday = (d: string) => (!d || d < today ? today : d);
   const [trainSeasonStart, setTrainSeasonStart] = useState(clampToToday((profile as any)?.season_start_date ?? ''));
   const [trainSeasonEnd, setTrainSeasonEnd] = useState(clampToToday((profile as any)?.season_end_date ?? ''));
+  const seasonStartRef = useRef<HTMLInputElement>(null);
+  const seasonEndRef = useRef<HTMLInputElement>(null);
   const [seasonStartError, setSeasonStartError] = useState('');
   const [seasonEndError, setSeasonEndError] = useState('');
   const [savingTrain, setSavingTrain] = useState(false);
@@ -398,71 +400,87 @@ export function AthleteSettings() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Season start date"
-                type="date"
-                min={today}
-                value={trainSeasonStart}
-                onChange={e => {
-                  if (e.target.value && e.target.value < today) {
-                    e.target.value = today;
-                    setTrainSeasonStart(today);
-                    setSeasonStartError('Date cannot be in the past.');
-                    setTimeout(() => setSeasonStartError(''), 3000);
-                  } else {
-                    setTrainSeasonStart(e.target.value);
-                    setSeasonStartError('');
-                  }
-                }}
-                onBlur={e => {
-                  if (e.target.value && e.target.value < today) {
-                    e.target.value = today;
-                    setTrainSeasonStart(today);
-                  }
-                }}
-                error={seasonStartError}
-              />
-              <Input
-                label="Season end date"
-                type="date"
-                min={today}
-                value={trainSeasonEnd}
-                onChange={e => {
-                  if (e.target.value && e.target.value < today) {
-                    e.target.value = today;
-                    setTrainSeasonEnd(today);
-                    setSeasonEndError('Date cannot be in the past.');
-                    setTimeout(() => setSeasonEndError(''), 3000);
-                  } else {
-                    setTrainSeasonEnd(e.target.value);
-                    setSeasonEndError('');
-                  }
-                }}
-                onBlur={e => {
-                  if (e.target.value && e.target.value < today) {
-                    e.target.value = today;
-                    setTrainSeasonEnd(today);
-                  }
-                }}
-                error={seasonEndError}
-              />
+              {/* Season start — raw input with ref for reliable DOM control */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">Season start date</label>
+                <input
+                  ref={seasonStartRef}
+                  type="date"
+                  min={today}
+                  value={trainSeasonStart}
+                  className="bg-[var(--color-bg-tertiary)] border rounded-btn px-[14px] py-[10px] text-sm font-sans text-[var(--color-text-primary)] outline-none transition-all duration-150 border-[var(--color-border)] focus:border-[var(--color-accent)] focus:shadow-[0_0_0_3px_var(--color-accent-dim)]"
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (val && val < today) {
+                      setTimeout(() => { if (seasonStartRef.current) seasonStartRef.current.value = today; }, 0);
+                      setTrainSeasonStart(today);
+                      setSeasonStartError('Date cannot be in the past.');
+                      setTimeout(() => setSeasonStartError(''), 3000);
+                    } else {
+                      setTrainSeasonStart(val);
+                      setSeasonStartError('');
+                    }
+                  }}
+                  onBlur={() => {
+                    const val = seasonStartRef.current?.value ?? '';
+                    if (val && val < today) {
+                      if (seasonStartRef.current) seasonStartRef.current.value = today;
+                      setTrainSeasonStart(today);
+                    }
+                  }}
+                />
+                {seasonStartError && <span className="text-xs text-[var(--color-danger)]">{seasonStartError}</span>}
+              </div>
+              {/* Season end — raw input with ref for reliable DOM control */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">Season end date</label>
+                <input
+                  ref={seasonEndRef}
+                  type="date"
+                  min={today}
+                  value={trainSeasonEnd}
+                  className="bg-[var(--color-bg-tertiary)] border rounded-btn px-[14px] py-[10px] text-sm font-sans text-[var(--color-text-primary)] outline-none transition-all duration-150 border-[var(--color-border)] focus:border-[var(--color-accent)] focus:shadow-[0_0_0_3px_var(--color-accent-dim)]"
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (val && val < today) {
+                      setTimeout(() => { if (seasonEndRef.current) seasonEndRef.current.value = today; }, 0);
+                      setTrainSeasonEnd(today);
+                      setSeasonEndError('Date cannot be in the past.');
+                      setTimeout(() => setSeasonEndError(''), 3000);
+                    } else {
+                      setTrainSeasonEnd(val);
+                      setSeasonEndError('');
+                    }
+                  }}
+                  onBlur={() => {
+                    const val = seasonEndRef.current?.value ?? '';
+                    if (val && val < today) {
+                      if (seasonEndRef.current) seasonEndRef.current.value = today;
+                      setTrainSeasonEnd(today);
+                    }
+                  }}
+                />
+                {seasonEndError && <span className="text-xs text-[var(--color-danger)]">{seasonEndError}</span>}
+              </div>
             </div>
             <Button
               variant="primary" size="sm" loading={savingTrain}
               onClick={() => {
-                // Hard block: if either date is still past (e.g. browser bypassed onChange), fix and abort
-                const startPast = trainSeasonStart && trainSeasonStart < today;
-                const endPast = trainSeasonEnd && trainSeasonEnd < today;
-                if (startPast) { setTrainSeasonStart(today); setSeasonStartError('Date cannot be in the past.'); setTimeout(() => setSeasonStartError(''), 3000); }
-                if (endPast) { setTrainSeasonEnd(today); setSeasonEndError('Date cannot be in the past.'); setTimeout(() => setSeasonEndError(''), 3000); }
+                // Final hard block — read directly from DOM refs to catch any browser bypass
+                const startVal = seasonStartRef.current?.value ?? trainSeasonStart;
+                const endVal = seasonEndRef.current?.value ?? trainSeasonEnd;
+                const startPast = startVal && startVal < today;
+                const endPast = endVal && endVal < today;
+                if (startPast) { if (seasonStartRef.current) seasonStartRef.current.value = today; setTrainSeasonStart(today); setSeasonStartError('Date cannot be in the past.'); setTimeout(() => setSeasonStartError(''), 3000); }
+                if (endPast) { if (seasonEndRef.current) seasonEndRef.current.value = today; setTrainSeasonEnd(today); setSeasonEndError('Date cannot be in the past.'); setTimeout(() => setSeasonEndError(''), 3000); }
                 if (startPast || endPast) return;
                 patchProfile({
-                current_weekly_mileage: trainMpw ? parseFloat(trainMpw) : null,
-                training_days_per_week: trainDays,
-                fitness_rating: trainFitness,
-                season_start_date: trainSeasonStart || null,
-                season_end_date: trainSeasonEnd || null,
-              }, setSavingTrain, setTrainSaved);
+                  current_weekly_mileage: trainMpw ? parseFloat(trainMpw) : null,
+                  training_days_per_week: trainDays,
+                  fitness_rating: trainFitness,
+                  season_start_date: trainSeasonStart || null,
+                  season_end_date: trainSeasonEnd || null,
+                }, setSavingTrain, setTrainSaved);
               }}
             >
               {trainSaved ? 'Saved ✓' : 'Save'}
