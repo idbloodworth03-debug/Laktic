@@ -64,9 +64,9 @@ export function AthleteSettings() {
   const [trainSaved, setTrainSaved] = useState(false);
 
   const handleSeasonDate = (val: string, setter: (v: string) => void, errSetter: (e: string) => void) => {
-    if (!val) return;
+    if (!val) { setter(''); errSetter(''); return; }
     if (val < today) {
-      setter(today);
+      setter(today); // always call setter so React forces DOM to revert
       errSetter('Date cannot be in the past. Reset to today.');
       setTimeout(() => errSetter(''), 3000);
     } else {
