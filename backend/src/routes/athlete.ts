@@ -703,16 +703,16 @@ const AGENT_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: 'function',
     function: {
       name: 'update_workout',
-      description: 'Update a specific workout in the athlete\'s training plan by date. Use this to change distance, pace, title, or description of a single workout.',
+      description: 'Update a specific workout in the athlete\'s training plan by date. Use this to change distance, pace, or description of a single workout. Never changes the workout title — that is set by the plan engine.',
       parameters: {
         type: 'object',
         properties: {
           date: { type: 'string', description: 'Workout date in YYYY-MM-DD format' },
-          title: { type: 'string', description: 'New workout title (optional)' },
           description: { type: 'string', description: 'New workout description (optional)' },
           distance_miles: { type: 'number', description: 'New distance in miles (optional)' },
           pace_guideline: { type: 'string', description: 'New pace guideline, e.g. "8:30/mi easy" (optional)' },
           change_reason: { type: 'string', description: 'One sentence explaining why the change is being made' },
+          is_rest_day: { type: 'boolean', description: 'Set true to convert this workout to a rest day (optional)' },
         },
         required: ['date', 'change_reason'],
       },
@@ -896,11 +896,11 @@ ATHLETE: ${message}`;
           switch (toolName) {
             case 'update_workout':
               result = await updateWorkout(req.athlete.id, args.date, {
-                title: args.title,
                 description: args.description,
                 distance_miles: args.distance_miles,
                 pace_guideline: args.pace_guideline,
                 change_reason: args.change_reason,
+                is_rest_day: args.is_rest_day,
               });
               if (result.ok) { planUpdated = true; if (args.date) updatedDays.push(args.date); }
               break;

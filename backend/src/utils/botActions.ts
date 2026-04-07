@@ -31,15 +31,19 @@ export async function updateWorkout(
   athleteId: string,
   date: string,
   changes: {
-    title?: string;
     description?: string;
     distance_miles?: number;
     pace_guideline?: string;
     change_reason?: string;
+    is_rest_day?: boolean;
   }
 ): Promise<ActionResult> {
   const season = await getActiveSeason(athleteId);
   if (!season) return { ok: false, message: 'No active season found' };
+
+  // Only these fields may be written by the agent — title is permanent and comes from the plan engine.
+  const { description, distance_miles, pace_guideline, change_reason, is_rest_day } = changes;
+  const safeChanges = { description, distance_miles, pace_guideline, change_reason, is_rest_day };
 
   const plan: any[] = JSON.parse(JSON.stringify(season.season_plan || []));
   let updated = false;
@@ -47,7 +51,7 @@ export async function updateWorkout(
   outer: for (const week of plan) {
     for (let i = 0; i < (week.workouts || []).length; i++) {
       if (week.workouts[i].date === date) {
-        week.workouts[i] = { ...week.workouts[i], ...changes };
+        week.workouts[i] = { ...week.workouts[i], ...safeChanges };
         updated = true;
         break outer;
       }
