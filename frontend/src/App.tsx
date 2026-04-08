@@ -104,26 +104,26 @@ export default function App() {
       <Routes>
         {/* Public */}
         <Route path="/" element={<LandingPage />} />
-        {/* <Route path="/register/coach" element={<CoachRegister />} /> */}
+        <Route path="/register/coach" element={<CoachRegister />} />
         <Route path="/register/athlete" element={<Onboarding />} />
-        {/* <Route path="/coach/signup" element={<CoachRegister />} /> */}
+        <Route path="/coach/signup" element={<CoachRegister />} />
         <Route path="/athlete/signup" element={<Onboarding />} />
         <Route path="/login" element={<UnifiedLogin />} />
-        {/* <Route path="/login/coach" element={<CoachLogin />} /> */}
+        <Route path="/login/coach" element={<CoachLogin />} />
         <Route path="/login/athlete" element={<AthleteLogin />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/reset-password/new" element={<PasswordResetConfirm />} />
 
-        {/* Coach protected — hidden for athlete-first pivot; backend preserved */}
-        {/* <Route path="/coach/onboarding" element={<RequireCoach><CoachOnboarding /></RequireCoach>} /> */}
-        {/* <Route path="/coach/dashboard" element={<RequireCoach><CoachDashboard /></RequireCoach>} /> */}
-        {/* <Route path="/coach/bot/setup" element={<RequireCoach><BotSetupEdit /></RequireCoach>} /> */}
-        {/* <Route path="/coach/bot/edit" element={<RequireCoach><BotSetupEdit /></RequireCoach>} /> */}
-        {/* <Route path="/coach/knowledge" element={<RequireCoach><KnowledgeDocuments /></RequireCoach>} /> */}
-        {/* <Route path="/coach/progress" element={<RequireCoach><CoachTeamProgress /></RequireCoach>} /> */}
-        {/* <Route path="/coach/settings" element={<RequireCoach><CoachSettings /></RequireCoach>} /> */}
-        {/* <Route path="/coach/calendar" element={<RequireCoach><TeamCalendar /></RequireCoach>} /> */}
+        {/* Coach protected */}
+        <Route path="/coach/onboarding" element={<RequireCoach><CoachOnboarding /></RequireCoach>} />
+        <Route path="/coach/dashboard" element={<RequireCoach><CoachDashboard /></RequireCoach>} />
+        <Route path="/coach/bot/setup" element={<RequireCoach><BotSetupEdit /></RequireCoach>} />
+        <Route path="/coach/bot/edit" element={<RequireCoach><BotSetupEdit /></RequireCoach>} />
+        <Route path="/coach/knowledge" element={<RequireCoach><KnowledgeDocuments /></RequireCoach>} />
+        <Route path="/coach/progress" element={<RequireCoach><CoachTeamProgress /></RequireCoach>} />
+        <Route path="/coach/settings" element={<RequireCoach><CoachSettings /></RequireCoach>} />
+        <Route path="/coach/calendar" element={<RequireCoach><TeamCalendar /></RequireCoach>} />
 
         {/* Athlete protected */}
         <Route path="/athlete/dashboard" element={<RequireAthlete><AthleteDashboard /></RequireAthlete>} />
