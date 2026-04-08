@@ -39,13 +39,13 @@ function getWorkoutType(title: string, isRestDay: boolean): WorkoutType {
 }
 
 const WORKOUT_TYPE_STYLE: Record<WorkoutType, { border: string; bg: string; dot: string }> = {
-  easy:      { border: 'rgba(74,222,128,0.45)',  bg: 'rgba(34,197,94,0.07)',   dot: '#4ade80' },
-  tempo:     { border: 'rgba(251,146,60,0.55)',  bg: 'rgba(251,146,60,0.07)',  dot: '#fb923c' },
-  intervals: { border: 'rgba(248,113,113,0.55)', bg: 'rgba(239,68,68,0.07)',   dot: '#f87171' },
-  long:      { border: 'rgba(192,132,252,0.55)', bg: 'rgba(168,85,247,0.07)',  dot: '#c084fc' },
-  race:      { border: 'rgba(0,229,160,0.75)',   bg: 'rgba(0,229,160,0.08)',   dot: '#00E5A0' },
-  rest:      { border: 'var(--color-border)',    bg: 'transparent',            dot: 'var(--color-text-tertiary)' },
-  default:   { border: 'rgba(255,255,255,0.1)', bg: 'var(--color-bg-secondary)', dot: 'var(--color-text-tertiary)' },
+  easy:      { border: 'rgba(74,222,128,0.75)',  bg: 'rgba(34,197,94,0.13)',   dot: '#4ade80' },
+  tempo:     { border: 'rgba(251,146,60,0.80)',  bg: 'rgba(251,146,60,0.13)',  dot: '#fb923c' },
+  intervals: { border: 'rgba(248,113,113,0.80)', bg: 'rgba(239,68,68,0.13)',   dot: '#f87171' },
+  long:      { border: 'rgba(192,132,252,0.80)', bg: 'rgba(168,85,247,0.13)',  dot: '#c084fc' },
+  race:      { border: 'rgba(0,229,160,0.95)',   bg: 'rgba(0,229,160,0.14)',   dot: '#00E5A0' },
+  rest:      { border: 'rgba(255,255,255,0.12)', bg: 'rgba(255,255,255,0.03)', dot: 'var(--color-text-tertiary)' },
+  default:   { border: 'rgba(255,255,255,0.18)', bg: 'rgba(255,255,255,0.05)', dot: 'var(--color-text-tertiary)' },
 };
 
 // Phase pill styles (week selector)
@@ -1287,19 +1287,19 @@ export function SeasonPlan() {
                           }}
                           className="transition-all duration-150"
                           style={{
-                            borderRadius: 12,
-                            border: `1px solid ${wo ? (isCompleted ? 'rgba(0,229,160,0.18)' : 'rgba(255,255,255,0.06)') : 'var(--color-border)'}`,
+                            borderRadius: 14,
+                            border: `1px solid ${wo ? (isCompleted ? 'rgba(0,229,160,0.25)' : 'rgba(255,255,255,0.13)') : 'var(--color-border)'}`,
                             borderLeft: wo ? `3px solid ${isCompleted ? 'var(--color-accent)' : woType.border}` : `1px dashed var(--color-border)`,
-                            background: wo ? (isCompleted ? 'rgba(0,229,160,0.04)' : woType.bg) : 'transparent',
+                            background: wo ? (isCompleted ? 'rgba(0,229,160,0.07)' : woType.bg) : 'rgba(255,255,255,0.02)',
                             padding: 16,
                             cursor: wo ? 'pointer' : 'default',
-                            opacity: wo ? (isCompleted ? 0.55 : 1) : 0.3,
+                            opacity: wo ? (isCompleted ? 0.6 : 1) : 0.35,
                           }}
                           onMouseEnter={e => {
-                            if (wo && !isCompleted) (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.12)';
+                            if (wo && !isCompleted) (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.26)';
                           }}
                           onMouseLeave={e => {
-                            if (wo && !isCompleted) (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.06)';
+                            if (wo && !isCompleted) (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.13)';
                           }}
                         >
                           <div className="flex items-center justify-between mb-2">
