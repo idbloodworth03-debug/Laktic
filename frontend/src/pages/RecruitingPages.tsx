@@ -70,7 +70,7 @@ export function RecruitingSettings() {
         </div>
 
         {saved && (
-          <div className="mb-4 text-sm text-green-400 bg-green-950/30 border border-green-800/40 rounded-lg px-4 py-2">
+          <div className="mb-4 text-sm text-[#00E5A0] bg-[rgba(0,229,160,0.07)] border border-[rgba(0,229,160,0.22)] rounded-lg px-4 py-2">
             Profile saved!
           </div>
         )}
@@ -150,8 +150,8 @@ export function RecruiterSignup() {
         <p className="text-sm text-[var(--muted)] mb-8">Browse athlete recruiting profiles. Annual access — $499/year.</p>
 
         {status?.active ? (
-          <div className="mb-6 bg-green-950/30 border border-green-800/40 rounded-xl p-5">
-            <p className="font-semibold text-green-400 mb-1">Access Active</p>
+          <div className="mb-6 bg-[rgba(0,229,160,0.07)] border border-[rgba(0,229,160,0.22)] rounded-xl p-5">
+            <p className="font-semibold text-[#00E5A0] mb-1">Access Active</p>
             <p className="text-sm text-[var(--muted)]">{status.school} · {status.division}</p>
             {status.expires_at && <p className="text-xs text-[var(--muted)] mt-1">Expires {new Date(status.expires_at).toLocaleDateString()}</p>}
             <div className="mt-4">

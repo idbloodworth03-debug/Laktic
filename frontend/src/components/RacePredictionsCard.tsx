@@ -164,7 +164,7 @@ export function RacePredictionsCard() {
         </div>
         <div className="flex justify-between items-baseline">
           <span className="text-xs text-[var(--color-text-tertiary)]">If you stay consistent</span>
-          <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 13, color: 'rgba(74,222,128,0.8)' }}>
+          <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 13, color: 'rgba(0,229,160,0.8)' }}>
             {pred.potentialPR}
           </span>
         </div>

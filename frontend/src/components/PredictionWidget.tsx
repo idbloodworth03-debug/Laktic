@@ -40,7 +40,7 @@ const CONFIDENCE_COLORS: Record<string, 'gray' | 'amber' | 'green'> = {
 };
 
 const TREND_STYLES: Record<string, { label: string; className: string }> = {
-  improving: { label: 'Improving', className: 'text-green-400' },
+  improving: { label: 'Improving', className: 'text-[#00E5A0]' },
   plateau:   { label: 'Plateau',   className: 'text-amber-400' },
   declining: { label: 'Declining', className: 'text-red-400'   },
 };

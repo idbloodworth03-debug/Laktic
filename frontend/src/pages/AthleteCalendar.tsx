@@ -345,13 +345,13 @@ export function AthleteCalendar() {
                           </Button>
                         )}
                         {ev.my_attendance?.status === 'present' && (
-                          <span className="text-xs text-green-400 font-medium shrink-0">✓ Present</span>
+                          <span className="text-xs text-[#00E5A0] font-medium shrink-0">✓ Present</span>
                         )}
                       </div>
                       {checkInMsg?.eventId === ev.id && (
                         <div className={`mt-2 text-xs px-3 py-1.5 rounded-lg ${
                           checkInMsg.ok
-                            ? 'bg-green-900/30 text-green-300 border border-green-800/40'
+                            ? 'bg-[rgba(0,229,160,0.07)] text-[#00E5A0] border border-[rgba(0,229,160,0.22)]'
                             : 'bg-red-900/30 text-red-300 border border-red-800/40'
                         }`}>
                           {checkInMsg.msg}

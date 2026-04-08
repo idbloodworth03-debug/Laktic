@@ -469,7 +469,7 @@ export function TeamCalendar() {
                                 onClick={() => markAttendance(selectedEvent.id, row.athlete_id, s)}
                                 className="text-[10px] px-2 py-0.5 rounded-full border transition-all font-medium"
                                 style={row.record?.status === s
-                                  ? s === 'present' ? { background: 'rgba(34,197,94,0.15)', color: '#86efac', borderColor: 'rgba(34,197,94,0.3)' }
+                                  ? s === 'present' ? { background: 'rgba(0,229,160,0.15)', color: '#00E5A0', borderColor: 'rgba(0,229,160,0.3)' }
                                     : s === 'excused' ? { background: 'rgba(113,113,122,0.3)', color: '#a1a1aa', borderColor: 'rgba(113,113,122,0.4)' }
                                     : { background: 'rgba(239,68,68,0.15)', color: '#fca5a5', borderColor: 'rgba(239,68,68,0.3)' }
                                   : { color: 'var(--color-text-tertiary)', borderColor: 'var(--color-border)' }
@@ -531,7 +531,7 @@ export function TeamCalendar() {
                               <td className="py-2.5 px-2 text-center">
                                 <span style={{
                                   color: a.attendance_pct === null ? 'var(--color-text-tertiary)'
-                                    : a.attendance_pct >= 80 ? '#4ade80'
+                                    : a.attendance_pct >= 80 ? '#00E5A0'
                                     : a.attendance_pct >= 60 ? '#fbbf24'
                                     : 'var(--color-danger)',
                                   fontWeight: 600
@@ -546,7 +546,7 @@ export function TeamCalendar() {
                                     {!status ? (
                                       <span className="text-[var(--color-text-tertiary)]">—</span>
                                     ) : status === 'present' ? (
-                                      <span style={{ color: '#4ade80' }}>✓</span>
+                                      <span style={{ color: '#00E5A0' }}>✓</span>
                                     ) : status === 'late' ? (
                                       <span style={{ color: '#fbbf24' }}>L</span>
                                     ) : status === 'excused' ? (

@@ -30,7 +30,7 @@ function drawCard(ctx: CanvasRenderingContext2D, data: ShareCardData, iconImg?: 
   ctx.fillRect(0, 0, W, H);
 
   // Subtle grid lines
-  ctx.strokeStyle = 'rgba(34,197,94,0.06)';
+  ctx.strokeStyle = 'rgba(0,229,160,0.06)';
   ctx.lineWidth = 1;
   for (let x = 0; x < W; x += 60) {
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
@@ -41,19 +41,19 @@ function drawCard(ctx: CanvasRenderingContext2D, data: ShareCardData, iconImg?: 
 
   // Top-left accent bar
   const grad = ctx.createLinearGradient(0, 0, W, 0);
-  grad.addColorStop(0, '#22c55e');
-  grad.addColorStop(1, '#16a34a');
+  grad.addColorStop(0, '#00E5A0');
+  grad.addColorStop(1, '#00cc88');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, 8);
 
   // Card frame
-  ctx.strokeStyle = 'rgba(34,197,94,0.2)';
+  ctx.strokeStyle = 'rgba(0,229,160,0.2)';
   ctx.lineWidth = 2;
   ctx.strokeRect(40, 40, W - 80, H - 80);
 
   // LAKTIC wordmark — top left
   ctx.font = 'bold 28px "Arial Black", Arial, sans-serif';
-  ctx.fillStyle = '#22c55e';
+  ctx.fillStyle = '#00E5A0';
   ctx.letterSpacing = '4px';
   ctx.fillText('LAKTIC', 72, 100);
   ctx.letterSpacing = '0px';
@@ -65,13 +65,13 @@ function drawCard(ctx: CanvasRenderingContext2D, data: ShareCardData, iconImg?: 
     : 'RACE RESULT';
 
   ctx.font = '700 18px Arial, sans-serif';
-  ctx.fillStyle = '#22c55e';
+  ctx.fillStyle = '#00E5A0';
   const tagW = ctx.measureText(cardLabel).width + 32;
-  ctx.fillStyle = 'rgba(34,197,94,0.12)';
+  ctx.fillStyle = 'rgba(0,229,160,0.12)';
   ctx.beginPath();
   ctx.roundRect(W - 72 - tagW, 72, tagW, 40, 8);
   ctx.fill();
-  ctx.fillStyle = '#22c55e';
+  ctx.fillStyle = '#00E5A0';
   ctx.font = '700 15px Arial, sans-serif';
   ctx.textAlign = 'right';
   ctx.fillText(cardLabel, W - 72, 98);
@@ -111,13 +111,13 @@ function drawCard(ctx: CanvasRenderingContext2D, data: ShareCardData, iconImg?: 
   // Distance + Date row
   const metaY = 610;
   ctx.font = '500 30px Arial, sans-serif';
-  ctx.fillStyle = '#86efac';
+  ctx.fillStyle = '#00E5A0';
   ctx.textAlign = 'center';
   ctx.fillText(`${data.distance}  ·  ${data.date}`, W / 2, metaY);
   ctx.textAlign = 'left';
 
   // Divider line
-  ctx.strokeStyle = 'rgba(34,197,94,0.25)';
+  ctx.strokeStyle = 'rgba(0,229,160,0.25)';
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(120, 680); ctx.lineTo(W - 120, 680); ctx.stroke();
 
@@ -150,7 +150,7 @@ function drawCard(ctx: CanvasRenderingContext2D, data: ShareCardData, iconImg?: 
   }
 
   // Corner accent dots
-  ctx.fillStyle = 'rgba(34,197,94,0.4)';
+  ctx.fillStyle = 'rgba(0,229,160,0.4)';
   [[40, 40], [W - 40, 40], [40, H - 40], [W - 40, H - 40]].forEach(([x, y]) => {
     ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
   });

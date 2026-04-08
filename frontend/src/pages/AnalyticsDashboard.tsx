@@ -24,7 +24,7 @@ interface WeeklyPoint {
 
 const TSB_COLORS = {
   atl: '#f97316',
-  ctl: '#22c55e',
+  ctl: '#00E5A0',
   tsb: '#3b82f6',
 };
 
@@ -77,7 +77,7 @@ export function AnalyticsDashboard() {
         <div className="mb-6 p-4 rounded-xl text-sm" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <div className="flex flex-col gap-2">
             <div className="flex items-start gap-2"><span className="font-semibold text-orange-400 shrink-0">Fatigue</span><span className="text-[var(--muted)]">How tired your body is from recent training. High fatigue = you need rest.</span></div>
-            <div className="flex items-start gap-2"><span className="font-semibold text-green-400 shrink-0">Fitness</span><span className="text-[var(--muted)]">Your overall training fitness built over time. Higher = more aerobically fit.</span></div>
+            <div className="flex items-start gap-2"><span className="font-semibold text-[#00E5A0] shrink-0">Fitness</span><span className="text-[var(--muted)]">Your overall training fitness built over time. Higher = more aerobically fit.</span></div>
             <div className="flex items-start gap-2"><span className="font-semibold text-blue-400 shrink-0">Race Readiness</span><span className="text-[var(--muted)]">How fresh and ready you are to race right now. Positive = good to race.</span></div>
           </div>
         </div>
@@ -97,7 +97,7 @@ export function AnalyticsDashboard() {
                 </div>
                 <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 text-center">
                   <p className="text-xs text-[var(--muted)] mb-1">Fitness</p>
-                  <p className="text-2xl font-bold text-green-400">{latest.ctl}</p>
+                  <p className="text-2xl font-bold text-[#00E5A0]">{latest.ctl}</p>
                 </div>
                 <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 text-center">
                   <p className="text-xs text-[var(--muted)] mb-1">Race Readiness</p>
@@ -161,7 +161,7 @@ export function AnalyticsDashboard() {
                       labelFormatter={(d: any) => formatDate(d as string)}
                     />
                     <Legend />
-                    <Bar dataKey="km" fill="#22c55e" name="Distance (km)" radius={[3,3,0,0]} />
+                    <Bar dataKey="km" fill="#00E5A0" name="Distance (km)" radius={[3,3,0,0]} />
                   </BarChart>
                 )}
               </ResponsiveContainer>
@@ -169,7 +169,7 @@ export function AnalyticsDashboard() {
 
             <div className="mt-4 text-xs text-[var(--muted)] space-y-1">
               <p><strong className="text-orange-400">Fatigue</strong> — 7-day training load. High = tired, needs rest days.</p>
-              <p><strong className="text-green-400">Fitness</strong> — 42-day aerobic fitness. Higher = more capacity to handle hard training.</p>
+              <p><strong className="text-[#00E5A0]">Fitness</strong> — 42-day aerobic fitness. Higher = more capacity to handle hard training.</p>
               <p><strong className="text-blue-400">Race Readiness</strong> = Fitness − Fatigue. Positive means you're fresh and ready to perform.</p>
             </div>
           </>

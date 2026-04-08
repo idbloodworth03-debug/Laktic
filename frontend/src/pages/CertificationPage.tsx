@@ -92,10 +92,10 @@ export function CertificationPage() {
         </div>
 
         {certified && (
-          <div className="mb-6 bg-green-950/30 border border-green-800/40 rounded-xl p-5 flex items-center gap-4">
+          <div className="mb-6 bg-[rgba(0,229,160,0.07)] border border-[rgba(0,229,160,0.22)] rounded-xl p-5 flex items-center gap-4">
             <Trophy size={28} style={{ color: 'var(--color-accent)' }} />
             <div>
-              <p className="font-bold text-green-400 text-lg">Laktic Certified Coach</p>
+              <p className="font-bold text-[#00E5A0] text-lg">Laktic Certified Coach</p>
               <p className="text-sm text-[var(--muted)]">Your certification badge is live on your public profile.</p>
             </div>
           </div>
@@ -110,7 +110,7 @@ export function CertificationPage() {
                 return (
                   <div key={m.id} className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${score?.passed ? 'bg-green-900/40 border border-green-700 text-green-400' : 'bg-[var(--bg)] border border-[var(--border)] text-[var(--muted)]'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${score?.passed ? 'bg-[rgba(0,229,160,0.10)] border border-[rgba(0,229,160,0.35)] text-[#00E5A0]' : 'bg-[var(--bg)] border border-[var(--border)] text-[var(--muted)]'}`}>
                         {score?.passed ? '✓' : m.id}
                       </div>
                       <div>
@@ -161,7 +161,7 @@ export function CertificationPage() {
           <Card title={quiz?.title ?? 'Loading...'}>
             {result ? (
               <div className="text-center py-4">
-                <div className={`text-5xl font-bold mb-2 ${result.passed ? 'text-green-400' : 'text-red-400'}`}>
+                <div className={`text-5xl font-bold mb-2 ${result.passed ? 'text-[#00E5A0]' : 'text-red-400'}`}>
                   {Math.round(result.score * 100)}%
                 </div>
                 <p className="text-[var(--muted)] mb-1">{result.correct} / {result.total} correct</p>

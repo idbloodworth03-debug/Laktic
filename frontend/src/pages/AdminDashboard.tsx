@@ -94,7 +94,7 @@ export function AdminDashboard() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
               {[
                 { label: 'Total Coaches', value: stats.totals.coaches, color: 'text-blue-400' },
-                { label: 'Total Athletes', value: stats.totals.athletes, color: 'text-green-400' },
+                { label: 'Total Athletes', value: stats.totals.athletes, color: 'text-[#00E5A0]' },
                 { label: 'Published Plans', value: stats.totals.published_plans, color: 'text-brand-400' },
                 { label: 'Plan Purchases', value: stats.totals.plan_purchases, color: 'text-orange-400' },
                 { label: 'Certified Coaches', value: stats.totals.certified_coaches, color: 'text-yellow-400' },
@@ -113,7 +113,7 @@ export function AdminDashboard() {
                 </div>
                 <div>
                   <p className="text-sm text-[var(--muted)]">New Athletes</p>
-                  <p className="text-2xl font-bold text-green-400">{stats.last_30_days.new_athletes}</p>
+                  <p className="text-2xl font-bold text-[#00E5A0]">{stats.last_30_days.new_athletes}</p>
                 </div>
               </div>
             </Card>
@@ -154,7 +154,7 @@ export function AdminDashboard() {
                         </select>
                       </td>
                       <td className="py-2.5 pr-4">
-                        <button onClick={() => toggleCertified(c)} className={`text-xs px-2 py-0.5 rounded border transition-colors ${c.certified_coach ? 'bg-green-950/40 border-green-700 text-green-400' : 'bg-[var(--bg)] border-[var(--border)] text-[var(--muted)]'}`}>
+                        <button onClick={() => toggleCertified(c)} className={`text-xs px-2 py-0.5 rounded border transition-colors ${c.certified_coach ? 'bg-green-950/40 border-[rgba(0,229,160,0.35)] text-[#00E5A0]' : 'bg-[var(--bg)] border-[var(--border)] text-[var(--muted)]'}`}>
                           {c.certified_coach ? 'Certified' : 'Not certified'}
                         </button>
                       </td>
@@ -204,9 +204,9 @@ export function AdminDashboard() {
 
         {tab === 'revenue' && revenue && (
           <div>
-            <div className="mb-6 bg-green-950/30 border border-green-800/40 rounded-xl p-5">
+            <div className="mb-6 bg-[rgba(0,229,160,0.07)] border border-[rgba(0,229,160,0.22)] rounded-xl p-5">
               <p className="text-sm text-[var(--muted)]">Total Revenue</p>
-              <p className="text-3xl font-bold text-green-400">${(revenue.total_cents / 100).toFixed(2)}</p>
+              <p className="text-3xl font-bold text-[#00E5A0]">${(revenue.total_cents / 100).toFixed(2)}</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -223,7 +223,7 @@ export function AdminDashboard() {
                     <tr key={p.id} className="border-b border-[var(--border)] hover:bg-[var(--surface)]">
                       <td className="py-2.5 pr-4">{p.plan?.title ?? '—'}</td>
                       <td className="py-2.5 pr-4 text-[var(--muted)]">{p.plan?.coach?.name ?? '—'}</td>
-                      <td className="py-2.5 pr-4 text-green-400">${((p.amount_paid_cents ?? 0) / 100).toFixed(2)}</td>
+                      <td className="py-2.5 pr-4 text-[#00E5A0]">${((p.amount_paid_cents ?? 0) / 100).toFixed(2)}</td>
                       <td className="py-2.5 text-[var(--muted)]">{new Date(p.purchased_at).toLocaleDateString()}</td>
                     </tr>
                   ))}

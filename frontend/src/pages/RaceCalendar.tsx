@@ -169,11 +169,11 @@ function RaceCardModal({ result, onClose, athleteName }: { result: RaceResult; o
     ctx.fillRect(0, 0, 800, 450);
 
     // Green accent stripe
-    ctx.fillStyle = '#22c55e';
+    ctx.fillStyle = '#00E5A0';
     ctx.fillRect(0, 0, 6, 450);
 
     // Laktic brand
-    ctx.fillStyle = '#4ade80';
+    ctx.fillStyle = '#00E5A0';
     ctx.font = 'bold 18px monospace';
     ctx.fillText('LAKTIC', 32, 42);
 
@@ -189,7 +189,7 @@ function RaceCardModal({ result, onClose, athleteName }: { result: RaceResult; o
     ctx.fillText(result.distance, 32, 148);
 
     // Finish time — large
-    ctx.fillStyle = '#22c55e';
+    ctx.fillStyle = '#00E5A0';
     ctx.font = 'bold 80px monospace';
     ctx.fillText(result.finish_time, 32, 270);
 
@@ -266,7 +266,7 @@ function RaceCardModal({ result, onClose, athleteName }: { result: RaceResult; o
           style={{ aspectRatio: '16/9' }}
         />
         {shareError && <p className="text-xs text-red-400 mb-3">{shareError}</p>}
-        {shared && <p className="text-xs text-green-400 mb-3">✓ Shared to the community feed!</p>}
+        {shared && <p className="text-xs text-[#00E5A0] mb-3">✓ Shared to the community feed!</p>}
         <div className="flex gap-3">
           <Button variant="secondary" size="sm" onClick={download}>Download PNG</Button>
           <Button size="sm" loading={sharing} disabled={shared} onClick={shareToFeed}>

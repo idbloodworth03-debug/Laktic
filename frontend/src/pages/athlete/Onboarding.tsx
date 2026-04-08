@@ -102,7 +102,7 @@ function buildPlanCards(
           { day: 'Sat', workout: 'Long run · Easy' },
         ],
         phase: 'Base',
-        phaseColor: '#4ade80',
+        phaseColor: '#00E5A0',
       },
       {
         value: 'pre_competition',
@@ -143,7 +143,7 @@ function buildPlanCards(
         { day: 'Sat', workout: 'Long run · Easy' },
       ],
       phase: 'Base',
-      phaseColor: '#4ade80',
+      phaseColor: '#00E5A0',
     },
     {
       value: 'race_development',
@@ -167,7 +167,7 @@ function buildPlanCards(
         { day: 'Sat', workout: 'Long run · Easy' },
       ],
       phase: 'Base',
-      phaseColor: '#4ade80',
+      phaseColor: '#00E5A0',
     },
   ];
 }

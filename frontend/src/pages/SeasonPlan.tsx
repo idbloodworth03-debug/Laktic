@@ -39,7 +39,7 @@ function getWorkoutType(title: string, isRestDay: boolean): WorkoutType {
 }
 
 const WORKOUT_TYPE_STYLE: Record<WorkoutType, { border: string; bg: string; dot: string }> = {
-  easy:      { border: 'rgba(74,222,128,0.75)',  bg: 'rgba(34,197,94,0.13)',   dot: '#4ade80' },
+  easy:      { border: 'rgba(0,229,160,0.75)',  bg: 'rgba(0,229,160,0.13)',   dot: '#00E5A0' },
   tempo:     { border: 'rgba(251,146,60,0.80)',  bg: 'rgba(251,146,60,0.13)',  dot: '#fb923c' },
   intervals: { border: 'rgba(248,113,113,0.80)', bg: 'rgba(239,68,68,0.13)',   dot: '#f87171' },
   long:      { border: 'rgba(192,132,252,0.80)', bg: 'rgba(168,85,247,0.13)',  dot: '#c084fc' },
@@ -237,7 +237,7 @@ function WorkoutModal({ wo, onClose, isCompleted, onComplete, togglingComplete, 
 
   const PHASE_BADGE: Record<string, { bg: string; color: string }> = {
     ease_in:       { bg: 'rgba(96,165,250,0.15)',  color: '#60a5fa' },
-    base:          { bg: 'rgba(74,222,128,0.1)',   color: '#4ade80' },
+    base:          { bg: 'rgba(0,229,160,0.1)',   color: '#00E5A0' },
     build:         { bg: 'rgba(96,165,250,0.15)',  color: '#60a5fa' },
     pre_competition:{ bg: 'rgba(245,158,11,0.15)', color: '#f59e0b' },
     competition:   { bg: 'rgba(0,229,160,0.12)',   color: '#00E5A0' },
