@@ -119,6 +119,11 @@ function Navbar() {
       </div>
 
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+        <Link to="/login/coach"
+          style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', textDecoration: 'none', fontWeight: 500, padding: '7px 14px', borderRadius: '8px', transition: 'all 0.2s' }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.85)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.5)')}
+        >Coach Login</Link>
         <Link to="/login"
           style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', textDecoration: 'none', fontWeight: 500, padding: '7px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.12)', transition: 'all 0.2s' }}
           onMouseEnter={e => { e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.28)'; }}
@@ -177,6 +182,11 @@ function Hero() {
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.36)'; e.currentTarget.style.color = 'white'; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.16)'; e.currentTarget.style.color = 'rgba(255,255,255,0.75)'; }}
             >See How It Works</a>
+            <Link to="/register/coach"
+              style={{ display: 'inline-block', padding: '13px 24px', background: 'transparent', color: 'rgba(255,255,255,0.55)', fontWeight: 600, fontSize: '15px', borderRadius: '10px', textDecoration: 'none', transition: 'all 0.2s' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'white')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.55)')}
+            >I'm a Coach →</Link>
           </div>
 
           <p style={{ marginTop: '18px', fontSize: '13px', color: 'rgba(255,255,255,0.28)' }}>Free to start · No credit card required</p>
