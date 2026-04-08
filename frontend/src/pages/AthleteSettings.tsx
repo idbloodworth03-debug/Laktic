@@ -420,7 +420,12 @@ export function AthleteSettings() {
             <Button
               variant="primary" size="sm" loading={savingTrain}
               onClick={() => {
-                if (trainStartError || trainEndError) return;
+                const today = new Date().toISOString().split('T')[0];
+                const startErr = trainSeasonStart && trainSeasonStart < today ? 'Start date cannot be in the past.' : '';
+                const endErr = trainSeasonEnd && trainSeasonEnd < today ? 'End date cannot be in the past.' : '';
+                setTrainStartError(startErr);
+                setTrainEndError(endErr);
+                if (startErr || endErr) return;
                 patchProfile({
                   current_weekly_mileage: trainMpw ? parseFloat(trainMpw) : null,
                   training_days_per_week: trainDays,
