@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
-import { supabase } from '../lib/supabaseClient';
 import { AppLayout, Button, Card, Badge, Spinner, Alert } from '../components/ui';
 
 type Referral = {
@@ -30,14 +29,14 @@ const STATUS_BADGE: Record<string, 'gray' | 'amber' | 'green'> = {
 };
 
 export function ReferralsPage() {
-  const { profile, role, clearAuth } = useAuthStore();
+  const { profile, role, clearAuth, logout } = useAuthStore();
   const nav = useNavigate();
   const [data, setData] = useState<ReferralData | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
+  const handleLogout = async () => { await logout(); nav('/'); };
 
   useEffect(() => {
     apiFetch('/api/referrals/my')
@@ -56,7 +55,7 @@ export function ReferralsPage() {
   };
 
   return (
-    <AppLayout role={role ?? 'athlete'} name={profile?.name} onLogout={logout}>
+    <AppLayout role={role ?? 'athlete'} name={profile?.name} onLogout={handleLogout}>
       <div className="min-h-screen bg-[var(--color-bg-primary)]">
         <div className="max-w-2xl mx-auto px-6 py-10">
           <div className="mb-6 fade-up">

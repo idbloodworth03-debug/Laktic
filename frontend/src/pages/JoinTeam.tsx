@@ -2,22 +2,17 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
-import { supabase } from '../lib/supabaseClient';
 import { AppLayout, Button, Card, Input, Alert, Spinner } from '../components/ui';
 
 export function JoinTeam() {
-  const { profile, clearAuth } = useAuthStore();
+  const { profile, logout } = useAuthStore();
   const nav = useNavigate();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState<{ teamName: string; botId?: string } | null>(null);
 
-  const logout = async () => {
-    await supabase.auth.signOut();
-    clearAuth();
-    nav('/');
-  };
+  const handleLogout = async () => { await logout(); nav('/'); };
 
   const handleJoin = async () => {
     const trimmed = code.trim().toUpperCase();
@@ -48,7 +43,7 @@ export function JoinTeam() {
   };
 
   return (
-    <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
+    <AppLayout role="athlete" name={profile?.name} onLogout={handleLogout}>
       <div className="min-h-screen bg-[var(--color-bg-primary)]">
         <div className="max-w-md mx-auto px-6 py-16">
           <div className="text-center mb-8 fade-up">

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
-import { supabase } from '../lib/supabaseClient';
 import { AppLayout, Button, ChatBubble, TypingIndicator, Alert } from '../components/ui';
 
 // ── Shared message input bar ──────────────────────────────────────────────────
@@ -332,12 +331,12 @@ function DirectChat() {
 
 // ── Main Chat page ────────────────────────────────────────────────────────────
 export function Chat() {
-  const { profile, clearAuth } = useAuthStore();
+  const { profile, logout } = useAuthStore();
   const nav = useNavigate();
-  const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
+  const handleLogout = async () => { await logout(); nav('/'); };
 
   return (
-    <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
+    <AppLayout role="athlete" name={profile?.name} onLogout={handleLogout}>
       <div
         className="flex flex-col"
         style={{ minHeight: '100vh', background: 'var(--color-bg-primary)' }}

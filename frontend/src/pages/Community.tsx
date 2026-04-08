@@ -855,7 +855,7 @@ function TopAthletesSidebar() {
 
 // ── Main Community Page ───────────────────────────────────────────────────────
 export function Community() {
-  const { profile, clearAuth, role } = useAuthStore();
+  const { profile, clearAuth, role, logout } = useAuthStore();
   const nav = useNavigate();
   const isCoach = role === 'coach';
 
@@ -870,7 +870,7 @@ export function Community() {
   const newestPostIdRef = useRef<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
+  const handleLogout = async () => { await logout(); nav('/'); };
 
   const loadPage = async (pg: number, reset: boolean) => {
     if (reset) { setLoading(true); setPosts([]); } else setLoadingMore(true);
@@ -965,7 +965,7 @@ export function Community() {
   const editPost   = (postId: string, newBody: string) => setPosts(prev => prev.map(p => p.id === postId ? { ...p, body: newBody } : p));
 
   return (
-    <AppLayout role={role ?? 'athlete'} name={profile?.name} onLogout={logout}>
+    <AppLayout role={role ?? 'athlete'} name={profile?.name} onLogout={handleLogout}>
       <div style={{ minHeight: '100vh', background: 'var(--color-bg-primary)' }}>
         {showCreate && (
           <CreatePostModal

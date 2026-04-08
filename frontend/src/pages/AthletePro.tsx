@@ -19,7 +19,7 @@ export function AthletePro() {
   const [status, setStatus] = useState<{ tier: string; expires_at: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
-  const logout = async () => { const { supabase } = await import('../lib/supabaseClient'); await supabase.auth.signOut(); useAuthStore.getState().clearAuth(); };
+  const logout = async () => { await useAuthStore.getState().logout(); };
 
   useEffect(() => {
     // Check for success param

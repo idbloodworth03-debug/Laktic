@@ -18,7 +18,7 @@ interface StravaStatus {
 }
 
 export function AthleteSettings() {
-  const { role, profile, clearAuth } = useAuthStore();
+  const { role, profile, clearAuth, logout } = useAuthStore();
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
   const { state: notifState, enable: enableNotifs, disable: disableNotifs } = useNotifications();
@@ -284,7 +284,7 @@ export function AthleteSettings() {
   }
 
   return (
-    <AppLayout role={role || undefined} name={profile?.name} onLogout={clearAuth}>
+    <AppLayout role={role || undefined} name={profile?.name} onLogout={() => logout().then(() => nav('/'))}>
       <div className="max-w-3xl mx-auto px-6 py-8">
         <h1 className="font-display text-3xl font-bold mb-6">Settings</h1>
 
