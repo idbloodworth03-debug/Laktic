@@ -32,19 +32,16 @@ import { addDays, getWeekStartDate } from './dateUtils';
 const METERS_PER_MILE = 1609.344;
 
 const DEFAULT_MPW: Record<AthleteTier, number> = {
-  beginner:     12,
   intermediate: 25,
   advanced:     40,
 };
 
 const DEFAULT_DAYS: Record<AthleteTier, number> = {
-  beginner:     3,
   intermediate: 4,
   advanced:     5,
 };
 
 const MAX_EASY_MILES: Record<AthleteTier, number> = {
-  beginner:     6,
   intermediate: 8,
   advanced:     10,
 };
@@ -214,7 +211,6 @@ function computeWeeksToRace(athlete: any, raceCalendar: any[], today: string): n
 function computeEaseInWeeks(athlete: any, tier: AthleteTier): number {
   const fitnessRating = Number(athlete.fitness_rating ?? 5);
   const exp = (athlete.experience_level ?? '') as string;
-  const isBeginner = tier === 'beginner' || exp === 'beginner' || exp === 'less_than_1_year';
 
   let easeIn: number;
   if (fitnessRating <= 3) easeIn = 4;
@@ -222,8 +218,6 @@ function computeEaseInWeeks(athlete: any, tier: AthleteTier): number {
   else if (fitnessRating <= 5) easeIn = 2;
   else if (fitnessRating <= 7) easeIn = 1;
   else easeIn = (exp === '3_plus_years' || tier === 'advanced') ? 0 : 1;
-
-  if (isBeginner) easeIn = Math.max(easeIn, 2);
 
   return easeIn;
 }
@@ -262,33 +256,7 @@ function computeTargetMiles(
     target = baseMpw * phaseMult * (cycleMults[cyclePos] ?? 1.0);
   }
 
-  if (tier === 'beginner' && weekIndex === 0) target = Math.min(target, 12);
-
   return r25(target);
-}
-
-// ── Beginner restrictions ─────────────────────────────────────────────────────
-
-interface BeginnerRestrictions {
-  allEasy:      boolean;
-  noIntervals:  boolean;
-  noAerobic:    boolean;
-  maxEasyMiles: number;
-}
-
-function getBeginnerRestrictions(
-  tier:          AthleteTier,
-  weekNum:       number,
-  fitnessRating: number,
-): BeginnerRestrictions {
-  if (tier !== 'beginner') {
-    return { allEasy: false, noIntervals: false, noAerobic: false, maxEasyMiles: MAX_EASY_MILES.advanced };
-  }
-  const allEasy     = weekNum <= 2;
-  const noIntervals = weekNum < 5;
-  const noAerobic   = weekNum < 4 || (weekNum === 4 && fitnessRating < 4);
-  const maxEasyMiles = weekNum <= 1 ? 3.0 : weekNum <= 2 ? 3.5 : weekNum <= 4 ? 4.5 : MAX_EASY_MILES.beginner;
-  return { allEasy, noIntervals, noAerobic, maxEasyMiles };
 }
 
 // ── Long run bounds ───────────────────────────────────────────────────────────
@@ -298,10 +266,10 @@ function getLongRunMiles(targetMiles: number, weekPhase: string, tier: AthleteTi
     ?? LONG_RUN_SHARE_BY_PHASE.base;
   const pct = (lrShare.min_pct + lrShare.max_pct) / 200;
   const fromPct = targetMiles * pct;
-  const minLr = tier === 'beginner' ? 3.0 : tier === 'intermediate' ? 5.0 : 7.0;
+  const minLr = tier === 'intermediate' ? 5.0 : 7.0;
   const maxLr = Math.min(
     targetMiles * 0.30,
-    tier === 'beginner' ? 8.0 : tier === 'intermediate' ? 14.0 : 22.0,
+    tier === 'intermediate' ? 14.0 : 22.0,
   );
   return r25(clamp(fromPct, minLr, maxLr));
 }
@@ -671,13 +639,11 @@ function buildWeekWorkouts(
   wc:            { warmup_mi: number; cooldown_mi: number },
   paceBands:     PaceBands | null,
   eventPaces:    EventPaces | null,
-  fitnessRating: number,
   rotationState: Record<string, number>,
   recentlyUsed:  Record<string, string[]>,
   isEaseIn:      boolean,
 ): PlannedWorkout[] {
-  const br          = getBeginnerRestrictions(tier, weekNum, fitnessRating);
-  const lrPctPhase  = (isEaseIn || br.allEasy) ? 'ease_in' : weekPhase;
+  const lrPctPhase  = isEaseIn ? 'ease_in' : weekPhase;
   const longRunMiles = getLongRunMiles(targetMiles, lrPctPhase, tier);
 
   // Intermediate accumulation pass
@@ -707,19 +673,8 @@ function buildWeekWorkouts(
       continue;
     }
 
-    // ── Week 1-2 beginner: ALL easy runs, long run slot becomes easy too ──
-    if (br.allEasy) {
-      easyCount++;
-      raw.push({ day, dayOfWeek, role: 'easy', workoutKey: null, title: 'Easy Run',
-        mainSetMiles: 0, warmupMiles: 0, cooldownMiles: 0, paceGuideline: easyPg,
-        mainSetDescription: 'Easy run at conversational pace',
-        isRestDay: false, isEasy: true });
-      continue;
-    }
-
     // ── Long run ──
     if (role === 'long_run') {
-      // Beginner week 3-4: still just an easy long run
       const lrTitle = 'Easy Long Run';
       const lrDesc  = `Easy long run at conversational pace. Never split. Keep effort comfortable enough to hold a conversation throughout.`;
       longRunAssigned = longRunMiles;
@@ -730,8 +685,8 @@ function buildWeekWorkouts(
       continue;
     }
 
-    // ── Ease-in or beginner no-aerobic window: easy runs ──
-    if (isEaseIn || br.noAerobic) {
+    // ── Ease-in: easy runs only ──
+    if (isEaseIn) {
       easyCount++;
       raw.push({ day, dayOfWeek, role: 'easy', workoutKey: null, title: 'Easy Run',
         mainSetMiles: 0, warmupMiles: 0, cooldownMiles: 0, paceGuideline: easyPg,
@@ -757,32 +712,8 @@ function buildWeekWorkouts(
       continue;
     }
 
-    // ── Specific role — enforce beginner no-interval rule ──
+    // ── Specific role ──
     if (role === 'specific') {
-      if (br.noIntervals) {
-        // Convert to aerobic or easy depending on week
-        if (!br.noAerobic) {
-          // Use aerobic rotation instead
-          const rotation  = getRotation(weekPhase, 'aerobic');
-          const key       = pickWorkoutKey(rotation, `aerobic_${weekPhase}`, rotationState, recentlyUsed);
-          const { mainSetMiles, mainSetDescription } = getWorkoutDistances(key, mpwBand, paceBands, eventPaces);
-          const capped    = Math.min(mainSetMiles, targetMiles * 0.35);
-          qualityMilesUsed += r25(wc.warmup_mi + capped + wc.cooldown_mi);
-          const libDescFb = (WORKOUT_LIBRARY as Record<string, any>)[key]?.full_description as string | undefined;
-          raw.push({ day, dayOfWeek, role: 'aerobic', workoutKey: key,
-            title: WORKOUT_TITLE[key] ?? key,
-            mainSetMiles: capped, warmupMiles: wc.warmup_mi, cooldownMiles: wc.cooldown_mi,
-            paceGuideline: buildPaceGuideline('aerobic', paceBands, eventPaces),
-            mainSetDescription, isRestDay: false, isEasy: false, libraryDescription: libDescFb });
-        } else {
-          easyCount++;
-          raw.push({ day, dayOfWeek, role: 'easy', workoutKey: null, title: 'Easy Run',
-            mainSetMiles: 0, warmupMiles: 0, cooldownMiles: 0, paceGuideline: easyPg,
-            mainSetDescription: 'Easy run at conversational pace',
-            isRestDay: false, isEasy: true });
-        }
-        continue;
-      }
       const rotation  = getRotation(weekPhase, 'specific');
       const key       = pickWorkoutKey(rotation, `specific_${weekPhase}`, rotationState, recentlyUsed);
       const { mainSetMiles, mainSetDescription } = getWorkoutDistances(key, mpwBand, paceBands, eventPaces);
@@ -818,7 +749,7 @@ function buildWeekWorkouts(
   const usedMiles    = longRunAssigned + qualityMilesUsed;
   const remaining    = Math.max(0, targetMiles - usedMiles);
   const easyEach     = easyCount > 0 ? r25(remaining / easyCount) : 0;
-  const maxEasyMi    = br.maxEasyMiles > 0 ? br.maxEasyMiles : MAX_EASY_MILES[tier];
+  const maxEasyMi    = MAX_EASY_MILES[tier];
   const cappedEasyMi = clamp(Math.max(easyEach, 2.0), 2.0, maxEasyMi);
 
   const result: PlannedWorkout[] = raw.map(wo => {
@@ -916,42 +847,11 @@ export function validateAndFixPlan(weeks: any[], athlete: any): any[] {
       }
     }
 
-    // 2. beginner week 1 total <= 12 miles
-    if (tier === 'beginner' && weekNum === 1) {
-      const total = workouts.reduce((s: number, w: any) => s + (w.distance_miles || 0), 0);
-      if (total > 12) {
-        const scale = 12 / total;
-        workouts = workouts.map((wo: any) => ({
-          ...wo,
-          distance_miles: r25((wo.distance_miles || 0) * scale),
-          total_distance: r25((wo.distance_miles || 0) * scale),
-        }));
-      }
-    }
-
-    // 3. pace_present check
+    // 2. pace_present check
     for (const wo of workouts) {
       if (!wo.is_rest_day && !(wo.pace_guideline as string | null | undefined)) {
         wo.pace_guideline = easyPgDefault;
       }
-    }
-
-    // 4. no_advanced_workouts_for_beginners (weeks 1-4)
-    if (tier === 'beginner' && weekNum <= 4) {
-      workouts = workouts.map((wo: any) => {
-        if (['specific', 'bridge', 'aerobic'].includes(wo.type ?? '') ||
-            ['specific', 'bridge', 'aerobic'].includes(wo.role ?? '')) {
-          return {
-            ...wo,
-            type:        'easy',
-            role:        'easy',
-            title:       'Easy Run',
-            description: `Easy run at conversational pace. Run by feel — this should be comfortable enough to hold a conversation the entire time.`,
-            pace_guideline: wo.pace_guideline || easyPgDefault,
-          };
-        }
-        return wo;
-      });
     }
 
     return { ...week, workouts };
@@ -1021,7 +921,7 @@ export function buildPlanSkeleton(
 
     const workouts = buildWeekWorkouts(
       roleMap, weekNum, workoutPhase, targetMiles,
-      tier, mpwBand, wc, paceBands, eventPaces, fitnessRating,
+      tier, mpwBand, wc, paceBands, eventPaces,
       rotationState, recentlyUsed, isEaseIn || isRecoveryWeek,
     );
 

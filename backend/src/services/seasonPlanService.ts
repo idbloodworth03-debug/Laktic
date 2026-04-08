@@ -160,7 +160,7 @@ function needsGptDescription(wo: PlannedWorkout): boolean {
 function fallbackPlan(startDate: string, numWeeks: number, athlete: any): any[] {
   const tier        = classifyAthleteTier(athlete);
   const rawMpw      = Number(athlete.current_weekly_mileage ?? athlete.weekly_volume_miles ?? 0);
-  const baseMpw     = rawMpw > 0 ? rawMpw : (tier === 'beginner' ? 12 : tier === 'intermediate' ? 25 : 40);
+  const baseMpw     = rawMpw > 0 ? rawMpw : (tier === 'intermediate' ? 25 : 40);
   const days        = Math.max(3, Math.min(7, Number(athlete.training_days_per_week ?? 4)));
   const easyMi      = Math.round(baseMpw / days * 4) / 4;
 

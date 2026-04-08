@@ -698,63 +698,6 @@ export const WORKOUT_LIBRARY = {
     tags: ['specific', 'comp_sharpening', 'cutdown'],
   },
 
-  // ── BEGINNER ────────────────────────────────────────────────────────────────
-
-  easy_run_beginner: {
-    phase: 'ease_in',
-    category: 'easy',
-    description: 'Basic easy run for beginners at conversational pace.',
-    full_description:
-      'Main Set: Easy run at conversational pace ({easy_pace}). You should be able to speak in full sentences throughout. If you\'re breathing too hard to talk, slow down — the pace doesn\'t matter, the effort does.\n\n' +
-      'Coaching Cue: New runners almost always run their easy days too fast. The value of this run is time on feet at low stress — not the pace on the screen. Slower is better right now. The fitness will come.',
-    pace_source: 'Easy effort only',
-    tags: ['easy', 'beginner'],
-  },
-
-  walk_run_intervals: {
-    phase: 'ease_in',
-    category: 'easy',
-    description: 'Walk/run intervals for building run tolerance gradually.',
-    full_description:
-      'Main Set: Alternate between easy running and walking. Run segments at comfortable, conversational pace ({easy_pace}). Walk segments are active recovery — not a rest. Keep moving forward the whole time.\n\n' +
-      'Coaching Cue: The walk breaks are not failure — they are the workout. This method builds running fitness while keeping stress low enough to recover between sessions. Stick to the structure and resist the urge to skip the walks.',
-    pace_source: 'Easy effort only',
-    tags: ['easy', 'beginner', 'walk_run'],
-  },
-
-  long_run_easy: {
-    phase: 'ease_in',
-    category: 'long_run',
-    description: 'Easy long run for beginners — building aerobic endurance at comfortable effort.',
-    full_description:
-      'Main Set: Easy long run at comfortable, conversational pace ({easy_pace}). Never split. Keep effort low enough to hold a conversation from the first mile to the last. Distance matters more than pace today.\n\n' +
-      'Coaching Cue: The long run is your most important weekly session. Don\'t add pace or surges — every extra intensity costs you recovery and limits your next week. Easy and steady wins here. If it feels too easy, it\'s probably right.',
-    pace_source: 'Easy effort only',
-    tags: ['long_run', 'beginner', 'aerobic'],
-  },
-
-  strides_intro: {
-    phase: 'ease_in',
-    category: 'speed_dev',
-    description: 'Introduction to controlled fast running — strides with full recovery.',
-    full_description:
-      'Main Set: After your easy run, complete 4–6 x 100m strides at a controlled, relaxed fast effort. Accelerate smoothly over the first 30m, hold smooth form for 40m, then relax through the last 30m. Walk back to the start for full recovery between each stride.\n\n' +
-      'Coaching Cue: Strides are not sprints — they\'re controlled accelerations. They should feel fast but never desperate. Focus on tall posture and quick, light foot contact. If they feel labored, slow down — you\'re learning to run fast, not racing.',
-    pace_source: 'Controlled fast effort — not a sprint',
-    tags: ['speed_dev', 'beginner', 'strides'],
-  },
-
-  aerobic_progression: {
-    phase: 'base',
-    category: 'aerobic',
-    description: 'Progression run for beginners — easy start building to a controlled comfortably hard finish.',
-    full_description:
-      'Main Set: Start at your easy pace ({easy_pace}) and gradually build effort over the final 10–15 minutes. The last few minutes should feel like a controlled, comfortably hard effort — not a race. Think of it as a 3-gear run: easy, medium, then comfortably hard.\n\n' +
-      'Coaching Cue: The progression should feel natural, not forced. If you\'re working hard after just a few minutes of building, back off and rebuild more gradually. The goal is a smooth, organic negative split — not a hard finish that leaves you destroyed.',
-    pace_source: '3000m+ only (for the faster portions)',
-    tags: ['aerobic', 'beginner', 'progression'],
-  },
-
 } as const;
 
 // ── M. Rotation Logic ─────────────────────────────────────────────────────────

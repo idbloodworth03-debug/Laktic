@@ -4,7 +4,7 @@
  * No Node.js dependencies — safe to import anywhere in the frontend.
  */
 
-export type AthleteTier = 'beginner' | 'intermediate' | 'advanced';
+export type AthleteTier = 'intermediate' | 'advanced';
 export type TrainingPhase = 'ease_in' | 'base' | 'pre_competition' | 'competition';
 
 // ── Time helpers ──────────────────────────────────────────────────────────────
@@ -163,23 +163,12 @@ export function getPhaseFromDates(athlete: Record<string, unknown>): TrainingPha
 
 // ── Tier classification ───────────────────────────────────────────────────────
 
-/** Classify athlete into beginner | intermediate | advanced. */
+/** Classify athlete into intermediate | advanced. Minimum tier is intermediate. */
 export function classifyAthleteTier(athlete: Record<string, unknown>): AthleteTier {
   const mpw: number           = ((athlete.current_weekly_mileage ?? athlete.weekly_volume_miles ?? 0) as number);
   const fitnessRating: number = ((athlete.fitness_rating ?? 5) as number);
   const exp: string           = ((athlete.experience_level ?? '') as string);
   const hasPRs                = !!(athlete.pr_5k || athlete.pr_mile || athlete.pr_1500m || athlete.pr_800m || athlete.pr_10k);
-  const hasAerobicPR          = !!(athlete.pr_5k || athlete.pr_10k || athlete.pr_half_marathon || athlete.pr_marathon);
-  const hasEventPR            = !!(athlete.pr_mile || athlete.pr_1500m || athlete.pr_800m);
-
-  // BEGINNER: any of these
-  if (
-    mpw < 15 ||
-    fitnessRating <= 3 ||
-    exp === 'beginner' || exp === 'less_than_1_year' ||
-    !hasPRs ||
-    (!hasAerobicPR && !hasEventPR)
-  ) return 'beginner';
 
   // ADVANCED: all must be true
   if (

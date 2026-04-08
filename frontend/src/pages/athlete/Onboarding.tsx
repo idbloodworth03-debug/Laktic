@@ -90,61 +90,6 @@ function buildPlanCards(
     ? (new Date(raceDate + 'T00:00:00Z').getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)
     : null;
 
-  if (tier === 'beginner') {
-    const card3: PlanCardConfig = raceDate && (weeksToRace ?? 0) > 8
-      ? {
-          value: 'first_race',
-          label: 'First Race Plan',
-          desc: 'A gentle build toward your first race. Mostly easy, light structure in the final weeks.',
-          preview: [
-            { day: 'Mon', workout: 'Easy run · 20 min' },
-            { day: 'Wed', workout: 'Easy run · 25 min' },
-            { day: 'Sat', workout: 'Long run · Easy, no intervals' },
-          ],
-          phase: 'Base',
-          phaseColor: '#4ade80',
-        }
-      : {
-          value: 'custom',
-          label: 'Custom',
-          desc: 'Tell Pace what you want and it will build something for you.',
-          preview: [
-            { day: '', workout: 'Fully personalized' },
-            { day: '', workout: 'Built around your goals' },
-            { day: '', workout: 'Adapts as you progress' },
-          ],
-          phase: 'Ease-In',
-          phaseColor: '#6b7280',
-        };
-    return [
-      {
-        value: 'start_easy',
-        label: 'Start Easy',
-        desc: 'All easy running. No pace targets. Just build the habit of getting out the door consistently.',
-        preview: [
-          { day: 'Mon', workout: 'Easy run · 20–25 min' },
-          { day: 'Wed', workout: 'Easy run · 20–25 min' },
-          { day: 'Sat', workout: 'Easy run · 25 min' },
-        ],
-        phase: 'Ease-In',
-        phaseColor: '#6b7280',
-      },
-      {
-        value: 'build_base',
-        label: 'Build a Base',
-        desc: 'Easy running with one slightly longer run each week. Simple structure, no hard days.',
-        preview: [
-          { day: 'Mon', workout: 'Easy run · 25 min' },
-          { day: 'Thu', workout: 'Easy run · 25 min' },
-          { day: 'Sat', workout: 'Long run · 35 min' },
-        ],
-        phase: 'Ease-In → Base',
-        phaseColor: '#6b7280',
-      },
-      card3,
-    ];
-  }
-
   if (tier === 'advanced') {
     return [
       {
@@ -1134,8 +1079,6 @@ export function Onboarding() {
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {[
-              { value: 'beginner', label: 'Just started' },
-              { value: 'less_than_1_year', label: 'Less than 1 year' },
               { value: '1_to_3_years', label: '1 to 3 years' },
               { value: '3_plus_years', label: '3 or more years' },
             ].map(o => (
