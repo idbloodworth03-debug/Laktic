@@ -82,7 +82,7 @@ CREATE TABLE public.coach_knowledge_documents (
 CREATE TABLE public.athlete_seasons (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   athlete_id UUID REFERENCES athlete_profiles(id) ON DELETE CASCADE NOT NULL,
-  bot_id UUID REFERENCES coach_bots(id) NOT NULL,
+  bot_id UUID REFERENCES coach_bots(id) ON DELETE SET NULL,
   race_calendar JSONB NOT NULL DEFAULT '[]',
   season_plan JSONB NOT NULL DEFAULT '[]',
   ai_used BOOLEAN DEFAULT TRUE,
@@ -282,7 +282,7 @@ CREATE TABLE IF NOT EXISTS public.feed_kudos (
 CREATE TABLE IF NOT EXISTS public.plan_jobs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   athlete_id UUID REFERENCES public.athlete_profiles(id) ON DELETE CASCADE NOT NULL,
-  bot_id UUID REFERENCES public.coach_bots(id) NOT NULL,
+  bot_id UUID REFERENCES public.coach_bots(id) ON DELETE SET NULL,
   status TEXT NOT NULL DEFAULT 'generating' CHECK (status IN ('generating', 'complete', 'failed')),
   result JSONB,
   error TEXT,
