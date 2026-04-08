@@ -54,8 +54,9 @@ export function AthleteSettings() {
   const [trainMpw, setTrainMpw] = useState<string>((profile as any)?.current_weekly_mileage?.toString() ?? '');
   const [trainDays, setTrainDays] = useState<number>((profile as any)?.training_days_per_week ?? 4);
   const [trainFitness, setTrainFitness] = useState<number>((profile as any)?.fitness_rating ?? 5);
-  const [trainSeasonStart, setTrainSeasonStart] = useState((profile as any)?.season_start_date ?? '');
-  const [trainSeasonEnd, setTrainSeasonEnd] = useState((profile as any)?.season_end_date ?? '');
+  const _today = new Date().toISOString().split('T')[0];
+  const [trainSeasonStart, setTrainSeasonStart] = useState(() => { const d = (profile as any)?.season_start_date ?? ''; return d >= _today ? d : ''; });
+  const [trainSeasonEnd, setTrainSeasonEnd] = useState(() => { const d = (profile as any)?.season_end_date ?? ''; return d >= _today ? d : ''; });
   const [savingTrain, setSavingTrain] = useState(false);
   const [trainSaved, setTrainSaved] = useState(false);
 
@@ -129,8 +130,9 @@ export function AthleteSettings() {
     setTrainMpw(p.current_weekly_mileage != null ? String(p.current_weekly_mileage) : '');
     setTrainDays(p.training_days_per_week ?? 4);
     setTrainFitness(p.fitness_rating ?? 5);
-    setTrainSeasonStart(p.season_start_date ?? '');
-    setTrainSeasonEnd(p.season_end_date ?? '');
+    const tod = new Date().toISOString().split('T')[0];
+    setTrainSeasonStart(p.season_start_date && p.season_start_date >= tod ? p.season_start_date : '');
+    setTrainSeasonEnd(p.season_end_date && p.season_end_date >= tod ? p.season_end_date : '');
     setRaceEvents(Array.isArray(p.primary_events) ? p.primary_events : []);
     setRaceDist(p.target_race_distance ?? '');
     setRaceDate(p.target_race_date ?? '');
@@ -395,24 +397,13 @@ export function AthleteSettings() {
             </div>
             <Button
               variant="primary" size="sm" loading={savingTrain}
-              onClick={() => {
-                const today = new Date().toISOString().split('T')[0];
-                if (trainSeasonStart && trainSeasonStart < today) {
-                  setAlert({ type: 'error', message: 'Season start date cannot be in the past.' });
-                  return;
-                }
-                if (trainSeasonEnd && trainSeasonEnd < today) {
-                  setAlert({ type: 'error', message: 'Season end date cannot be in the past.' });
-                  return;
-                }
-                patchProfile({
-                  current_weekly_mileage: trainMpw ? parseFloat(trainMpw) : null,
-                  training_days_per_week: trainDays,
-                  fitness_rating: trainFitness,
-                  season_start_date: trainSeasonStart || null,
-                  season_end_date: trainSeasonEnd || null,
-                }, setSavingTrain, setTrainSaved);
-              }}
+              onClick={() => patchProfile({
+                current_weekly_mileage: trainMpw ? parseFloat(trainMpw) : null,
+                training_days_per_week: trainDays,
+                fitness_rating: trainFitness,
+                season_start_date: trainSeasonStart || null,
+                season_end_date: trainSeasonEnd || null,
+              }, setSavingTrain, setTrainSaved)}
             >
               {trainSaved ? 'Saved ✓' : 'Save'}
             </Button>
