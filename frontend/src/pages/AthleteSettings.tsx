@@ -390,18 +390,29 @@ export function AthleteSettings() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Season start date" type="date" value={trainSeasonStart} onChange={e => setTrainSeasonStart(e.target.value)} />
+              <Input label="Season start date" type="date" min={new Date().toISOString().split('T')[0]} value={trainSeasonStart} onChange={e => setTrainSeasonStart(e.target.value)} />
               <Input label="Season end date" type="date" min={new Date().toISOString().split('T')[0]} value={trainSeasonEnd} onChange={e => setTrainSeasonEnd(e.target.value)} />
             </div>
             <Button
               variant="primary" size="sm" loading={savingTrain}
-              onClick={() => patchProfile({
-                current_weekly_mileage: trainMpw ? parseFloat(trainMpw) : null,
-                training_days_per_week: trainDays,
-                fitness_rating: trainFitness,
-                season_start_date: trainSeasonStart || null,
-                season_end_date: trainSeasonEnd || null,
-              }, setSavingTrain, setTrainSaved)}
+              onClick={() => {
+                const today = new Date().toISOString().split('T')[0];
+                if (trainSeasonStart && trainSeasonStart < today) {
+                  setAlert({ type: 'error', message: 'Season start date cannot be in the past.' });
+                  return;
+                }
+                if (trainSeasonEnd && trainSeasonEnd < today) {
+                  setAlert({ type: 'error', message: 'Season end date cannot be in the past.' });
+                  return;
+                }
+                patchProfile({
+                  current_weekly_mileage: trainMpw ? parseFloat(trainMpw) : null,
+                  training_days_per_week: trainDays,
+                  fitness_rating: trainFitness,
+                  season_start_date: trainSeasonStart || null,
+                  season_end_date: trainSeasonEnd || null,
+                }, setSavingTrain, setTrainSaved);
+              }}
             >
               {trainSaved ? 'Saved ✓' : 'Save'}
             </Button>
