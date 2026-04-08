@@ -12,6 +12,16 @@ ALTER TABLE public.athlete_seasons
 
 -- Fix any plan_generation_jobs or similar table with same issue
 DO $$ BEGIN
+  ALTER TABLE public.plan_jobs
+    DROP CONSTRAINT IF EXISTS plan_jobs_bot_id_fkey;
+  ALTER TABLE public.plan_jobs
+    ADD CONSTRAINT plan_jobs_bot_id_fkey
+    FOREIGN KEY (bot_id) REFERENCES public.coach_bots(id) ON DELETE SET NULL;
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'plan_jobs table does not exist, skipping.';
+END $$;
+
+DO $$ BEGIN
   ALTER TABLE public.plan_generation_jobs
     DROP CONSTRAINT IF EXISTS plan_generation_jobs_bot_id_fkey;
   ALTER TABLE public.plan_generation_jobs
