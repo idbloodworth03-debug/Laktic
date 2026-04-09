@@ -405,50 +405,50 @@ export function CoachRegister() {
     finally { setLoading(false); }
   };
 
+  // ── Coach registration is temporarily closed ─────────────────────────────
+  // To re-enable: remove the early return below and uncomment the form above.
   return (
-    <SplitAuth title="Create Coach Account" subtitle="Set up your coaching bot once. Athletes train autonomously." error={error}>
-      <Input label="Full name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Coach Jane Smith" />
-      <Input label="School / Organization (optional)" value={form.school_or_org} onChange={e => setForm(f => ({ ...f, school_or_org: e.target.value }))} placeholder="State University XC" />
-      <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="coach@example.com" />
-      <Input
-        label="Password"
-        type="password"
-        value={form.password}
-        onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-        placeholder="••••••••"
-        hint="Minimum 8 characters"
-        error={pwTooShort ? 'Password must be at least 8 characters' : undefined}
-      />
-      <div className="flex flex-col gap-1">
-        <Input
-          id="coach-confirm-pw"
-          label="Confirm password"
-          type="password"
-          value={form.confirmPassword}
-          onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))}
-          placeholder="••••••••"
-          error={confirmMismatch ? 'Passwords do not match' : undefined}
-        />
-        {confirmMatch && (
-          <p className="text-xs" style={{ color: 'var(--color-accent)' }}>Passwords match</p>
-        )}
+    <div
+      className="min-h-screen flex items-center justify-center px-6"
+      style={{ background: 'var(--color-bg-primary)' }}
+    >
+      <div className="w-full max-w-sm text-center flex flex-col items-center gap-6">
+        <Link to="/" className="font-sans font-semibold text-[17px] tracking-tight" style={{ color: 'var(--color-accent)' }}>
+          Laktic
+        </Link>
+
+        {/* Icon */}
+        <div
+          className="w-16 h-16 rounded-2xl flex items-center justify-center"
+          style={{ background: 'var(--color-accent-dim)', border: '1px solid rgba(0,229,160,0.25)' }}
+        >
+          <span style={{ fontSize: 28 }}>🔒</span>
+        </div>
+
+        <div>
+          <h1 className="font-sans font-semibold text-xl mb-2" style={{ color: 'var(--color-text-primary)' }}>
+            Coach sign-ups coming soon
+          </h1>
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+            We're not quite ready to onboard coaches yet. Check back soon — we're working hard to get the coaching platform ready for you.
+          </p>
+        </div>
+
+        <div
+          className="w-full rounded-xl px-5 py-4 text-sm text-left"
+          style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}
+        >
+          <p className="font-semibold mb-1" style={{ color: 'var(--color-text-primary)' }}>Already have an account?</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>
+            <Link to="/login/coach" style={{ color: 'var(--color-accent)' }}>Sign in here</Link> to access your existing coach account.
+          </p>
+        </div>
+
+        <Link to="/" className="text-sm transition-colors" style={{ color: 'var(--color-text-tertiary)' }}>
+          ← Back to home
+        </Link>
       </div>
-      <Button onClick={handle} loading={loading} disabled={!canSubmit} className="w-full font-semibold" size="lg">
-        Create Coach Account
-      </Button>
-      <p className="text-center text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
-        By creating an account you agree to our{' '}
-        <Link to="/privacy" className="transition-colors hover:underline" style={{ color: 'var(--color-accent)' }}>Privacy Policy</Link>
-      </p>
-      <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
-        Already have an account?{' '}
-        <Link to="/login" className="transition-colors" style={{ color: 'var(--color-accent)' }}>Sign in</Link>
-      </p>
-      <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
-        Are you an athlete?{' '}
-        <Link to="/athlete/signup" className="transition-colors" style={{ color: 'var(--color-accent)' }}>Sign up here</Link>
-      </p>
-    </SplitAuth>
+    </div>
   );
 }
 
