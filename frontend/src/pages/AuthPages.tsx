@@ -406,47 +406,113 @@ export function CoachRegister() {
   };
 
   // ── Coach registration is temporarily closed ─────────────────────────────
-  // To re-enable: remove the early return below and uncomment the form above.
+  // To re-enable: remove the early return below and restore the form.
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-6"
-      style={{ background: 'var(--color-bg-primary)' }}
-    >
-      <div className="w-full max-w-sm text-center flex flex-col items-center gap-6">
+    <div className="min-h-screen flex relative overflow-hidden" style={{ background: 'var(--color-bg-primary)' }}>
+      {/* Grid background */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: 'linear-gradient(var(--color-accent) 1px, transparent 1px), linear-gradient(90deg, var(--color-accent) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+          opacity: 0.035,
+        }}
+      />
+      {/* Glow orb */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 pointer-events-none">
+        <div className="w-[600px] h-[300px] rounded-full blur-[120px]" style={{ background: 'var(--color-accent)', opacity: 0.07 }} />
+      </div>
+
+      {/* Left panel */}
+      <div
+        className="hidden md:flex flex-col justify-between w-[42%] min-h-screen px-12 py-12 relative z-10"
+        style={{ background: 'rgba(10,10,10,0.6)', borderRight: '1px solid var(--color-border)' }}
+      >
         <Link to="/" className="font-sans font-semibold text-[17px] tracking-tight" style={{ color: 'var(--color-accent)' }}>
           Laktic
         </Link>
-
-        {/* Icon */}
-        <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center"
-          style={{ background: 'var(--color-accent-dim)', border: '1px solid rgba(0,229,160,0.25)' }}
-        >
-          <span style={{ fontSize: 28 }}>🔒</span>
-        </div>
-
         <div>
-          <h1 className="font-sans font-semibold text-xl mb-2" style={{ color: 'var(--color-text-primary)' }}>
-            Coach sign-ups coming soon
-          </h1>
+          <div
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium mb-8"
+            style={{ borderColor: 'rgba(0,229,160,0.25)', background: 'rgba(0,229,160,0.06)', color: 'var(--color-accent)' }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--color-accent)' }} />
+            Coming soon
+          </div>
+          <p className="font-sans font-semibold text-3xl leading-snug mb-4" style={{ color: 'var(--color-text-primary)' }}>
+            Coach your athletes<br />
+            <span style={{ color: 'var(--color-accent)' }}>at scale.</span>
+          </p>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-            We're not quite ready to onboard coaches yet. Check back soon — we're working hard to get the coaching platform ready for you.
+            Set up your bot once. It coaches every athlete in your voice — personalized plans, real-time adjustments, 24/7.
           </p>
         </div>
+        <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
+          Already a coach?{' '}
+          <Link to="/login/coach" style={{ color: 'var(--color-accent)' }} className="hover:underline">Sign in</Link>
+        </p>
+      </div>
 
-        <div
-          className="w-full rounded-xl px-5 py-4 text-sm text-left"
-          style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}
-        >
-          <p className="font-semibold mb-1" style={{ color: 'var(--color-text-primary)' }}>Already have an account?</p>
-          <p style={{ color: 'var(--color-text-secondary)' }}>
-            <Link to="/login/coach" style={{ color: 'var(--color-accent)' }}>Sign in here</Link> to access your existing coach account.
-          </p>
-        </div>
-
-        <Link to="/" className="text-sm transition-colors" style={{ color: 'var(--color-text-tertiary)' }}>
-          ← Back to home
+      {/* Right panel */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 relative z-10" style={{ background: 'var(--color-bg-secondary)' }}>
+        {/* Mobile wordmark */}
+        <Link to="/" className="md:hidden font-sans font-semibold text-[17px] tracking-tight mb-10" style={{ color: 'var(--color-accent)' }}>
+          Laktic
         </Link>
+
+        <div className="w-full max-w-sm flex flex-col items-center text-center gap-7">
+          {/* Pulse ring */}
+          <div className="relative flex items-center justify-center">
+            <div className="w-20 h-20 rounded-full animate-pulse" style={{ background: 'rgba(0,229,160,0.08)', border: '1px solid rgba(0,229,160,0.2)' }} />
+            <div className="absolute w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'var(--color-accent-dim)', border: '1px solid rgba(0,229,160,0.4)' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00E5A0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+            </div>
+          </div>
+
+          <div>
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-semibold mb-4"
+              style={{ borderColor: 'rgba(0,229,160,0.3)', background: 'rgba(0,229,160,0.08)', color: 'var(--color-accent)' }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--color-accent)' }} />
+              Coming Soon
+            </div>
+            <h1 className="font-sans font-semibold text-2xl mb-3" style={{ color: 'var(--color-text-primary)' }}>
+              Coach accounts are<br />opening soon
+            </h1>
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              We're putting the finishing touches on the coaching platform. We'll be ready to onboard coaches very soon.
+            </p>
+          </div>
+
+          {/* Divider */}
+          <div className="w-full h-px" style={{ background: 'var(--color-border)' }} />
+
+          <div className="w-full text-left">
+            <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-tertiary)' }}>
+              Already have a coach account?
+            </p>
+            <Link
+              to="/login/coach"
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-colors"
+              style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-light)', color: 'var(--color-text-primary)' }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(0,229,160,0.35)')}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border-light)')}
+            >
+              <span className="text-sm font-medium">Sign in to your account</span>
+              <span style={{ color: 'var(--color-accent)', fontSize: 16 }}>→</span>
+            </Link>
+          </div>
+
+          <Link to="/" className="text-xs transition-colors" style={{ color: 'var(--color-text-tertiary)' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-text-secondary)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-text-tertiary)')}
+          >
+            ← Back to home
+          </Link>
+        </div>
       </div>
     </div>
   );
