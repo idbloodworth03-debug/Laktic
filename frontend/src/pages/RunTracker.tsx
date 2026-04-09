@@ -152,18 +152,23 @@ export function RunTracker() {
         setCurrentPos(newPos);
         if (lastCoordRef.current) {
           const d = haversine(lastCoordRef.current.lat, lastCoordRef.current.lon, lat, lon);
-          if (d >= 2 && d <= 50) {
-            setDistanceM(prev => prev + d);
+          // Add to trail if moved ≥1m and <100m (filters pure noise, allows smooth line)
+          if (d >= 1 && d <= 100) {
             setRoutePoints(prev => [...prev, newPos]);
+            // Count distance only for ≥2m moves to avoid jitter inflating mileage
+            if (d >= 2 && d <= 50) {
+              setDistanceM(prev => prev + d);
+            }
+            lastCoordRef.current = { lat, lon };
           }
         } else {
-          setRoutePoints([newPos]);
+          setRoutePoints(prev => prev.length === 0 ? [newPos] : [...prev, newPos]);
+          lastCoordRef.current = { lat, lon };
         }
-        lastCoordRef.current = { lat, lon };
         coordsRef.current.push({ lat, lon, ts });
       },
       (err) => setGpsError(`GPS error: ${err.message}`),
-      { enableHighAccuracy: true, distanceFilter: 2 } as PositionOptions
+      { enableHighAccuracy: true, maximumAge: 0 } as PositionOptions
     );
   }, []);
 
@@ -186,9 +191,14 @@ export function RunTracker() {
     setGpsError(null);
     startTimeRef.current = new Date();
     setRunState('running');
+    // Seed trail and lastCoord from pre-warmed GPS so line starts at origin
+    if (currentPos) {
+      lastCoordRef.current = { lat: currentPos[0], lon: currentPos[1] };
+      setRoutePoints([currentPos]);
+    }
     startWatchingGPS();
     startTimer();
-  }, [startWatchingGPS, startTimer]);
+  }, [startWatchingGPS, startTimer, currentPos]);
 
   const handlePause = useCallback(() => {
     setRunState('paused');
@@ -275,8 +285,13 @@ export function RunTracker() {
           attributionControl={false}
         >
           <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-          {routePoints.length > 1 && (
-            <Polyline positions={routePoints} color="#00E5A0" weight={4} opacity={0.9} />
+          {routePoints.length >= 1 && (
+            <>
+              {/* Glow layer */}
+              <Polyline positions={routePoints} color="#00E5A0" weight={10} opacity={0.2} />
+              {/* Solid line */}
+              <Polyline positions={routePoints} color="#00E5A0" weight={4} opacity={1} />
+            </>
           )}
           {currentPos && <PositionDot pos={currentPos} />}
           {currentPos && <SetViewOnGPS pos={currentPos} />}
