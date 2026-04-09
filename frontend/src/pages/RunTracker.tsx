@@ -58,6 +58,19 @@ function MapFollow({ pos }: { pos: [number, number] }) {
   return null;
 }
 
+// Jumps to actual GPS location once on first lock
+function SetViewOnGPS({ pos }: { pos: [number, number] }) {
+  const map = useMap();
+  const done = useRef(false);
+  useEffect(() => {
+    if (!done.current) {
+      done.current = true;
+      map.setView(pos, 19);
+    }
+  }, [pos, map]);
+  return null;
+}
+
 // Current position dot
 function PositionDot({ pos }: { pos: [number, number] }) {
   const map = useMap();
@@ -256,7 +269,7 @@ export function RunTracker() {
       <div style={{ flex: 1, minHeight: 280, position: 'relative' }}>
         <MapContainer
           center={mapCenter}
-          zoom={16}
+          zoom={19}
           style={{ width: '100%', height: '100%', minHeight: 280 }}
           zoomControl={false}
           attributionControl={false}
@@ -266,6 +279,7 @@ export function RunTracker() {
             <Polyline positions={routePoints} color="#00E5A0" weight={4} opacity={0.9} />
           )}
           {currentPos && <PositionDot pos={currentPos} />}
+          {currentPos && <SetViewOnGPS pos={currentPos} />}
           {isTracking && currentPos && <MapFollow pos={currentPos} />}
         </MapContainer>
 
