@@ -593,12 +593,9 @@ export function RaceCalendar() {
                         className="bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-btn px-[14px] py-[10px] text-sm text-[var(--color-text-primary)] outline-none transition-all duration-150 focus:border-[var(--color-accent)] focus:shadow-[0_0_0_3px_var(--color-accent-dim)]"
                       >
                         <option value="">Select distance</option>
-                        <option value="5K">5K</option>
-                        <option value="10K">10K</option>
-                        <option value="Half Marathon">Half Marathon</option>
-                        <option value="Marathon">Marathon</option>
-                        <option value="Ultra">Ultra</option>
-                        <option value="Other">Other</option>
+                        <option value="1500m">1500m</option>
+                        <option value="Mile">Mile</option>
+                        <option value="3K">3K</option>
                       </select>
                     </div>
                     <Input label="Location (optional)" value={newRace.location || ''} onChange={e => setNewRace(r => ({ ...r, location: e.target.value }))} placeholder="e.g. Boston, MA" />
