@@ -120,15 +120,15 @@ function Navbar() {
 
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
         <Link to="/login/coach"
-          style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', textDecoration: 'none', fontWeight: 500, padding: '7px 14px', borderRadius: '8px', transition: 'all 0.2s' }}
-          onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.85)')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.5)')}
-        >Coach Login</Link>
-        <Link to="/login"
           style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', textDecoration: 'none', fontWeight: 500, padding: '7px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.12)', transition: 'all 0.2s' }}
           onMouseEnter={e => { e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.28)'; }}
           onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; }}
-        >Sign In</Link>
+        >Coach Login</Link>
+        <Link to="/login/athlete"
+          style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', textDecoration: 'none', fontWeight: 500, padding: '7px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.12)', transition: 'all 0.2s' }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.28)'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; }}
+        >Athlete Login</Link>
         <Link to="/athlete/signup"
           style={{ fontSize: '14px', fontWeight: 600, color: '#000', background: '#00E5A0', padding: '7px 16px', borderRadius: '8px', transition: 'background 0.2s', textDecoration: 'none', display: 'inline-block' }}
           onMouseEnter={e => (e.currentTarget.style.background = '#00cc8f')}
