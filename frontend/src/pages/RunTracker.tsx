@@ -65,7 +65,7 @@ function SetViewOnGPS({ pos }: { pos: [number, number] }) {
   useEffect(() => {
     if (!done.current) {
       done.current = true;
-      map.setView(pos, 19);
+      map.setView(pos, 20);
     }
   }, [pos, map]);
   return null;
@@ -279,12 +279,17 @@ export function RunTracker() {
       <div style={{ flex: 1, minHeight: 280, position: 'relative' }}>
         <MapContainer
           center={mapCenter}
-          zoom={19}
+          zoom={20}
+          maxZoom={20}
           style={{ width: '100%', height: '100%', minHeight: 280 }}
           zoomControl={false}
           attributionControl={false}
         >
-          <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+          <TileLayer
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            maxNativeZoom={19}
+            maxZoom={20}
+          />
           {routePoints.length >= 1 && (
             <>
               {/* Glow layer */}
