@@ -145,6 +145,41 @@ router.patch(
       .single();
 
     if (error) return res.status(400).json({ error: error.message });
+
+    // When onboarding saves a goal race, also add it to the active season's race_calendar
+    // so it appears on the Race Calendar page immediately.
+    const body = req.body as Record<string, any>;
+    if (body.target_race_name && body.target_race_date) {
+      try {
+        const season = await getActiveSeasonForTeam(req.athlete.id, req.athlete.active_team_id ?? null, 'id, race_calendar');
+        if (season) {
+          const raceCalendar: any[] = Array.isArray(season.race_calendar) ? [...season.race_calendar] : [];
+          const newRace = {
+            name: body.target_race_name,
+            date: body.target_race_date,
+            is_goal_race: true,
+            notes: '',
+            distance: body.target_race_distance || '',
+            goal_time: body.goal_time || '',
+          };
+          // Replace any existing goal race entry (or append)
+          const goalIdx = raceCalendar.findIndex((r: any) => r.is_goal_race);
+          if (goalIdx >= 0) {
+            raceCalendar[goalIdx] = newRace;
+          } else {
+            raceCalendar.push(newRace);
+          }
+          raceCalendar.sort((a: any, b: any) => a.date.localeCompare(b.date));
+          await supabase
+            .from('athlete_seasons')
+            .update({ race_calendar: raceCalendar, updated_at: new Date().toISOString() })
+            .eq('id', season.id);
+        }
+      } catch {
+        // Non-fatal — profile was saved successfully
+      }
+    }
+
     res.json(data);
   })
 );

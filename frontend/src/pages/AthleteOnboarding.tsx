@@ -343,12 +343,12 @@ export function AthleteOnboarding() {
   // ── Step 4: Join team ──────────────────────────────────────────────────────
   const handleJoin = async () => {
     const trimmed = code.trim().toUpperCase();
-    if (!trimmed) { setError('Enter an invite code'); return; }
+    if (!trimmed) { setError('Enter a team code'); return; }
     setError(''); setJoining(true);
     try {
       const result = await apiFetch(`/api/athlete/join/${trimmed}`, { method: 'POST' });
       setJoined({ teamName: result.team.name });
-    } catch (e: any) { setError(e.message || 'Invalid invite code'); }
+    } catch (e: any) { setError(e.message || 'Invalid team code'); }
     finally { setJoining(false); }
   };
 
@@ -368,7 +368,7 @@ export function AthleteOnboarding() {
     <Shell step={1} onNext={next} onSkip={next}>
       <h2 className="font-display text-xl font-bold mb-1">Connect Strava</h2>
       <p className="text-sm text-[var(--muted)] mb-6">
-        Connecting Strava lets your coaching bot see your actual runs and automatically adapt your plan based on how training is going.
+        Connecting Strava lets Pace see your actual runs and automatically adapt your plan based on how training is going.
       </p>
       {renderError()}
 
@@ -419,7 +419,7 @@ export function AthleteOnboarding() {
     >
       <h2 className="font-display text-xl font-bold mb-1">Your Sport Profile</h2>
       <p className="text-sm text-[var(--muted)] mb-6">
-        Help your coaching bot understand who you are. The more you share, the more personalized your plan.
+        Help Pace understand who you are. The more you share, the more personalized your plan.
       </p>
       {renderError()}
 
@@ -515,7 +515,7 @@ export function AthleteOnboarding() {
     >
       <h2 className="font-display text-xl font-bold mb-1">Your Fitness</h2>
       <p className="text-sm text-[var(--muted)] mb-6">
-        These details help your coaching bot build a plan perfectly scaled to your current fitness. Skip if you're not sure — you can update these anytime.
+        These details help Pace build a plan perfectly scaled to your current fitness. Skip if you're not sure — you can update these anytime.
       </p>
       {renderError()}
 
@@ -561,8 +561,6 @@ export function AthleteOnboarding() {
             <Input label="Mile PR" value={prMile} onChange={e => setPrMile(e.target.value)} placeholder="e.g. 5:30" />
             <Input label="5K PR" value={pr5k} onChange={e => setPr5k(e.target.value)} placeholder="e.g. 22:30" />
             <Input label="10K PR" value={pr10k} onChange={e => setPr10k(e.target.value)} placeholder="e.g. 48:00" />
-            <Input label="Half Marathon PR" value={prHalf} onChange={e => setPrHalf(e.target.value)} placeholder="e.g. 1:50:00" />
-            <Input label="Marathon PR" value={prMarathon} onChange={e => setPrMarathon(e.target.value)} placeholder="e.g. 4:00:00" />
           </div>
         </div>
 
@@ -580,10 +578,9 @@ export function AthleteOnboarding() {
       nextLoading={joining}
       onSkip={finish}
     >
-      <h2 className="font-display text-xl font-bold mb-1">Join Your Coach's Team</h2>
+      <h2 className="font-display text-xl font-bold mb-1">Connect to a Team</h2>
       <p className="text-sm text-[var(--muted)] mb-6">
-        If your coach gave you an invite code, enter it here. You'll be automatically connected to their coaching bot.
-        You can also skip and browse bots independently.
+        If you have a team code, enter it here to connect. You can also skip this step.
       </p>
       {renderError()}
 
@@ -595,14 +592,14 @@ export function AthleteOnboarding() {
           <div className="text-center">
             <h3 className="font-display font-semibold">Joined {joined.teamName}!</h3>
             <p className="text-sm text-[var(--muted)] mt-1">
-              You're connected to your team's coaching bot. Click "Go to Dashboard" to get your plan.
+              You've joined the team! Click "Go to Dashboard" to continue.
             </p>
           </div>
         </div>
       ) : (
         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 flex flex-col gap-4 shadow-card">
           <Input
-            label="Invite Code"
+            label="Team Code"
             placeholder="e.g. AB3XK9QZ"
             value={code}
             onChange={e => setCode(e.target.value.toUpperCase())}

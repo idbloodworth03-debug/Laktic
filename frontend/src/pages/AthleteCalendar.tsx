@@ -290,7 +290,7 @@ export function AthleteCalendar() {
           <Card>
             <div className="text-center py-10">
               <p className="text-sm text-[var(--muted)] mb-2">No team events scheduled yet.</p>
-              <p className="text-xs text-[var(--muted)]">Your coach will post practices and races here.</p>
+              <p className="text-xs text-[var(--muted)]">Practices and races will appear here.</p>
             </div>
           </Card>
         ) : view === 'month' ? (

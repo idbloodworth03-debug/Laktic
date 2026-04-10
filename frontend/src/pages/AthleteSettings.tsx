@@ -200,7 +200,7 @@ export function AthleteSettings() {
         else nav('/athlete/browse');
       }, 1500);
     } catch (e: any) {
-      setJoinError(e.message || 'Invalid invite code.');
+      setJoinError(e.message || 'Invalid team code.');
     } finally {
       setJoining(false);
     }
@@ -647,7 +647,7 @@ export function AthleteSettings() {
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              <p className="text-sm text-[var(--color-text-tertiary)]">Enter the invite code your coach shared with you.</p>
+              <p className="text-sm text-[var(--color-text-tertiary)]">Enter a team code to join.</p>
               <div className="flex gap-3 items-end">
                 <div className="flex-1">
                   <Input

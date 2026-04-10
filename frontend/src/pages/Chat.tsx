@@ -284,8 +284,8 @@ function DirectChat() {
       >
         <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
           {activeTeam
-            ? <>Messaging <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{activeTeam}</span>'s coach</>
-            : 'Direct messages with your coach'}
+            ? <>Messaging <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{activeTeam}</span></>
+            : 'Direct messages'}
         </p>
       </div>
 
@@ -295,7 +295,7 @@ function DirectChat() {
         {loaded && messages.length === 0 && (
           <div className="text-center py-20">
             <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-              Send a message directly to your coach. They'll reply here.
+              Send a message to start the conversation.
             </p>
           </div>
         )}
@@ -318,12 +318,7 @@ function DirectChat() {
         onChange={setInput}
         onSend={send}
         sending={sending}
-        placeholder="Message your coach… (Enter to send, Shift+Enter for new line)"
-        hint={
-          <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
-            Messages are reviewed by your coach, not the AI bot.
-          </p>
-        }
+        placeholder="Send a message… (Enter to send, Shift+Enter for new line)"
       />
     </div>
   );

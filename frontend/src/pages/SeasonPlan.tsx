@@ -832,7 +832,7 @@ function TeamSwitcher({ onTeamChange }: { onTeamChange: () => void }) {
       setShowJoin(false);
       await load();
       onTeamChange();
-    } catch (e: any) { setJoinError(e.message || 'Invalid invite code'); }
+    } catch (e: any) { setJoinError(e.message || 'Invalid team code'); }
     finally { setJoining(false); }
   };
 
@@ -855,7 +855,7 @@ function TeamSwitcher({ onTeamChange }: { onTeamChange: () => void }) {
           >
             <h3 className="font-semibold text-base mb-2" style={{ color: 'var(--color-text-primary)' }}>Leave {confirmLeave.name}?</h3>
             <p className="text-sm mb-5" style={{ color: 'var(--color-text-secondary)' }}>
-              You will lose access to this team's training plan. You can rejoin later with an invite code.
+              You will lose access to this team's training plan. You can rejoin later with a team code.
             </p>
             <div className="flex gap-2 justify-end">
               <Button variant="ghost" size="sm" onClick={() => setConfirmLeave(null)}>Cancel</Button>
@@ -908,7 +908,7 @@ function TeamSwitcher({ onTeamChange }: { onTeamChange: () => void }) {
                 value={joinCode}
                 onChange={e => setJoinCode(e.target.value.toUpperCase())}
                 onKeyDown={e => e.key === 'Enter' && joinTeam()}
-                placeholder="INVITE CODE"
+                placeholder="TEAM CODE"
                 maxLength={8}
                 autoFocus
                 className="w-28 text-xs uppercase tracking-widest outline-none transition-all"

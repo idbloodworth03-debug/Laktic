@@ -7,15 +7,15 @@ import { Button, Input } from '../components/ui';
 
 // ── Landing ──────────────────────────────────────────────────────────────────
 const STATS = [
-  { value: '14-day', label: 'coaching window' },
+  { value: '14-day', label: 'training window' },
   { value: 'GPT-4o', label: 'Powered by' },
-  { value: '100%', label: 'Coach-voice plans' },
+  { value: '100%', label: 'Personalized plans' },
 ];
 
 const FEATURES = [
   {
     title: 'Personalized Plans',
-    desc: "A full season plan built from your coach's philosophy — tailored to your race calendar and current fitness.",
+    desc: "A full season plan built around your race calendar and current fitness — tailored to you, not a template.",
   },
   {
     title: '14-Day Coaching',
@@ -112,7 +112,7 @@ export function Landing() {
           className="text-base leading-relaxed mb-10 max-w-xl"
           style={{ color: 'var(--color-text-secondary)' }}
         >
-          Your coach's philosophy, delivered to every athlete — personalized, adaptive, always on.
+          AI-powered training plans, personalized to your race calendar and fitness level.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3">
@@ -199,8 +199,8 @@ export function Landing() {
 
 // ── Auth Split Layout ─────────────────────────────────────────────────────────
 const PANEL_BULLETS = [
-  'Personalized season plan from your coach',
-  'Adaptive 14-day coaching window',
+  'Personalized season plan built for you',
+  'Adaptive 14-day training window',
   'Strava-connected compliance tracking',
 ];
 
@@ -240,9 +240,9 @@ function SplitAuth({ title, subtitle, error, children }: SplitAuthProps) {
             className="font-sans font-semibold text-2xl leading-snug mb-8"
             style={{ color: 'var(--color-text-primary)' }}
           >
-            Your coach's philosophy.
+            Your AI training partner.
             <br />
-            <span style={{ color: 'var(--color-accent)' }}>Every athlete.</span>
+            <span style={{ color: 'var(--color-accent)' }}>Built for you.</span>
           </p>
           <ul className="flex flex-col gap-4">
             {PANEL_BULLETS.map(b => (
@@ -581,7 +581,7 @@ export function AthleteRegister() {
   };
 
   return (
-    <SplitAuth title="Create Athlete Account" subtitle="Find your coach bot. Get a personalized season plan." error={error}>
+    <SplitAuth title="Create Athlete Account" subtitle="Get your personalized season plan." error={error}>
       <Input label="Full name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Your name" />
       <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="you@example.com" />
       <Input

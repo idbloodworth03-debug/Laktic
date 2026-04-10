@@ -642,6 +642,7 @@ export function Onboarding() {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<OnboardingData>(EMPTY);
   const [error, setError] = useState('');
+  const [pr5kError, setPr5kError] = useState('');
   const [loading, setLoading] = useState(false);
   const [fading, setFading] = useState(false);
   const setAuth = useAuthStore(s => s.setAuth);
@@ -730,6 +731,15 @@ export function Onboarding() {
 
   const next = () => transition(() => setStep(s => s + 1));
   const back = () => transition(() => setStep(s => s - 1));
+
+  const nextStep9 = () => {
+    if (!data.pr5k.trim()) {
+      setPr5kError("Please enter your 5K time to continue. If you don't have one, enter your best estimate.");
+      return;
+    }
+    setPr5kError('');
+    next();
+  };
 
   // FIX 4 — advance after confirmed: refresh + profile load with retry + patch
   const advanceAfterConfirm = async (session: import('@supabase/supabase-js').Session) => {
@@ -1210,29 +1220,43 @@ export function Onboarding() {
         </Shell>
       );
 
-      // STEP 9 — PRs (optional — skip allowed)
+      // STEP 9 — PRs (5K required)
       case 9: return (
-        <Shell step={step} onBack={back} onNext={next} onSkip={next} skipLabel="I'll add these later">
+        <Shell step={step} onBack={back} onNext={nextStep9}>
           <h2 style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 700, letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: '12px' }}>
             Got any personal records?
           </h2>
-          <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.4)', marginBottom: '32px' }}>Optional — skip if you're just starting out.</p>
+          <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.4)', marginBottom: '32px' }}>Your 5K time is required — all others are optional.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {[
-              { label: '800m',  key: 'pr800m'  as const, placeholder: '2:10'  },
-              { label: '1500m', key: 'pr1500m' as const, placeholder: '4:15'  },
-              { label: 'Mile',  key: 'prMile'  as const, placeholder: '5:30'  },
-              { label: '5K',    key: 'pr5k'    as const, placeholder: '22:30' },
-            ].map(f => (
-              <div key={f.key}>
-                <FieldLabel>{f.label}</FieldLabel>
-                <StyledInput type="text" placeholder={f.placeholder} value={data[f.key]}
-                  onChange={e => set({ [f.key]: e.target.value })}
-                />
-              </div>
-            ))}
+            <div>
+              <FieldLabel>800m</FieldLabel>
+              <StyledInput type="text" placeholder="2:10" value={data.pr800m}
+                onChange={e => set({ pr800m: e.target.value })}
+              />
+            </div>
+            <div>
+              <FieldLabel>Mile</FieldLabel>
+              <StyledInput type="text" placeholder="5:30" value={data.prMile}
+                onChange={e => set({ prMile: e.target.value })}
+              />
+            </div>
+            <div>
+              <FieldLabel><span>5K <span style={{ color: '#ef4444' }}>*</span></span></FieldLabel>
+              <StyledInput type="text" placeholder="22:30" value={data.pr5k}
+                onChange={e => { set({ pr5k: e.target.value }); if (e.target.value.trim()) setPr5kError(''); }}
+              />
+              {pr5kError
+                ? <p style={{ fontSize: '13px', color: '#ef4444', marginTop: '6px' }}>{pr5kError}</p>
+                : <HelperText>Required — used to calculate your training paces</HelperText>
+              }
+            </div>
+            <div>
+              <FieldLabel>10K</FieldLabel>
+              <StyledInput type="text" placeholder="48:00" value={data.pr10k}
+                onChange={e => set({ pr10k: e.target.value })}
+              />
+            </div>
           </div>
-          <HelperText>Not sure of your times? Leave blank or enter 0.</HelperText>
         </Shell>
       );
 
@@ -1320,7 +1344,7 @@ export function Onboarding() {
                 <FieldLabel>Distance</FieldLabel>
                 <select value={data.raceDistance} onChange={e => set({ raceDistance: e.target.value })} style={{ ...INPUT_STYLE }}>
                   <option value="">Select distance</option>
-                  {['800m', '1500m', 'Mile', '3000m', '5K', 'Other'].map(d => (
+                  {['800m', '1500m', 'Mile', '3K', '5K', 'Other'].map(d => (
                     <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
