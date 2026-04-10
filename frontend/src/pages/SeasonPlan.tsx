@@ -213,21 +213,51 @@ interface WorkoutModalProps {
   primaryPrediction?: { raceWeekPrediction: string; targetDistance: string } | null;
 }
 
-// Replaces technical running terms with plain-language equivalents
-function simplifyText(text: string): string {
+type PB = { LT2: string; LT1: string; easy: string; recovery: string } | null | undefined;
+
+// Injects actual pace values next to technical terms in the Details tab
+function annotateTechnicalPaces(text: string, pb: PB): string {
+  if (!pb) return text;
+  const p = (v: string) => v ? ` (${v})` : '';
   return text
-    .replace(/\bLT2 effort\b/gi, 'hard effort')
-    .replace(/\bLT1 effort\b/gi, 'steady effort')
-    .replace(/\bat LT2 effort\b/gi, 'at a hard effort')
-    .replace(/\bat LT1 effort\b/gi, 'at a steady effort')
-    .replace(/\bthreshold effort\b/gi, 'comfortably hard effort')
-    .replace(/\bthreshold pace\b/gi, 'comfortably hard pace')
-    .replace(/\bat threshold\b/gi, 'at a comfortably hard pace')
-    .replace(/\bthreshold\b/gi, 'comfortably hard')
-    .replace(/\bat LT2\b/gi, 'at a hard pace')
-    .replace(/\bat LT1\b/gi, 'at a steady pace')
-    .replace(/\bLT2\b/gi, 'hard pace')
-    .replace(/\bLT1\b/gi, 'steady pace')
+    .replace(/\bat LT2 effort\b/gi, `at LT2 effort${p(pb.LT2)}`)
+    .replace(/\bat LT1 effort\b/gi, `at LT1 effort${p(pb.LT1)}`)
+    .replace(/\bLT2 effort\b/gi,    `LT2 effort${p(pb.LT2)}`)
+    .replace(/\bLT1 effort\b/gi,    `LT1 effort${p(pb.LT1)}`)
+    .replace(/\bthreshold effort\b/gi, `threshold effort${p(pb.LT1)}`)
+    .replace(/\bthreshold pace\b/gi,   `threshold pace${p(pb.LT1)}`)
+    .replace(/\bat threshold\b/gi,     `at threshold${p(pb.LT1)}`)
+    .replace(/\bat LT2\b/gi, `at LT2${p(pb.LT2)}`)
+    .replace(/\bat LT1\b/gi, `at LT1${p(pb.LT1)}`)
+    .replace(/\bLT2\b/gi,    `LT2${p(pb.LT2)}`)
+    .replace(/\bLT1\b/gi,    `LT1${p(pb.LT1)}`)
+    .replace(/\(easy effort\)/gi, `(${pb.easy})`)
+    .replace(/\(recovery effort\)/gi, `(${pb.recovery})`);
+}
+
+// Replaces technical running terms with plain-language equivalents + actual paces
+function simplifyText(text: string, pb: PB): string {
+  const p = (v: string) => v ? ` (${v})` : '';
+  const lt1 = pb ? p(pb.LT1) : '';
+  const lt2 = pb ? p(pb.LT2) : '';
+  const easy = pb ? p(pb.easy) : '';
+  const rec = pb ? p(pb.recovery) : '';
+  return text
+    .replace(/\bat LT2 effort\b/gi, `at a hard effort${lt2}`)
+    .replace(/\bat LT1 effort\b/gi, `at a steady effort${lt1}`)
+    .replace(/\bLT2 effort\b/gi,    `hard effort${lt2}`)
+    .replace(/\bLT1 effort\b/gi,    `steady effort${lt1}`)
+    .replace(/\bthreshold effort\b/gi, `comfortably hard effort${lt1}`)
+    .replace(/\bthreshold pace\b/gi,   `comfortably hard pace${lt1}`)
+    .replace(/\bat threshold\b/gi,     `at a comfortably hard pace${lt1}`)
+    .replace(/\bat LT2\b/gi, `at a hard pace${lt2}`)
+    .replace(/\bat LT1\b/gi, `at a steady pace${lt1}`)
+    .replace(/\bLT2\b/gi,    `hard pace${lt2}`)
+    .replace(/\bLT1\b/gi,    `steady pace${lt1}`)
+    .replace(/\(easy effort\)/gi, `(${pb?.easy ?? 'easy'})`)
+    .replace(/\(recovery effort\)/gi, `(${pb?.recovery ?? 'recovery'})`)
+    .replace(/\beasy pace\b/gi, `easy pace${easy}`)
+    .replace(/\brecovery pace\b/gi, `recovery pace${rec}`)
     .replace(/\blactate threshold\b/gi, 'sustainable top pace')
     .replace(/\bVO2 ?max\b/gi, 'max effort')
     .replace(/\baerobic base\b/gi, 'endurance base');
@@ -240,7 +270,10 @@ function WorkoutModal({ wo, onClose, isCompleted, onComplete, togglingComplete, 
   const resolvedDesc = rawDesc ? replacePlaceholders(rawDesc, paceBands, eventPaces, wo) : '';
   const sections = resolvedDesc ? parseDescription(resolvedDesc) : null;
   const simplifiedSections = sections
-    ? sections.map(s => ({ ...s, text: simplifyText(s.text) }))
+    ? sections.map(s => ({ ...s, text: simplifyText(s.text, paceBands) }))
+    : null;
+  const technicalSections = sections
+    ? sections.map(s => ({ ...s, text: annotateTechnicalPaces(s.text, paceBands) }))
     : null;
 
   // Derive display paces
@@ -385,7 +418,7 @@ function WorkoutModal({ wo, onClose, isCompleted, onComplete, togglingComplete, 
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{simplifyText(resolvedDesc)}</p>
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{simplifyText(resolvedDesc, paceBands)}</p>
                   )}
                 </div>
               )}
@@ -453,13 +486,13 @@ function WorkoutModal({ wo, onClose, isCompleted, onComplete, togglingComplete, 
             </>
           ) : (
             <>
-              {/* Technical workout description (original) */}
+              {/* Technical workout description with paces annotated */}
               {resolvedDesc && (
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-tertiary)' }}>The Workout</p>
-                  {sections ? (
+                  {technicalSections ? (
                     <div className="space-y-3">
-                      {sections.map((s, i) => (
+                      {technicalSections.map((s, i) => (
                         <div
                           key={i}
                           className={s.noBorder ? 'py-1' : 'pl-3 py-1'}
@@ -475,7 +508,7 @@ function WorkoutModal({ wo, onClose, isCompleted, onComplete, togglingComplete, 
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{resolvedDesc}</p>
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{annotateTechnicalPaces(resolvedDesc, paceBands)}</p>
                   )}
                 </div>
               )}
