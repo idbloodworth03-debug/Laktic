@@ -96,6 +96,7 @@ export const athleteProfileUpdateSchema = z.object({
   height_in: z.number().int().min(0).max(11).nullish(),
   weight_lbs: z.number().min(0).max(1000).nullish(),
   sleep_average: z.string().max(50).nullish(),
+  running_style: z.string().max(2000).nullish(),
   goal_time: z.string().max(50).nullish(),
   runner_types: z.array(z.string().max(100)).max(10).nullish(),
   biggest_challenges: z.array(z.string().max(200)).max(20).nullish(),

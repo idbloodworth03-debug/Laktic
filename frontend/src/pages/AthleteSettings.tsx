@@ -85,6 +85,11 @@ export function AthleteSettings() {
   const [savingHealth, setSavingHealth] = useState(false);
   const [healthSaved, setHealthSaved] = useState(false);
 
+  // Running Style
+  const [runningStyle, setRunningStyle] = useState((profile as any)?.running_style ?? '');
+  const [savingStyle, setSavingStyle] = useState(false);
+  const [styleSaved, setStyleSaved] = useState(false);
+
   // Profile load state
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState('');
@@ -143,6 +148,7 @@ export function AthleteSettings() {
     setPr5k(p.pr_5k ?? '');
     setHealthInjury(p.injury_notes ?? '');
     setHealthSleep(p.sleep_average ?? '');
+    setRunningStyle(p.running_style ?? '');
     setUsername(p.username ?? '');
     setPublicSections(p.public_sections ?? { races: true, stats: true, milestones: true });
   }
@@ -500,6 +506,30 @@ export function AthleteSettings() {
         </Card>
 
         {/* ── 5. Health ─────────────────────────────────────────────────── */}
+        <Card title="Running Style" className="mb-6">
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">Describe your running style</label>
+              <textarea
+                value={runningStyle}
+                onChange={e => setRunningStyle(e.target.value)}
+                rows={4}
+                placeholder="e.g. I'm an 800m runner that's more speed-based, but I still enjoy running the 1500. I prefer workouts with short hard reps over long tempos."
+                className="w-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent)] resize-none"
+              />
+              <p className="text-xs text-[var(--color-text-tertiary)] mt-1.5">
+                Tell Pace what kind of runner you are — your strengths, preferences, and what you enjoy. This shapes how your plan is built.
+              </p>
+            </div>
+            <Button
+              variant="primary" size="sm" loading={savingStyle}
+              onClick={() => patchProfile({ running_style: runningStyle || null }, setSavingStyle, setStyleSaved)}
+            >
+              {styleSaved ? 'Saved ✓' : 'Save'}
+            </Button>
+          </div>
+        </Card>
+
         <Card title="Health" className="mb-6">
           <div className="flex flex-col gap-4">
             <div>
