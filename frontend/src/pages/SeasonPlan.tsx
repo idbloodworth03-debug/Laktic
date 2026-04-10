@@ -213,11 +213,35 @@ interface WorkoutModalProps {
   primaryPrediction?: { raceWeekPrediction: string; targetDistance: string } | null;
 }
 
+// Replaces technical running terms with plain-language equivalents
+function simplifyText(text: string): string {
+  return text
+    .replace(/\bLT2 effort\b/gi, 'hard effort')
+    .replace(/\bLT1 effort\b/gi, 'steady effort')
+    .replace(/\bat LT2 effort\b/gi, 'at a hard effort')
+    .replace(/\bat LT1 effort\b/gi, 'at a steady effort')
+    .replace(/\bthreshold effort\b/gi, 'comfortably hard effort')
+    .replace(/\bthreshold pace\b/gi, 'comfortably hard pace')
+    .replace(/\bat threshold\b/gi, 'at a comfortably hard pace')
+    .replace(/\bthreshold\b/gi, 'comfortably hard')
+    .replace(/\bat LT2\b/gi, 'at a hard pace')
+    .replace(/\bat LT1\b/gi, 'at a steady pace')
+    .replace(/\bLT2\b/gi, 'hard pace')
+    .replace(/\bLT1\b/gi, 'steady pace')
+    .replace(/\blactate threshold\b/gi, 'sustainable top pace')
+    .replace(/\bVO2 ?max\b/gi, 'max effort')
+    .replace(/\baerobic base\b/gi, 'endurance base');
+}
+
 function WorkoutModal({ wo, onClose, isCompleted, onComplete, togglingComplete, paceBands, eventPaces, onAskPace, primaryPrediction }: WorkoutModalProps) {
+  const [tab, setTab] = useState<'overview' | 'details'>('overview');
   const typeStyle = WORKOUT_TYPE_STYLE[getWorkoutType(wo.title, false)];
   const rawDesc = wo.description || wo.library_description || '';
   const resolvedDesc = rawDesc ? replacePlaceholders(rawDesc, paceBands, eventPaces, wo) : '';
   const sections = resolvedDesc ? parseDescription(resolvedDesc) : null;
+  const simplifiedSections = sections
+    ? sections.map(s => ({ ...s, text: simplifyText(s.text) }))
+    : null;
 
   // Derive display paces
   const wt = getWorkoutType(wo.title, false);
@@ -227,6 +251,13 @@ function WorkoutModal({ wo, onClose, isCompleted, onComplete, togglingComplete, 
     if (wt === 'tempo') return { label: 'LT1/Tempo', value: paceBands.LT1 };
     if (wt === 'intervals') return { label: 'LT2/Threshold', value: paceBands.LT2 };
     return null;
+  })();
+  const simplifiedPaceLabel = (() => {
+    if (!derivedPace) return null;
+    if (wt === 'easy' || wt === 'long') return 'Easy effort';
+    if (wt === 'tempo') return 'Comfortably hard';
+    if (wt === 'intervals') return 'Hard effort';
+    return derivedPace.label;
   })();
   const eventPaceDisplay = (() => {
     if (!eventPaces) return null;
@@ -303,108 +334,221 @@ function WorkoutModal({ wo, onClose, isCompleted, onComplete, togglingComplete, 
               </div>
             )}
           </div>
+
+          {/* Tab switcher */}
+          <div className="flex gap-1 mt-4" style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: 3 }}>
+            {(['overview', 'details'] as const).map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className="flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all capitalize"
+                style={tab === t ? {
+                  background: '#1a1a1a',
+                  color: 'var(--color-text-primary)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                } : {
+                  background: 'transparent',
+                  color: 'var(--color-text-tertiary)',
+                  border: '1px solid transparent',
+                }}
+              >
+                {t === 'details' ? 'Run Description' : 'Overview'}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Body */}
         <div className="px-5 py-4 space-y-5">
 
-          {/* The Workout */}
-          {resolvedDesc && (
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-tertiary)' }}>The Workout</p>
-              {sections ? (
-                <div className="space-y-3">
-                  {sections.map((s, i) => (
-                    <div
-                      key={i}
-                      className={s.noBorder ? 'py-1' : 'pl-3 py-1'}
-                      style={s.noBorder ? undefined : { borderLeft: `2px solid ${s.color}` }}
-                    >
-                      {s.label && (
-                        <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: s.color }}>{s.label}</p>
-                      )}
-                      <p
-                        className="text-sm leading-relaxed"
-                        style={{ color: 'var(--color-text-secondary)', fontStyle: s.italic ? 'italic' : undefined }}
-                      >
-                        {s.text}
-                      </p>
+          {tab === 'overview' ? (
+            <>
+              {/* Simplified workout steps */}
+              {resolvedDesc && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-tertiary)' }}>The Workout</p>
+                  {simplifiedSections ? (
+                    <div className="space-y-3">
+                      {simplifiedSections.map((s, i) => (
+                        <div
+                          key={i}
+                          className={s.noBorder ? 'py-1' : 'pl-3 py-1'}
+                          style={s.noBorder ? undefined : { borderLeft: `2px solid ${s.color}` }}
+                        >
+                          {s.label && (
+                            <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: s.color }}>{s.label}</p>
+                          )}
+                          <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)', fontStyle: s.italic ? 'italic' : undefined }}>
+                            {s.text}
+                          </p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  ) : (
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{simplifyText(resolvedDesc)}</p>
+                  )}
                 </div>
-              ) : (
-                <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{resolvedDesc}</p>
               )}
-            </div>
-          )}
 
-          {/* Performance Impact */}
-          {primaryPrediction && (() => {
-            const wt2 = getWorkoutType(wo.title, false);
-            if (wt2 === 'rest' || !wo.title) return null;
-            let primaryBenefit = '';
-            let estimatedContribution = '';
-            if (wt2 === 'easy') {
-              primaryBenefit = 'Aerobic recovery';
-              estimatedContribution = `Keeps training load sustainable — essential to reaching ${primaryPrediction.raceWeekPrediction} on race week.`;
-            } else if (wt2 === 'long') {
-              primaryBenefit = 'Endurance base';
-              estimatedContribution = `Extends your aerobic ceiling, pushing your race week projection toward ${primaryPrediction.raceWeekPrediction} for ${primaryPrediction.targetDistance}.`;
-            } else if (wt2 === 'tempo') {
-              primaryBenefit = 'Lactate threshold';
-              estimatedContribution = `Raises your sustainable race pace — each week of consistent threshold work moves you closer to ${primaryPrediction.raceWeekPrediction}.`;
-            } else if (wt2 === 'intervals' || wt2 === 'race') {
-              primaryBenefit = 'Race-specific sharpness';
-              estimatedContribution = `Directly targets your ${primaryPrediction.targetDistance} race pace. Projected race week: ${primaryPrediction.raceWeekPrediction}.`;
-            } else {
-              primaryBenefit = 'General fitness';
-              estimatedContribution = `Contributes to your overall progression toward ${primaryPrediction.raceWeekPrediction} at race week.`;
-            }
-            return (
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-tertiary)' }}>Performance Impact</p>
-                <div className="space-y-2">
-                  <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)', fontFamily: 'DM Sans, sans-serif' }}>{primaryBenefit}</p>
-                  <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{estimatedContribution}</p>
-                  <p className="font-mono text-[11px]" style={{ color: '#00E5A0', fontFamily: 'DM Mono, monospace' }}>Race week target: {primaryPrediction.raceWeekPrediction}</p>
+              {/* Simplified performance impact */}
+              {primaryPrediction && (() => {
+                const wt2 = getWorkoutType(wo.title, false);
+                if (wt2 === 'rest' || !wo.title) return null;
+                let benefit = '';
+                let blurb = '';
+                if (wt2 === 'easy') {
+                  benefit = 'Recovery & base building';
+                  blurb = `Easy runs let your body recover and adapt. They're what makes the harder days possible — and key to reaching ${primaryPrediction.raceWeekPrediction} on race day.`;
+                } else if (wt2 === 'long') {
+                  benefit = 'Builds endurance';
+                  blurb = `The long run trains your body to go the distance. Each one pushes your ceiling closer to ${primaryPrediction.raceWeekPrediction} for ${primaryPrediction.targetDistance}.`;
+                } else if (wt2 === 'tempo') {
+                  benefit = 'Improves your race pace';
+                  blurb = `This run teaches your body to hold a faster pace for longer. Consistent tempo work is how you get from where you are to ${primaryPrediction.raceWeekPrediction}.`;
+                } else if (wt2 === 'intervals' || wt2 === 'race') {
+                  benefit = 'Race-day sharpness';
+                  blurb = `Interval workouts push your speed ceiling. They directly target your ${primaryPrediction.targetDistance} goal pace — projected race week: ${primaryPrediction.raceWeekPrediction}.`;
+                } else {
+                  benefit = 'General fitness';
+                  blurb = `Contributes to your overall progression toward ${primaryPrediction.raceWeekPrediction} at race week.`;
+                }
+                return (
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-tertiary)' }}>What this does for you</p>
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)', fontFamily: 'DM Sans, sans-serif' }}>{benefit}</p>
+                      <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{blurb}</p>
+                      <p className="font-mono text-[11px]" style={{ color: '#00E5A0', fontFamily: 'DM Mono, monospace' }}>Race week target: {primaryPrediction.raceWeekPrediction}</p>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Simplified pace display */}
+              {(wo.pace_guideline || derivedPace || eventPaceDisplay) && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-tertiary)' }}>Your Target Pace</p>
+                  <div className="space-y-2">
+                    {wo.pace_guideline && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Target</span>
+                        <span className="font-mono text-xs font-medium" style={{ color: '#00E5A0', fontFamily: 'DM Mono, monospace' }}>{wo.pace_guideline}</span>
+                      </div>
+                    )}
+                    {derivedPace && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{simplifiedPaceLabel}</span>
+                        <span className="font-mono text-xs" style={{ color: 'var(--color-text-secondary)', fontFamily: 'DM Mono, monospace' }}>{derivedPace.value}</span>
+                      </div>
+                    )}
+                    {eventPaceDisplay && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{eventPaceDisplay.label} pace</span>
+                        <span className="font-mono text-xs" style={{ color: 'var(--color-text-secondary)', fontFamily: 'DM Mono, monospace' }}>{eventPaceDisplay.value}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })()}
+              )}
+            </>
+          ) : (
+            <>
+              {/* Technical workout description (original) */}
+              {resolvedDesc && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-tertiary)' }}>The Workout</p>
+                  {sections ? (
+                    <div className="space-y-3">
+                      {sections.map((s, i) => (
+                        <div
+                          key={i}
+                          className={s.noBorder ? 'py-1' : 'pl-3 py-1'}
+                          style={s.noBorder ? undefined : { borderLeft: `2px solid ${s.color}` }}
+                        >
+                          {s.label && (
+                            <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: s.color }}>{s.label}</p>
+                          )}
+                          <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)', fontStyle: s.italic ? 'italic' : undefined }}>
+                            {s.text}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{resolvedDesc}</p>
+                  )}
+                </div>
+              )}
 
-          {/* Your Paces */}
-          {(wo.pace_guideline || derivedPace || eventPaceDisplay) && (
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-tertiary)' }}>Your Paces</p>
-              <div className="space-y-2">
-                {wo.pace_guideline && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Target</span>
-                    <span className="font-mono text-xs font-medium" style={{ color: '#00E5A0', fontFamily: 'DM Mono, monospace' }}>{wo.pace_guideline}</span>
+              {/* Technical performance impact */}
+              {primaryPrediction && (() => {
+                const wt2 = getWorkoutType(wo.title, false);
+                if (wt2 === 'rest' || !wo.title) return null;
+                let primaryBenefit = '';
+                let estimatedContribution = '';
+                if (wt2 === 'easy') {
+                  primaryBenefit = 'Aerobic recovery';
+                  estimatedContribution = `Keeps training load sustainable — essential to reaching ${primaryPrediction.raceWeekPrediction} on race week.`;
+                } else if (wt2 === 'long') {
+                  primaryBenefit = 'Endurance base';
+                  estimatedContribution = `Extends your aerobic ceiling, pushing your race week projection toward ${primaryPrediction.raceWeekPrediction} for ${primaryPrediction.targetDistance}.`;
+                } else if (wt2 === 'tempo') {
+                  primaryBenefit = 'Lactate threshold';
+                  estimatedContribution = `Raises your sustainable race pace — each week of consistent threshold work moves you closer to ${primaryPrediction.raceWeekPrediction}.`;
+                } else if (wt2 === 'intervals' || wt2 === 'race') {
+                  primaryBenefit = 'Race-specific sharpness';
+                  estimatedContribution = `Directly targets your ${primaryPrediction.targetDistance} race pace. Projected race week: ${primaryPrediction.raceWeekPrediction}.`;
+                } else {
+                  primaryBenefit = 'General fitness';
+                  estimatedContribution = `Contributes to your overall progression toward ${primaryPrediction.raceWeekPrediction} at race week.`;
+                }
+                return (
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-tertiary)' }}>Performance Impact</p>
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)', fontFamily: 'DM Sans, sans-serif' }}>{primaryBenefit}</p>
+                      <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{estimatedContribution}</p>
+                      <p className="font-mono text-[11px]" style={{ color: '#00E5A0', fontFamily: 'DM Mono, monospace' }}>Race week target: {primaryPrediction.raceWeekPrediction}</p>
+                    </div>
                   </div>
-                )}
-                {derivedPace && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{derivedPace.label}</span>
-                    <span className="font-mono text-xs" style={{ color: 'var(--color-text-secondary)', fontFamily: 'DM Mono, monospace' }}>{derivedPace.value}</span>
-                  </div>
-                )}
-                {eventPaceDisplay && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{eventPaceDisplay.label} pace</span>
-                    <span className="font-mono text-xs" style={{ color: 'var(--color-text-secondary)', fontFamily: 'DM Mono, monospace' }}>{eventPaceDisplay.value}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+                );
+              })()}
 
-          {/* Why this workout */}
-          {(wo.why || wo.change_reason) && (
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-tertiary)' }}>Why this workout</p>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-tertiary)' }}>{wo.why || wo.change_reason}</p>
-            </div>
+              {/* Technical paces */}
+              {(wo.pace_guideline || derivedPace || eventPaceDisplay) && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-tertiary)' }}>Your Paces</p>
+                  <div className="space-y-2">
+                    {wo.pace_guideline && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Target</span>
+                        <span className="font-mono text-xs font-medium" style={{ color: '#00E5A0', fontFamily: 'DM Mono, monospace' }}>{wo.pace_guideline}</span>
+                      </div>
+                    )}
+                    {derivedPace && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{derivedPace.label}</span>
+                        <span className="font-mono text-xs" style={{ color: 'var(--color-text-secondary)', fontFamily: 'DM Mono, monospace' }}>{derivedPace.value}</span>
+                      </div>
+                    )}
+                    {eventPaceDisplay && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{eventPaceDisplay.label} pace</span>
+                        <span className="font-mono text-xs" style={{ color: 'var(--color-text-secondary)', fontFamily: 'DM Mono, monospace' }}>{eventPaceDisplay.value}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Why this workout */}
+              {(wo.why || wo.change_reason) && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-tertiary)' }}>Why this workout</p>
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-tertiary)' }}>{wo.why || wo.change_reason}</p>
+                </div>
+              )}
+            </>
           )}
         </div>
 
