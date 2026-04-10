@@ -287,30 +287,29 @@ export function RunTracker() {
   const isTracking = runState === 'running' || runState === 'paused';
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', color: '#fff' }}>
+    <div style={{ height: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', color: '#fff', overflow: 'hidden' }}>
 
-      {/* Header */}
-      <div style={{ padding: '16px 20px 8px', flexShrink: 0 }}>
+      {/* Compact header — Back button only */}
+      <div style={{ padding: '12px 20px 6px', flexShrink: 0 }}>
         <button onClick={() => nav('/athlete/dashboard')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 14, cursor: 'pointer', padding: 0 }}>
           ← Back
         </button>
-        <h1 style={{ fontSize: 20, fontWeight: 700, marginTop: 6, marginBottom: 0 }}>Track Run</h1>
       </div>
 
-      {/* GPS error */}
+      {/* GPS error — sits between header and map */}
       {gpsError && (
-        <div style={{ margin: '0 20px 8px', background: 'rgba(255,80,80,0.12)', border: '1px solid rgba(255,80,80,0.3)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#ff6b6b', flexShrink: 0 }}>
+        <div style={{ margin: '0 16px 6px', background: 'rgba(255,80,80,0.12)', border: '1px solid rgba(255,80,80,0.3)', borderRadius: 10, padding: '8px 12px', fontSize: 13, color: '#ff6b6b', flexShrink: 0 }}>
           {gpsError}
         </div>
       )}
 
-      {/* Map */}
-      <div style={{ flex: 1, minHeight: 280, position: 'relative' }}>
+      {/* Map — fills all space between header and stats */}
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <MapContainer
           center={mapCenter}
           zoom={20}
           maxZoom={20}
-          style={{ width: '100%', height: '100%', minHeight: 280 }}
+          style={{ width: '100%', height: '100%' }}
           zoomControl={false}
           attributionControl={false}
         >
