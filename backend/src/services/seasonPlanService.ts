@@ -314,7 +314,20 @@ export async function generate(params: {
   }
 
   // ── Preserve past weeks ───────────────────────────────────────────────────────
-  const pastWeeks = (params.existingWeeks ?? []).filter((w: any) => w.week_start_date < today);
+  // Only keep past weeks that have at least one real workout title.
+  // Real titles (e.g. "Easy Run", "Tempo Run") have a space and are 6+ chars.
+  // This prevents garbage test data from being carried forward on regenerate.
+  const pastWeeks = (params.existingWeeks ?? []).filter((w: any) => {
+    if (w.week_start_date >= today) return false;
+    const workouts: any[] = w.workouts || [];
+    return workouts.some(
+      (wo: any) =>
+        !wo.is_rest_day &&
+        typeof wo.title === 'string' &&
+        wo.title.length >= 6 &&
+        wo.title.includes(' '),
+    );
+  });
 
   console.log(
     `[seasonPlan] Plan complete — tier=${tier} phase=${phase} weeks=${validatedWeeks.length} ` +
