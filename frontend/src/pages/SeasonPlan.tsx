@@ -987,10 +987,22 @@ export function SeasonPlan() {
       setSeason(season);
       if (season?.season_plan?.length) {
         const today = new Date().toISOString().split('T')[0];
-        const idx = season.season_plan.findIndex((w: any) => w.week_start_date <= today && (
-          !season.season_plan[season.season_plan.indexOf(w) + 1] ||
-          season.season_plan[season.season_plan.indexOf(w) + 1].week_start_date > today
-        ));
+        // Deduplicate: keep only the latest week for each week_number before finding current week
+        const deduped: any[] = [];
+        const seenNums = new Map<number, number>();
+        for (const w of season.season_plan as any[]) {
+          const existing = seenNums.get(w.week_number);
+          if (existing === undefined) {
+            seenNums.set(w.week_number, deduped.length);
+            deduped.push(w);
+          } else if (w.week_start_date > deduped[existing].week_start_date) {
+            deduped[existing] = w;
+          }
+        }
+        // Auto-select the week containing today (or the first future week)
+        const idx = deduped.findIndex((w: any, i: number) =>
+          w.week_start_date <= today && (i === deduped.length - 1 || deduped[i + 1].week_start_date > today)
+        );
         setCurrentWeek(Math.max(0, idx));
       }
     }).catch(console.error).finally(() => setLoading(false));
@@ -1181,7 +1193,23 @@ export function SeasonPlan() {
   }
 
   const plan = season.season_plan || [];
-  const week = plan[currentWeek];
+  // Deduplicate weeks: if a week_number appears multiple times (e.g. after regeneration
+  // left a past garbage week), keep only the one with the latest week_start_date.
+  const displayPlan = (() => {
+    const result: any[] = [];
+    const seenNums = new Map<number, number>();
+    for (const w of plan) {
+      const existing = seenNums.get(w.week_number);
+      if (existing === undefined) {
+        seenNums.set(w.week_number, result.length);
+        result.push(w);
+      } else if (w.week_start_date > result[existing].week_start_date) {
+        result[existing] = w;
+      }
+    }
+    return result;
+  })();
+  const week = displayPlan[currentWeek];
 
   return (
     <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
@@ -1337,7 +1365,7 @@ export function SeasonPlan() {
           {planView === 'monthly' && (
             <div className="fade-up-1">
               <Card>
-                <PlanMonthView plan={plan} />
+                <PlanMonthView plan={displayPlan} />
               </Card>
             </div>
           )}
@@ -1347,16 +1375,16 @@ export function SeasonPlan() {
             <>
               {/* Week selector — horizontal pill tabs with phase color coding */}
               <div className="flex gap-1.5 mb-6 overflow-x-auto pb-2 fade-up-1" style={{ scrollbarWidth: 'none' }}>
-                {plan.filter((w: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.week_number === w.week_number) === i).map((w: any, i: number, deduped: any[]) => {
-                  const originalIdx = plan.findIndex((x: any) => x.week_number === w.week_number);
-                  const isToday = new Date().toISOString().split('T')[0] >= w.week_start_date &&
-                    (originalIdx === plan.length - 1 || new Date().toISOString().split('T')[0] < plan[originalIdx + 1]?.week_start_date);
+                {displayPlan.map((w: any, i: number) => {
+                  const today = new Date().toISOString().split('T')[0];
+                  const isToday = w.week_start_date <= today &&
+                    (i === displayPlan.length - 1 || displayPlan[i + 1].week_start_date > today);
                   const phase = w.phase || 'base';
-                  const isActive = originalIdx === currentWeek;
+                  const isActive = i === currentWeek;
                   return (
                     <button
                       key={i}
-                      onClick={() => setCurrentWeek(plan.findIndex((x: any) => x.week_number === w.week_number))}
+                      onClick={() => setCurrentWeek(i)}
                       className="px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-150 shrink-0"
                       style={{ borderRadius: 8, ...PHASE_PILL_STYLE(phase, isActive, isToday) }}
                     >
@@ -1377,7 +1405,7 @@ export function SeasonPlan() {
                     </span>
                     <div className="ml-auto flex gap-1.5">
                       <Button variant="ghost" size="sm" disabled={currentWeek === 0} onClick={() => setCurrentWeek(w => w - 1)}>Prev</Button>
-                      <Button variant="ghost" size="sm" disabled={currentWeek === plan.length - 1} onClick={() => setCurrentWeek(w => w + 1)}>Next</Button>
+                      <Button variant="ghost" size="sm" disabled={currentWeek === displayPlan.length - 1} onClick={() => setCurrentWeek(w => w + 1)}>Next</Button>
                     </div>
                   </div>
 
@@ -1599,7 +1627,7 @@ export function SeasonPlan() {
                       <span>{week.workouts?.filter((w: any) => w.title).length} workouts</span>
                     </div>
                     {currentWeek > 0 && (() => {
-                      const prevWeek = plan[currentWeek - 1];
+                      const prevWeek = displayPlan[currentWeek - 1];
                       const thisTotal = week.workouts?.reduce((s: number, w: any) => s + (w.distance_miles || 0), 0) || 0;
                       const prevTotal = prevWeek?.workouts?.reduce((s: number, w: any) => s + (w.distance_miles || 0), 0) || 0;
                       if (!prevTotal) return null;
