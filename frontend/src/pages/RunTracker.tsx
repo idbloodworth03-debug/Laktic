@@ -123,6 +123,7 @@ export function RunTracker() {
   const startTimeRef = useRef<Date | null>(null);
   const pausedSecondsRef = useRef(0);
   const pauseStartRef = useRef<number | null>(null);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
   // Pre-warm GPS and set initial map center
   useEffect(() => {
@@ -187,6 +188,19 @@ export function RunTracker() {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
   }, []);
 
+  const acquireWakeLock = useCallback(async () => {
+    if ('wakeLock' in navigator) {
+      try {
+        wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+      } catch { /* device may not support it */ }
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(() => {
+    wakeLockRef.current?.release().catch(() => {});
+    wakeLockRef.current = null;
+  }, []);
+
   const handleStart = useCallback(() => {
     setGpsError(null);
     startTimeRef.current = new Date();
@@ -198,14 +212,16 @@ export function RunTracker() {
     }
     startWatchingGPS();
     startTimer();
-  }, [startWatchingGPS, startTimer, currentPos]);
+    acquireWakeLock();
+  }, [startWatchingGPS, startTimer, currentPos, acquireWakeLock]);
 
   const handlePause = useCallback(() => {
     setRunState('paused');
     stopWatchingGPS();
     stopTimer();
     pauseStartRef.current = Date.now();
-  }, [stopWatchingGPS, stopTimer]);
+    releaseWakeLock();
+  }, [stopWatchingGPS, stopTimer, releaseWakeLock]);
 
   const handleResume = useCallback(() => {
     if (pauseStartRef.current) {
@@ -214,20 +230,22 @@ export function RunTracker() {
     setRunState('running');
     startWatchingGPS();
     startTimer();
-  }, [startWatchingGPS, startTimer]);
+    acquireWakeLock();
+  }, [startWatchingGPS, startTimer, acquireWakeLock]);
 
   const handleStop = useCallback(() => {
     stopWatchingGPS();
     stopTimer();
+    releaseWakeLock();
     setRunState('done');
-  }, [stopWatchingGPS, stopTimer]);
+  }, [stopWatchingGPS, stopTimer, releaseWakeLock]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
     setSaveError(null);
     try {
       const avgSpeed = elapsed > 0 ? distanceM / elapsed : 0;
-      await apiFetch('/athlete/activities', {
+      await apiFetch('/api/athlete/activities', {
         method: 'POST',
         body: JSON.stringify({
           name: 'Manual Run',
@@ -250,8 +268,19 @@ export function RunTracker() {
   const handleDiscard = useCallback(() => nav('/athlete/dashboard'), [nav]);
 
   useEffect(() => {
-    return () => { stopWatchingGPS(); stopTimer(); };
-  }, [stopWatchingGPS, stopTimer]);
+    return () => { stopWatchingGPS(); stopTimer(); releaseWakeLock(); };
+  }, [stopWatchingGPS, stopTimer, releaseWakeLock]);
+
+  // Warn if user tries to close/navigate away during an active run
+  useEffect(() => {
+    if (runState !== 'running' && runState !== 'paused') return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [runState]);
 
   const miles = parseFloat(formatMiles(distanceM));
   const pace = formatPace(distanceM, elapsed);
