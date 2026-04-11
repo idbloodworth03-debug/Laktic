@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { useThemeStore } from '../store/themeStore';
 import { apiFetch } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
 import { AppLayout, Card, Button, Badge, Spinner, Alert, Input } from '../components/ui';
@@ -19,6 +20,7 @@ interface StravaStatus {
 
 export function AthleteSettings() {
   const { role, profile, clearAuth, logout } = useAuthStore();
+  const { theme, setTheme } = useThemeStore();
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
   const { state: notifState, enable: enableNotifs, disable: disableNotifs } = useNotifications();
@@ -639,7 +641,38 @@ export function AthleteSettings() {
           </div>
         </Card>
 
-<Card title="Data & Privacy" className="mb-6">
+        <Card title="Theme" className="mb-6">
+          <div className="flex gap-3">
+            {(['dark', 'light'] as const).map(t => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTheme(t)}
+                className="flex-1 flex flex-col items-center gap-2 py-4 rounded-xl border-2 transition-all duration-150"
+                style={{
+                  borderColor: theme === t ? 'var(--color-accent)' : 'var(--color-border)',
+                  background: theme === t ? 'var(--color-accent-dim)' : 'var(--color-bg-tertiary)',
+                  cursor: 'pointer',
+                }}
+              >
+                <div className="w-10 h-7 rounded-md border overflow-hidden flex"
+                  style={{ borderColor: 'var(--color-border)' }}>
+                  <div className="flex-1" style={{ background: t === 'dark' ? '#0a0a0a' : '#f0f0f0' }} />
+                  <div className="flex-1" style={{ background: t === 'dark' ? '#1a1a1a' : '#ffffff' }} />
+                </div>
+                <span className="text-xs font-semibold capitalize"
+                  style={{ color: theme === t ? 'var(--color-accent)' : 'var(--color-text-secondary)' }}>
+                  {t}
+                </span>
+                {theme === t && (
+                  <span className="text-[10px] font-medium" style={{ color: 'var(--color-accent)' }}>Active</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        <Card title="Data & Privacy" className="mb-6">
           <div className="flex flex-col gap-4">
             <div>
               <p className="text-sm text-[var(--color-text-tertiary)] mb-3">
