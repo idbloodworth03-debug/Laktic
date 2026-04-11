@@ -440,10 +440,10 @@ const TOPICS: { value: string; label: string }[] = [
 ];
 
 // ── Create Post Modal ─────────────────────────────────────────────────────────
-function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (post: any) => void }) {
+function CreatePostModal({ onClose, onPost, initialTopic = 'general' }: { onClose: () => void; onPost: (post: any) => void; initialTopic?: string }) {
   const [body, setBody]   = useState('');
   const [scope, setScope] = useState<'public' | 'team'>('public');
-  const [topic, setTopic] = useState('general');
+  const [topic, setTopic] = useState(initialTopic);
   const [imageFile, setImageFile]     = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading]     = useState(false);
@@ -887,9 +887,12 @@ export function Community() {
   const [showCreate, setShowCreate] = useState(false);
   const [pendingPosts, setPendingPosts] = useState<any[]>([]);
   const [activeTopic, setActiveTopic] = useState('general');
+  const activeTopicRef = useRef('general');
   const knownPostIdsRef = useRef<Set<string>>(new Set());
   const newestPostIdRef = useRef<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const setActiveTopicAndRef = (t: string) => { activeTopicRef.current = t; setActiveTopic(t); };
 
   const handleLogout = async () => { await logout(); nav('/'); };
 
@@ -908,7 +911,12 @@ export function Community() {
     finally { setLoading(false); setLoadingMore(false); }
   };
 
-  useEffect(() => { loadPage(1, true, activeTopic); }, [activeTopic]);
+  useEffect(() => {
+    // Clear cross-topic state whenever the tab changes
+    setPendingPosts([]);
+    newestPostIdRef.current = null;
+    loadPage(1, true, activeTopic);
+  }, [activeTopic]);
 
   // 15-second poll: detect new posts + silently refresh counts
   // Sends lastSeenId so the backend can short-circuit with { unchanged: true }
@@ -917,9 +925,10 @@ export function Community() {
     const interval = setInterval(async () => {
       try {
         const lastSeenId = newestPostIdRef.current;
+        const topic = activeTopicRef.current;
         const url = lastSeenId
-          ? `/api/community/feed?page=1&lastSeenId=${encodeURIComponent(lastSeenId)}`
-          : '/api/community/feed?page=1';
+          ? `/api/community/feed?page=1&lastSeenId=${encodeURIComponent(lastSeenId)}&topic=${topic}`
+          : `/api/community/feed?page=1&topic=${topic}`;
         const data = await apiFetch(url);
 
         if (data.unchanged) return;
@@ -928,8 +937,8 @@ export function Community() {
 
         if (fresh.length > 0) newestPostIdRef.current = fresh[0].id;
 
-        // Find posts not yet shown
-        const newOnes = fresh.filter(p => !knownPostIdsRef.current.has(p.id));
+        // Find posts not yet shown (and matching the active topic)
+        const newOnes = fresh.filter(p => !knownPostIdsRef.current.has(p.id) && p.topic === activeTopicRef.current);
         if (newOnes.length > 0) {
           setPendingPosts(prev => {
             const pendingIds = new Set(prev.map((p: any) => p.id));
@@ -992,7 +1001,8 @@ export function Community() {
         {showCreate && (
           <CreatePostModal
             onClose={() => setShowCreate(false)}
-            onPost={post => setPosts(prev => [post, ...prev])}
+            initialTopic={activeTopic}
+            onPost={post => { if (post.topic === activeTopic) setPosts(prev => [post, ...prev]); }}
           />
         )}
 
@@ -1017,7 +1027,7 @@ export function Community() {
                     <button
                       key={t.value}
                       type="button"
-                      onClick={() => setActiveTopic(t.value)}
+                      onClick={() => setActiveTopicAndRef(t.value)}
                       className="shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150"
                       style={activeTopic === t.value
                         ? { background: '#00E5A0', color: '#000', border: 'none', cursor: 'pointer' }
