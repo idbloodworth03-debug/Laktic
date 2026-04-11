@@ -419,7 +419,7 @@ function ComposerBar({ name, onClick }: { name: string; onClick: () => void }) {
       style={{ background: '#111111', border: `1px solid ${hov ? 'rgba(0,229,160,0.30)' : 'rgba(255,255,255,0.07)'}`, borderRadius: 16 }}
       onClick={onClick} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>
       <UserAvatar name={name || 'A'} size="md" />
-      <span className="text-sm flex-1" style={{ color: 'rgba(255,255,255,0.30)' }}>
+      <span className="text-sm flex-1 truncate min-w-0" style={{ color: 'rgba(255,255,255,0.30)' }}>
         Share your training, race results, or a win…
       </span>
       <span className="text-xs font-semibold px-3 py-1.5 rounded-full shrink-0"
@@ -988,7 +988,7 @@ export function Community() {
 
   return (
     <AppLayout role={role ?? 'athlete'} name={profile?.name} onLogout={handleLogout}>
-      <div style={{ minHeight: '100vh', background: 'var(--color-bg-primary)' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--color-bg-primary)', overflowX: 'hidden' }}>
         {showCreate && (
           <CreatePostModal
             onClose={() => setShowCreate(false)}
@@ -996,10 +996,10 @@ export function Community() {
           />
         )}
 
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        <div className="w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
           {/* Header */}
-          <div className="mb-6">
-            <h1 className="font-bold text-3xl" style={{ color: '#FFFFFF' }}>Community</h1>
+          <div className="mb-4">
+            <h1 className="font-bold text-2xl sm:text-3xl" style={{ color: '#FFFFFF' }}>Community</h1>
             <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Where wins get celebrated.</p>
           </div>
 
@@ -1012,7 +1012,7 @@ export function Community() {
                 <ComposerBar name={profile?.name ?? 'A'} onClick={() => setShowCreate(true)} />
 
                 {/* Topic tabs */}
-                <div className="flex gap-2 overflow-x-auto pb-1 mb-4 mt-4 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+                <div className="flex gap-2 overflow-x-auto pb-1 mb-4 mt-3 w-full" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                   {[{ value: 'all', label: 'All' }, ...TOPICS].map(t => (
                     <button
                       key={t.value}
