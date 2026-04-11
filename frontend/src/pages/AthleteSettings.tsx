@@ -639,36 +639,7 @@ export function AthleteSettings() {
           </div>
         </Card>
 
-        <Card title="Join a Team" className="mb-6">
-          {joinSuccess ? (
-            <div className="flex items-center gap-3 py-2">
-              <div className="w-8 h-8 rounded-full bg-[var(--color-accent-dim)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-accent)]">✓</div>
-              <span className="text-sm font-medium text-[var(--color-accent)]">{joinSuccess}</span>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <p className="text-sm text-[var(--color-text-tertiary)]">Enter a team code to join.</p>
-              <div className="flex gap-3 items-end">
-                <div className="flex-1">
-                  <Input
-                    placeholder="e.g. AB3XK9QZ"
-                    value={inviteCode}
-                    onChange={e => setInviteCode(e.target.value.toUpperCase())}
-                    maxLength={8}
-                    onKeyDown={e => e.key === 'Enter' && handleJoin()}
-                    style={{ textTransform: 'uppercase', letterSpacing: '0.15em', textAlign: 'center' }}
-                  />
-                </div>
-                <Button onClick={handleJoin} loading={joining} disabled={!inviteCode.trim()}>
-                  Join Team
-                </Button>
-              </div>
-              {joinError && <Alert type="error" message={joinError} onClose={() => setJoinError('')} />}
-            </div>
-          )}
-        </Card>
-
-        <Card title="Data & Privacy" className="mb-6">
+<Card title="Data & Privacy" className="mb-6">
           <div className="flex flex-col gap-4">
             <div>
               <p className="text-sm text-[var(--color-text-tertiary)] mb-3">
