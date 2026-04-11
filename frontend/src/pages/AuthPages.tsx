@@ -61,18 +61,9 @@ export function Landing() {
           Laktic
         </span>
         <div className="flex items-center gap-4 text-sm">
-          <Link
-            to="/login/coach"
-            className="transition-colors"
-            style={{ color: 'var(--color-text-tertiary)' }}
-            onMouseEnter={e => ((e.target as HTMLElement).style.color = 'var(--color-accent)')}
-            onMouseLeave={e => ((e.target as HTMLElement).style.color = 'var(--color-text-tertiary)')}
-          >
-            Coach login
-          </Link>
           <Link to="/login/athlete">
             <Button variant="secondary" size="sm">
-              Athlete login
+              Sign In
             </Button>
           </Link>
         </div>
@@ -123,11 +114,6 @@ export function Landing() {
               className="font-semibold"
             >
               Get My Plan
-            </Button>
-          </Link>
-          <Link to="/register/coach">
-            <Button variant="secondary" size="xl">
-              I'm a Coach
             </Button>
           </Link>
         </div>
@@ -656,10 +642,6 @@ export function AthleteRegister() {
         Already have an account?{' '}
         <Link to="/login" className="transition-colors" style={{ color: 'var(--color-accent)' }}>Sign in</Link>
       </p>
-      <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
-        Are you a coach?{' '}
-        <Link to="/coach/signup" className="transition-colors" style={{ color: 'var(--color-accent)' }}>Sign up here</Link>
-      </p>
     </SplitAuth>
   );
 }
@@ -864,19 +846,11 @@ export function PasswordResetRequest() {
       </Button>
       <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
         <Link
-          to="/login/coach"
-          className="transition-colors"
-          style={{ color: 'var(--color-accent)' }}
-        >
-          Coach login
-        </Link>
-        {' · '}
-        <Link
           to="/login/athlete"
           className="transition-colors"
           style={{ color: 'var(--color-accent)' }}
         >
-          Athlete login
+          Back to Sign In
         </Link>
       </p>
     </SplitAuth>
@@ -1072,10 +1046,6 @@ export function UnifiedLogin() {
       <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
         New athlete?{' '}
         <Link to="/athlete/signup" className="transition-colors" style={{ color: 'var(--color-accent)' }}>Sign up</Link>
-      </p>
-      <p className="text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
-        Are you a coach?{' '}
-        <Link to="/register/coach" className="transition-colors" style={{ color: 'var(--color-accent)' }}>Create coach account</Link>
       </p>
     </SplitAuth>
   );
