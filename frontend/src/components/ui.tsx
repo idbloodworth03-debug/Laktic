@@ -358,6 +358,7 @@ const ATHLETE_MORE: NavItem[] = [
   { label: 'Gameplans',  href: '/athlete/gameplans',  icon: BookOpen },
   { label: 'Nutrition',  href: '/athlete/nutrition',  icon: Utensils },
   { label: 'Races',      href: '/athlete/races',      icon: Award },
+  { label: 'Settings',   href: '/athlete/settings',   icon: Settings },
 ];
 
 const COACH_PRIMARY: NavItem[] = [
