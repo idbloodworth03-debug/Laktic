@@ -4,9 +4,10 @@ import {
   LayoutDashboard, Users, FileText, MessageSquare, TrendingUp, User,
   ChevronLeft, ChevronRight, Settings, LogOut, Activity,
   Calendar, ShoppingBag, Award, BarChart2, BookOpen, Shield, RefreshCw,
-  Menu, X, Utensils, Globe, Store,
+  Menu, X, Utensils, Globe, Store, Sun, Moon,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useThemeStore } from '../store/themeStore';
 
 // ── Button ─────────────────────────────────────────────────────────────────────
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -406,6 +407,22 @@ function SidebarAvatar({ name }: { name: string }) {
   );
 }
 
+// ── ThemeToggle ────────────────────────────────────────────────────────────────
+function ThemeToggle({ collapsed }: { collapsed: boolean }) {
+  const { theme, setTheme } = useThemeStore();
+  const isDark = theme === 'dark';
+  return (
+    <button
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+      title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      className="flex items-center gap-3 px-3 py-2.5 rounded-btn text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-all duration-150 w-full text-left mb-0.5"
+    >
+      {isDark ? <Sun size={15} className="shrink-0" /> : <Moon size={15} className="shrink-0" />}
+      {!collapsed && <span className="text-[13px] font-medium">{isDark ? 'Light mode' : 'Dark mode'}</span>}
+    </button>
+  );
+}
+
 // ── SidebarContent (shared rendering) ─────────────────────────────────────────
 interface SidebarContentProps { role?: string; name?: string; onLogout?: () => void; collapsed: boolean; onToggle: () => void; }
 function SidebarContent({ role, name, onLogout, collapsed, onToggle }: SidebarContentProps) {
@@ -467,6 +484,7 @@ function SidebarContent({ role, name, onLogout, collapsed, onToggle }: SidebarCo
           {!collapsed && <span className="text-[13px] font-medium truncate flex-1">{name}</span>}
           {!collapsed && <Settings size={12} className="shrink-0 opacity-50" />}
         </a>
+        <ThemeToggle collapsed={collapsed} />
         <button onClick={onLogout} title={collapsed ? 'Sign out' : undefined}
           className="flex items-center gap-3 px-3 py-2.5 rounded-btn text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] hover:bg-red-500/5 transition-all duration-150 w-full text-left"
         >
