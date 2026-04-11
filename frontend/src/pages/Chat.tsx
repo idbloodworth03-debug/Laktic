@@ -55,6 +55,7 @@ function BotChat() {
   const { profile } = useAuthStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const [messages, setMessages] = useState<any[]>([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [planUpdated, setPlanUpdated] = useState(false);
@@ -66,7 +67,9 @@ function BotChat() {
   const autoSentRef = useRef(false);
 
   useEffect(() => {
-    apiFetch('/api/athlete/chat').then(setMessages).catch(console.error);
+    apiFetch('/api/athlete/chat')
+      .then(msgs => { setMessages(msgs); setHistoryLoaded(true); })
+      .catch(() => setHistoryLoaded(true));
   }, []);
 
   useEffect(() => {
@@ -101,14 +104,15 @@ function BotChat() {
 
   const send = () => sendMessage(input.trim());
 
-  // Auto-send ?q= param from "Ask Pace about this"
+  // Auto-send ?q= param — only after history is loaded so optimistic message isn't wiped
   useEffect(() => {
+    if (!historyLoaded || autoSentRef.current) return;
     const q = searchParams.get('q');
-    if (!q || autoSentRef.current) return;
+    if (!q) return;
     autoSentRef.current = true;
     setSearchParams({}, { replace: true });
     sendMessage(q);
-  }, [searchParams]);
+  }, [historyLoaded, searchParams]);
 
   const clearChat = async () => {
     setClearing(true);

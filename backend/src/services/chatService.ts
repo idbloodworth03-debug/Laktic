@@ -92,6 +92,7 @@ Respond as the coach bot. Return ONLY valid JSON, no markdown.`;
         { role: 'user', content: userContent },
       ],
       response_format: { type: 'json_object' },
+      max_tokens: 800,
     });
 
     const text = completion.choices[0].message.content ?? '';
