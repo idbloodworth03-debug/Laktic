@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { AppLayout, Button, ChatBubble, TypingIndicator, Alert } from '../components/ui';
@@ -53,6 +53,7 @@ function MessageInput({
 // ── Bot chat tab ──────────────────────────────────────────────────────────────
 function BotChat() {
   const { profile } = useAuthStore();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -62,6 +63,7 @@ function BotChat() {
   const [clearing, setClearing] = useState(false);
   const [activeTeam, setActiveTeam] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const autoSentRef = useRef(false);
 
   useEffect(() => {
     apiFetch('/api/athlete/chat').then(setMessages).catch(console.error);
@@ -80,8 +82,7 @@ function BotChat() {
       .catch(() => {});
   }, []);
 
-  const send = async () => {
-    const msg = input.trim();
+  const sendMessage = async (msg: string) => {
     if (!msg || sending) return;
     setInput('');
     setSending(true);
@@ -97,6 +98,17 @@ function BotChat() {
       setMessages(prev => prev.slice(0, -1));
     } finally { setSending(false); }
   };
+
+  const send = () => sendMessage(input.trim());
+
+  // Auto-send ?q= param from "Ask Pace about this"
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (!q || autoSentRef.current) return;
+    autoSentRef.current = true;
+    setSearchParams({}, { replace: true });
+    sendMessage(q);
+  }, [searchParams]);
 
   const clearChat = async () => {
     setClearing(true);

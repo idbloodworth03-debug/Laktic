@@ -1225,7 +1225,13 @@ export function SeasonPlan() {
           eventPaces={eventPaces}
           primaryPrediction={primaryPrediction}
           onAskPace={() => {
-            const msg = encodeURIComponent(`Can you explain this workout: ${selectedWorkout.title}${selectedWorkout.distance_miles ? ` (${selectedWorkout.distance_miles} mi)` : ''}${selectedWorkout.date ? ` on ${selectedWorkout.dateLabel}` : ''}?`);
+            const wo = selectedWorkout;
+            const desc = wo.description || wo.library_description || '';
+            const parts: string[] = [];
+            parts.push(`I have a workout called "${wo.title}"${wo.dateLabel ? ` on ${wo.dateLabel}` : ''}${wo.distance_miles ? ` — ${wo.distance_miles} miles total` : ''}.`);
+            if (desc) parts.push(`Here's what it says:\n${desc}`);
+            parts.push(`Please explain this workout to me like I know absolutely nothing about running or training. Use plain everyday language — no jargon. If the workout uses any technical terms like LT1, LT2, tempo, threshold, easy pace, recovery pace, intervals, or anything else, define each one in simple words (e.g. "LT2 is the pace where you're running hard but could still speak a few words"). Tell me: what am I actually doing step by step, why does this workout help me, and how should it feel (like, what's my effort level — easy chat, tough but doable, all-out, etc.)? Keep it simple enough that someone who has never trained before could understand.`);
+            const msg = encodeURIComponent(parts.join('\n\n'));
             nav(`/athlete/chat?q=${msg}`);
             setSelectedWorkout(null);
           }}
