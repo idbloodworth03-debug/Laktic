@@ -62,7 +62,7 @@ export function PaceZonesCard() {
       <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-5 shadow-card">
         <p className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-3">Pace Zones</p>
         <p className="text-xs text-[var(--color-text-tertiary)] leading-relaxed">
-          Add a 5K, 10K, half, or marathon PR to unlock your personalized pace zones.
+          Add a 3000m, 3200m, 5K, or 10K PR in Settings to unlock your personalized pace zones.
         </p>
         <a href="/athlete/settings" className="inline-block mt-3 text-xs font-medium text-[var(--color-accent)] hover:opacity-80 transition-opacity">
           Update profile →

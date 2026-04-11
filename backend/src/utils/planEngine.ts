@@ -281,18 +281,19 @@ function buildPaceGuideline(
   paceBands:  PaceBands | null,
   eventPaces: EventPaces | null,
 ): string {
+  // Band strings already contain "/mi" — do not append it again.
   const hasBands = paceBands && !paceBands.needs_aerobic_pr;
   if (role === 'easy' || role === 'easy_speeddev' || role === 'long_run') {
-    return hasBands ? `${paceBands.easy}/mi` : 'Easy effort — conversational pace';
+    return hasBands ? paceBands.easy : 'Easy effort — conversational pace';
   }
   if (role === 'aerobic') {
-    return hasBands ? `${paceBands.LT2}/mi` : 'Threshold effort';
+    return hasBands ? paceBands.LT2 : 'Threshold effort';
   }
   if (role === 'specific') {
     if (eventPaces?.mile_pace) return eventPaces.mile_pace;
-    return hasBands ? `${paceBands.LT2}/mi` : 'By effort';
+    return hasBands ? paceBands.LT2 : 'By effort';
   }
-  return hasBands ? `${paceBands.easy}/mi` : 'Easy effort';
+  return hasBands ? paceBands.easy : 'Easy effort';
 }
 
 // ── Rotation helpers ──────────────────────────────────────────────────────────

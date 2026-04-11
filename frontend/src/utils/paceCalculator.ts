@@ -2,7 +2,12 @@
  * paceCalculator.ts
  * Pure-TypeScript copy of backend/src/utils/athleteTier.ts.
  * No Node.js dependencies — safe to import anywhere in the frontend.
+ *
+ * Pace band derivation uses the Lactic Pacing Calculator v2.
+ * See lacticPacing.ts for the full algorithm spec.
  */
+
+import { computeLacticPacing } from './lacticPacing';
 
 export type AthleteTier = 'intermediate' | 'advanced';
 export type TrainingPhase = 'ease_in' | 'base' | 'pre_competition' | 'competition';
@@ -38,28 +43,6 @@ const TEN_K_MILES   = 6.21371;
 const HALF_MILES    = 13.1094;
 const FULL_MILES    = 26.2188;
 
-// ── Aerobic pace source ───────────────────────────────────────────────────────
-
-function bestAerobicPace(athlete: Record<string, unknown>): { pacePerMile: number; sourcePR: string } | null {
-  if (athlete.pr_5k) {
-    const p = raceTimeToPacePerMile(athlete.pr_5k as string, FIVE_K_MILES);
-    if (p) return { pacePerMile: p, sourcePR: `5K ${athlete.pr_5k}` };
-  }
-  if (athlete.pr_10k) {
-    const p = raceTimeToPacePerMile(athlete.pr_10k as string, TEN_K_MILES);
-    if (p) return { pacePerMile: p, sourcePR: `10K ${athlete.pr_10k}` };
-  }
-  if (athlete.pr_half_marathon) {
-    const p = raceTimeToPacePerMile(athlete.pr_half_marathon as string, HALF_MILES);
-    if (p) return { pacePerMile: p, sourcePR: `Half ${athlete.pr_half_marathon}` };
-  }
-  if (athlete.pr_marathon) {
-    const p = raceTimeToPacePerMile(athlete.pr_marathon as string, FULL_MILES);
-    if (p) return { pacePerMile: p, sourcePR: `Marathon ${athlete.pr_marathon}` };
-  }
-  return null;
-}
-
 // ── Pace bands ────────────────────────────────────────────────────────────────
 
 export interface PaceBands {
@@ -70,25 +53,36 @@ export interface PaceBands {
   recovery: string;
   needs_aerobic_pr: boolean;
   source_pr: string | null;
+  anchor_secs?: number;
 }
 
-/** Derive aerobic pace bands from athlete's best 3000m+ PR. */
+/**
+ * Derive aerobic pace bands from athlete PRs using the Lactic Pacing
+ * Calculator v2 (Riegel normalisation → P5 multipliers + fixed bands).
+ *
+ * Accepts: pr_3000m, pr_3200m, pr_5k, pr_10k (all optional; ≥ 1 required).
+ */
 export function derivePaceBands(athlete: Record<string, unknown>): PaceBands {
-  const base = bestAerobicPace(athlete);
-  if (!base) {
+  const zones = computeLacticPacing({
+    pr_3000m: athlete.pr_3000m as string | null | undefined,
+    pr_3200m: athlete.pr_3200m as string | null | undefined,
+    pr_5k:    athlete.pr_5k    as string | null | undefined,
+    pr_10k:   athlete.pr_10k   as string | null | undefined,
+  });
+
+  if (!zones) {
     return { LT2: '', LT1: '', steady: '', easy: '', recovery: '', needs_aerobic_pr: true, source_pr: null };
   }
-  const p = base.pacePerMile;
-  const fmt = (lo: number, hi: number) =>
-    `${secondsToMmSs(Math.round(p * lo))}-${secondsToMmSs(Math.round(p * hi))}/mi`;
+
   return {
-    LT2:      fmt(0.97, 1.02),
-    LT1:      fmt(1.04, 1.08),
-    steady:   fmt(1.13, 1.20),
-    easy:     fmt(1.30, 1.42),
-    recovery: fmt(1.42, 1.55),
+    LT2:             zones.LT2,
+    LT1:             zones.LT1,
+    steady:          zones.steady,
+    easy:            zones.easy,
+    recovery:        zones.recovery,
     needs_aerobic_pr: false,
-    source_pr: base.sourcePR,
+    source_pr:       zones.source_pr,
+    anchor_secs:     zones.anchor_secs,
   };
 }
 
