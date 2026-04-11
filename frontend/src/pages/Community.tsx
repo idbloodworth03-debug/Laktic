@@ -886,7 +886,7 @@ export function Community() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [pendingPosts, setPendingPosts] = useState<any[]>([]);
-  const [activeTopic, setActiveTopic] = useState('all');
+  const [activeTopic, setActiveTopic] = useState('general');
   const knownPostIdsRef = useRef<Set<string>>(new Set());
   const newestPostIdRef = useRef<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -896,7 +896,7 @@ export function Community() {
   const loadPage = async (pg: number, reset: boolean, topic = activeTopic) => {
     if (reset) { setLoading(true); setPosts([]); } else setLoadingMore(true);
     try {
-      const topicParam = topic !== 'all' ? `&topic=${topic}` : '';
+      const topicParam = `&topic=${topic}`;
       const data = await apiFetch(`/api/community/feed?page=${pg}${topicParam}`);
       if (reset) knownPostIdsRef.current.clear();
       (data.posts ?? []).forEach((p: any) => knownPostIdsRef.current.add(p.id));
@@ -1013,7 +1013,7 @@ export function Community() {
 
                 {/* Topic tabs */}
                 <div className="flex gap-2 overflow-x-auto pb-1 mb-4 mt-3 w-full" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                  {[{ value: 'all', label: 'All' }, ...TOPICS].map(t => (
+                  {TOPICS.map(t => (
                     <button
                       key={t.value}
                       type="button"
