@@ -52,17 +52,17 @@
 
 /* ── Light Theme ──────────────────────────────────────────────────────────── */
 [data-theme="light"] {
-  --color-bg-primary:   #f0f0f0;
+  --color-bg-primary:   #f2f2f2;
   --color-bg-secondary: #ffffff;
   --color-bg-tertiary:  #e8e8e8;
-  --color-bg-hover:     #dcdcdc;
+  --color-bg-hover:     #dadada;
 
-  --color-border:       #d0d0d0;
-  --color-border-light: #c0c0c0;
+  --color-border:       #c4c4c4;
+  --color-border-light: #b0b0b0;
 
   --color-text-primary:   #0a0a0a;
-  --color-text-secondary: #444444;
-  --color-text-tertiary:  #777777;
+  --color-text-secondary: #1f1f1f;
+  --color-text-tertiary:  #505050;
 
   /* legacy aliases */
   --bg:      var(--color-bg-primary);
@@ -74,7 +74,7 @@
   --text:    var(--color-text-primary);
   --text2:   var(--color-text-secondary);
   --muted:   var(--color-text-tertiary);
-  --muted2:  #a0a0a0;
+  --muted2:  #707070;
 }
 
 /* ── Base ─────────────────────────────────────────────────────────────────── */
