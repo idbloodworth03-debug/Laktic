@@ -19,6 +19,19 @@ const communityPostSchema = z.object({
   topic: z.enum(COMMUNITY_TOPICS).default('general'),
 });
 
+// ── Schema capability probe — cached after first check ──────────────────────
+let _topicColExists: boolean | null = null;
+async function hasTopicColumn(): Promise<boolean> {
+  if (_topicColExists !== null) return _topicColExists;
+  const { error } = await supabase.from('team_feed').select('topic').limit(0);
+  _topicColExists = !error;
+  if (!_topicColExists) {
+    console.warn('[community] team_feed.topic column missing — run migration 034 in Supabase SQL Editor:\n' +
+      "ALTER TABLE team_feed ADD COLUMN IF NOT EXISTS topic TEXT NOT NULL DEFAULT 'general' CHECK (topic IN ('general','running','apparel','races','fun'));");
+  }
+  return _topicColExists;
+}
+
 // ── GET /api/community/feed ───────────────────────────────────────────────────
 router.get(
   '/feed',
@@ -83,15 +96,22 @@ router.get(
       ? req.query.topic as string
       : null;
 
+    const topicCol = await hasTopicColumn();
+    const selectCols = topicCol
+      ? `id, feed_type, body, scope, image_url, created_at, team_id, athlete_id, coach_id, topic,
+         athlete_profiles!athlete_id (id, name, avatar_url),
+         coach_profiles!coach_id (id, name, avatar_url),
+         feed_kudos (id, athlete_id, coach_id),
+         post_comments (id)`
+      : `id, feed_type, body, scope, image_url, created_at, team_id, athlete_id, coach_id,
+         athlete_profiles!athlete_id (id, name, avatar_url),
+         coach_profiles!coach_id (id, name, avatar_url),
+         feed_kudos (id, athlete_id, coach_id),
+         post_comments (id)`;
+
     let query = supabase
       .from('team_feed')
-      .select(`
-        id, feed_type, body, scope, image_url, created_at, team_id, athlete_id, coach_id, topic,
-        athlete_profiles!athlete_id (id, name, avatar_url),
-        coach_profiles!coach_id (id, name, avatar_url),
-        feed_kudos (id, athlete_id, coach_id),
-        post_comments (id)
-      `, { count: 'exact' })
+      .select(selectCols, { count: 'exact' })
       .order('created_at', { ascending: false })
       .limit(fetchLimit);
 
@@ -105,7 +125,7 @@ router.get(
       query = query.eq('scope', 'public');
     }
 
-    if (topicFilter) {
+    if (topicCol && topicFilter) {
       query = query.eq('topic', topicFilter);
     }
 
@@ -150,6 +170,13 @@ router.post(
     if (containsSevereProfanity(postBody)) return res.status(400).json({ error: 'Your message contains inappropriate content' });
     const cleanBody = filterText(postBody);
 
+    const topicCol = await hasTopicColumn();
+    const selectClause = topicCol
+      ? `id, feed_type, body, scope, image_url, created_at, team_id, athlete_id, coach_id, topic,
+         athlete_profiles!athlete_id (id, name), coach_profiles!coach_id (id, name)`
+      : `id, feed_type, body, scope, image_url, created_at, team_id, athlete_id, coach_id,
+         athlete_profiles!athlete_id (id, name), coach_profiles!coach_id (id, name)`;
+
     const { data: athleteProfile } = await supabase
       .from('athlete_profiles').select('id, active_team_id')
       .eq('user_id', req.user!.id).maybeSingle();
@@ -165,12 +192,10 @@ router.post(
 
       const { data, error } = await supabase.from('team_feed').insert({
         team_id: teamId, athlete_id: athleteProfile.id, coach_id: null,
-        feed_type: 'manual', body: cleanBody, scope, topic,
+        feed_type: 'manual', body: cleanBody, scope,
+        ...(topicCol && { topic }),
         ...(image_url && { image_url }),
-      }).select(`
-        id, feed_type, body, scope, image_url, created_at, team_id, athlete_id, coach_id, topic,
-        athlete_profiles!athlete_id (id, name), coach_profiles!coach_id (id, name)
-      `).single();
+      }).select(selectClause).single();
       if (error) { console.error('[community/posts] athlete insert error:', error.message); return res.status(400).json({ error: error.message }); }
       console.log(`[community/posts] athlete post created id=${data?.id}`);
       return res.json({ ...data, kudo_count: 0, i_kudoed: false });
@@ -187,12 +212,10 @@ router.post(
 
     const { data, error } = await supabase.from('team_feed').insert({
       team_id: teamId, athlete_id: null, coach_id: coachProfile.id,
-      feed_type: 'manual', body: cleanBody, scope, topic,
+      feed_type: 'manual', body: cleanBody, scope,
+      ...(topicCol && { topic }),
       ...(image_url && { image_url }),
-    }).select(`
-      id, feed_type, body, scope, image_url, created_at, team_id, athlete_id, coach_id, topic,
-      athlete_profiles!athlete_id (id, name), coach_profiles!coach_id (id, name)
-    `).single();
+    }).select(selectClause).single();
     if (error) { console.error('[community/posts] coach insert error:', error.message); return res.status(400).json({ error: error.message }); }
     console.log(`[community/posts] coach post created id=${data?.id}`);
     return res.json({ ...data, kudo_count: 0, i_kudoed: false });

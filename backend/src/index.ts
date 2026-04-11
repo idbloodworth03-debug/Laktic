@@ -125,9 +125,24 @@ app.use(errorHandler);
 async function probeSchema() {
   const { supabase: db } = await import('./db/supabase');
 
-  // Check for chat_conversations (migration 035)
-  const { error } = await db.from('chat_conversations').select('id').limit(1);
-  if (error) {
+  // Migration 034 — team_feed.topic
+  const { error: e034 } = await db.from('team_feed').select('topic').limit(0);
+  if (e034) {
+    // eslint-disable-next-line no-console
+    console.error(
+      '\n[MIGRATION REQUIRED] team_feed.topic column is missing (Migration 034).\n' +
+      'Run in Supabase SQL Editor:\n' +
+      "ALTER TABLE team_feed ADD COLUMN IF NOT EXISTS topic TEXT NOT NULL DEFAULT 'general' " +
+      "CHECK (topic IN ('general','running','apparel','races','fun'));\n"
+    );
+  } else {
+    // eslint-disable-next-line no-console
+    console.log('[schema] team_feed.topic ✓');
+  }
+
+  // Migration 035 — chat_conversations table
+  const { error: e035 } = await db.from('chat_conversations').select('id').limit(1);
+  if (e035) {
     // eslint-disable-next-line no-console
     console.error(
       '\n' +
