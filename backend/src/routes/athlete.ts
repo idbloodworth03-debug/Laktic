@@ -879,22 +879,24 @@ router.post(
 
     if (!season) return res.status(404).json({ error: 'No active season. Subscribe to a coaching bot first.' });
 
-    // Resolve or create conversation
-    let conversationId: string = rawConvId;
+    // Resolve or create conversation (graceful if chat_conversations table not yet migrated)
+    let conversationId: string | null = rawConvId ?? null;
     if (!conversationId) {
       const { data: newConv } = await supabase.from('chat_conversations').insert({
         season_id: season.id,
         name: 'New Conversation',
       }).select('id').single();
-      conversationId = newConv!.id;
+      conversationId = newConv?.id ?? null;
     }
 
-    const { data: chatHistory } = await supabase
+    // Fetch history scoped to conversation when possible; fall back to season-wide
+    let historyQuery = supabase
       .from('chat_messages')
       .select('*')
       .eq('season_id', season.id)
-      .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
+    if (conversationId) historyQuery = historyQuery.eq('conversation_id', conversationId);
+    const { data: chatHistory } = await historyQuery;
 
     // Load full athlete context
     const ctx = await loadAthleteContext(req.athlete.id, req.athlete.active_team_id ?? null);
@@ -1036,7 +1038,7 @@ ATHLETE: ${message}`;
       role: 'athlete',
       content: message,
       plan_was_updated: false,
-      conversation_id: conversationId,
+      ...(conversationId && { conversation_id: conversationId }),
     });
 
     // Save bot reply
@@ -1045,18 +1047,20 @@ ATHLETE: ${message}`;
       role: 'bot',
       content: botReply,
       plan_was_updated: planUpdated,
-      conversation_id: conversationId,
+      ...(conversationId && { conversation_id: conversationId }),
     });
 
     // Update conversation last_message_at
-    await supabase.from('chat_conversations')
-      .update({ last_message_at: new Date().toISOString() })
-      .eq('id', conversationId);
+    if (conversationId) {
+      await supabase.from('chat_conversations')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', conversationId);
+    }
 
     res.json({ botReply, planUpdated, updatedDays, conversationId });
 
     // Auto-name the conversation if it's still the default (fire-and-forget)
-    const isFirstExchange = !chatHistory || chatHistory.length === 0;
+    const isFirstExchange = conversationId && (!chatHistory || chatHistory.length === 0);
     if (isFirstExchange) {
       openai.chat.completions.create({
         model: 'gpt-4o-mini',
