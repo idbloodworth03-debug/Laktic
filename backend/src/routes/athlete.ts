@@ -879,13 +879,16 @@ router.post(
 
     if (!season) return res.status(404).json({ error: 'No active season. Subscribe to a coaching bot first.' });
 
-    // Resolve or create conversation (graceful if chat_conversations table not yet migrated)
+    // Resolve or create conversation
     let conversationId: string | null = rawConvId ?? null;
     if (!conversationId) {
-      const { data: newConv } = await supabase.from('chat_conversations').insert({
+      const { data: newConv, error: convErr } = await supabase.from('chat_conversations').insert({
         season_id: season.id,
         name: 'New Conversation',
       }).select('id').single();
+      if (convErr) {
+        console.error('[chat] conversation create failed — has migration 035 been applied?', convErr.message);
+      }
       conversationId = newConv?.id ?? null;
     }
 

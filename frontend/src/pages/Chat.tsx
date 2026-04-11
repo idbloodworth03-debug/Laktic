@@ -95,16 +95,19 @@ function BotChat() {
     return () => document.removeEventListener('mousedown', handler);
   }, [convOpen]);
 
-  const openConversations = async () => {
-    setConvOpen(o => !o);
-    if (!convOpen) {
-      setConvLoading(true);
-      try {
-        const data = await apiFetch('/api/athlete/conversations');
-        setConversations(data);
-      } catch {}
-      finally { setConvLoading(false); }
-    }
+  const fetchConversations = async () => {
+    setConvLoading(true);
+    try {
+      const data = await apiFetch('/api/athlete/conversations');
+      setConversations(data);
+    } catch {}
+    finally { setConvLoading(false); }
+  };
+
+  const openConversations = () => {
+    const opening = !convOpen;
+    setConvOpen(opening);
+    if (opening) fetchConversations();
   };
 
   const loadConversation = async (id: string) => {
@@ -130,9 +133,12 @@ function BotChat() {
         body: JSON.stringify({ message: msg, ...(conversationId && { conversationId }) }),
       });
       // Backend creates conversation on first message and returns its id
-      if (!conversationId && result.conversationId) setConversationId(result.conversationId);
+      const isNewConv = !conversationId && result.conversationId;
+      if (isNewConv) setConversationId(result.conversationId);
       setMessages(prev => [...prev, { id: Date.now() + 1, role: 'bot', content: result.botReply, plan_was_updated: result.planUpdated }]);
       if (result.planUpdated) setPlanUpdated(true);
+      // Refresh conversations list so the new entry shows up immediately
+      if (isNewConv) fetchConversations();
     } catch (e: any) {
       setError(e.message || 'Something went wrong. Please try again.');
       setMessages(prev => prev.slice(0, -1));
