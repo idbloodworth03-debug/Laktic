@@ -19,15 +19,22 @@ const communityPostSchema = z.object({
   topic: z.enum(COMMUNITY_TOPICS).default('general'),
 });
 
-// ── Schema capability probe — cached after first check ──────────────────────
+// ── Schema capability probe — cached for 5 min so it auto-refreshes ──────────
 let _topicColExists: boolean | null = null;
+let _topicColCheckedAt = 0;
+const TOPIC_PROBE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 async function hasTopicColumn(): Promise<boolean> {
-  if (_topicColExists !== null) return _topicColExists;
+  const now = Date.now();
+  if (_topicColExists !== null && now - _topicColCheckedAt < TOPIC_PROBE_TTL_MS) {
+    return _topicColExists;
+  }
   const { error } = await supabase.from('team_feed').select('topic').limit(0);
   _topicColExists = !error;
+  _topicColCheckedAt = now;
   if (!_topicColExists) {
-    console.warn('[community] team_feed.topic column missing — run migration 034 in Supabase SQL Editor:\n' +
-      "ALTER TABLE team_feed ADD COLUMN IF NOT EXISTS topic TEXT NOT NULL DEFAULT 'general' CHECK (topic IN ('general','running','apparel','races','fun'));");
+    console.warn('[community] team_feed.topic column missing — run migration 034:\n' +
+      "  ALTER TABLE team_feed ADD COLUMN IF NOT EXISTS topic TEXT NOT NULL DEFAULT 'general' CHECK (topic IN ('general','running','apparel','races','fun'));");
   }
   return _topicColExists;
 }

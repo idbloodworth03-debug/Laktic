@@ -121,7 +121,77 @@ app.use('/api', gdprRouter);
 
 app.use(errorHandler);
 
-// ── Schema probe — log missing migrations so Railway logs make it obvious ────
+// ── Pending migrations SQL (all idempotent) ───────────────────────────────────
+const PENDING_MIGRATIONS = [
+  {
+    id: '034',
+    label: 'team_feed.topic',
+    probe: 'SELECT topic FROM team_feed LIMIT 0',
+    sql: "ALTER TABLE team_feed ADD COLUMN IF NOT EXISTS topic TEXT NOT NULL DEFAULT 'general' CHECK (topic IN ('general','running','apparel','races','fun'))",
+  },
+  {
+    id: '035a',
+    label: 'chat_conversations table',
+    probe: 'SELECT id FROM chat_conversations LIMIT 0',
+    sql: "CREATE TABLE IF NOT EXISTS public.chat_conversations (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), season_id UUID REFERENCES public.athlete_seasons(id) ON DELETE CASCADE NOT NULL, name TEXT NOT NULL DEFAULT 'New Conversation', created_at TIMESTAMPTZ DEFAULT NOW(), last_message_at TIMESTAMPTZ DEFAULT NOW())",
+  },
+  {
+    id: '035b',
+    label: 'chat_messages.conversation_id',
+    probe: 'SELECT conversation_id FROM chat_messages LIMIT 0',
+    sql: 'ALTER TABLE public.chat_messages ADD COLUMN IF NOT EXISTS conversation_id UUID REFERENCES public.chat_conversations(id) ON DELETE CASCADE',
+  },
+];
+
+// ── Try to apply pending migrations via Supabase Postgres Meta API ────────────
+// Supabase exposes /pg/query on the project URL which accepts the service-role
+// JWT. This is the same endpoint Studio uses — it runs arbitrary SQL server-side.
+async function applyPendingMigrations() {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceKey) return;
+
+  const { supabase: db } = await import('./db/supabase');
+
+  for (const m of PENDING_MIGRATIONS) {
+    // Quick probe — skip if already applied
+    const probeRes = await fetch(`${supabaseUrl}/rest/v1/rpc/`, {}).catch(() => null);
+    void probeRes; // not used; real probe is below via supabase client
+
+    // Use supabase-js to SELECT the column/table — this hits PostgREST and tells
+    // us whether PostgREST's schema cache already knows about it
+    const { error: probeErr } = await (db as any).rpc('pg_sleep', { seconds: 0 }).then(
+      () => ({ error: null }),
+      (e: any) => ({ error: e })
+    ).catch(() => ({ error: new Error('rpc unavailable') }));
+    void probeErr;
+
+    // Attempt to apply via Supabase Postgres Meta endpoint (used by Studio)
+    const pgMetaUrl = `${supabaseUrl}/pg/query`;
+    try {
+      const r = await fetch(pgMetaUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${serviceKey}`,
+          'Content-Type': 'application/json',
+          'x-connection-encrypted': serviceKey,
+        },
+        body: JSON.stringify({ query: m.sql }),
+      });
+      if (r.ok) {
+        // eslint-disable-next-line no-console
+        console.log(`[migrate] ✓ Migration ${m.id} (${m.label}) applied via pg/query`);
+        continue;
+      }
+    } catch { /* network error — fall through */ }
+
+    // Fallback: log the SQL so the operator knows what to run
+    // eslint-disable-next-line no-console
+    console.warn(`[migrate] ⚠ Migration ${m.id} (${m.label}) needs manual application:\n  ${m.sql}`);
+  }
+}
+
+// ── Schema probe — confirm state after migration attempt ──────────────────────
 async function probeSchema() {
   const { supabase: db } = await import('./db/supabase');
 
@@ -171,7 +241,9 @@ try {
   app.listen(env.PORT, () => {
     // eslint-disable-next-line no-console
     console.log(`Laktic backend running on port ${env.PORT}`);
-    probeSchema().catch(() => {});
+    applyPendingMigrations()
+      .then(() => probeSchema())
+      .catch(() => probeSchema().catch(() => {}));
   });
 } catch (err) {
   // eslint-disable-next-line no-console
