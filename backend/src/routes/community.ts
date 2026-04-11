@@ -10,10 +10,13 @@ const router = Router();
 
 const PAGE_SIZE = 20;
 
+const COMMUNITY_TOPICS = ['general', 'running', 'apparel', 'races', 'fun'] as const;
+
 const communityPostSchema = z.object({
   body: z.string().min(1).max(500),
   scope: z.enum(['public', 'team']).default('public'),
-  image_url: z.string().url().max(2000).optional()
+  image_url: z.string().url().max(2000).optional(),
+  topic: z.enum(COMMUNITY_TOPICS).default('general'),
 });
 
 // ── GET /api/community/feed ───────────────────────────────────────────────────
@@ -76,10 +79,14 @@ router.get(
     // When sorting by relevance, fetch a larger pool so we can rank across recent posts
     const fetchLimit = sortByRelevance ? 100 : PAGE_SIZE;
 
+    const topicFilter = typeof req.query.topic === 'string' && COMMUNITY_TOPICS.includes(req.query.topic as any)
+      ? req.query.topic as string
+      : null;
+
     let query = supabase
       .from('team_feed')
       .select(`
-        id, feed_type, body, scope, image_url, created_at, team_id, athlete_id, coach_id,
+        id, feed_type, body, scope, image_url, created_at, team_id, athlete_id, coach_id, topic,
         athlete_profiles!athlete_id (id, name, avatar_url),
         coach_profiles!coach_id (id, name, avatar_url),
         feed_kudos (id, athlete_id, coach_id),
@@ -96,6 +103,10 @@ router.get(
       query = query.or(`scope.eq.public,team_id.eq.${activeTeamId}`);
     } else {
       query = query.eq('scope', 'public');
+    }
+
+    if (topicFilter) {
+      query = query.eq('topic', topicFilter);
     }
 
     const { data: posts, error, count } = await query;
@@ -134,7 +145,7 @@ router.post(
   auth,
   validate(communityPostSchema),
   asyncHandler(async (req: AuthRequest, res) => {
-    const { body: postBody, scope, image_url } = req.body;
+    const { body: postBody, scope, image_url, topic = 'general' } = req.body;
     console.log(`[community/posts] POST uid=${req.user!.id} scope=${scope}`);
     if (containsSevereProfanity(postBody)) return res.status(400).json({ error: 'Your message contains inappropriate content' });
     const cleanBody = filterText(postBody);
@@ -154,10 +165,10 @@ router.post(
 
       const { data, error } = await supabase.from('team_feed').insert({
         team_id: teamId, athlete_id: athleteProfile.id, coach_id: null,
-        feed_type: 'manual', body: cleanBody, scope,
+        feed_type: 'manual', body: cleanBody, scope, topic,
         ...(image_url && { image_url }),
       }).select(`
-        id, feed_type, body, scope, image_url, created_at, team_id, athlete_id, coach_id,
+        id, feed_type, body, scope, image_url, created_at, team_id, athlete_id, coach_id, topic,
         athlete_profiles!athlete_id (id, name), coach_profiles!coach_id (id, name)
       `).single();
       if (error) { console.error('[community/posts] athlete insert error:', error.message); return res.status(400).json({ error: error.message }); }
@@ -176,10 +187,10 @@ router.post(
 
     const { data, error } = await supabase.from('team_feed').insert({
       team_id: teamId, athlete_id: null, coach_id: coachProfile.id,
-      feed_type: 'manual', body: cleanBody, scope,
+      feed_type: 'manual', body: cleanBody, scope, topic,
       ...(image_url && { image_url }),
     }).select(`
-      id, feed_type, body, scope, image_url, created_at, team_id, athlete_id, coach_id,
+      id, feed_type, body, scope, image_url, created_at, team_id, athlete_id, coach_id, topic,
       athlete_profiles!athlete_id (id, name), coach_profiles!coach_id (id, name)
     `).single();
     if (error) { console.error('[community/posts] coach insert error:', error.message); return res.status(400).json({ error: error.message }); }

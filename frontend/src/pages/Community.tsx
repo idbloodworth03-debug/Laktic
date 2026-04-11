@@ -430,10 +430,20 @@ function ComposerBar({ name, onClick }: { name: string; onClick: () => void }) {
   );
 }
 
+// ── Topics ────────────────────────────────────────────────────────────────────
+const TOPICS: { value: string; label: string }[] = [
+  { value: 'general',  label: 'General' },
+  { value: 'running',  label: 'Running & PRs' },
+  { value: 'apparel',  label: 'Apparel' },
+  { value: 'races',    label: 'Races' },
+  { value: 'fun',      label: 'Fun' },
+];
+
 // ── Create Post Modal ─────────────────────────────────────────────────────────
 function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (post: any) => void }) {
   const [body, setBody]   = useState('');
   const [scope, setScope] = useState<'public' | 'team'>('public');
+  const [topic, setTopic] = useState('general');
   const [imageFile, setImageFile]     = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading]     = useState(false);
@@ -481,7 +491,7 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
       }
       const post = await apiFetch('/api/community/posts', {
         method: 'POST',
-        body: JSON.stringify({ body: body.trim(), scope, ...(imageUrl && { image_url: imageUrl }) }),
+        body: JSON.stringify({ body: body.trim(), scope, topic, ...(imageUrl && { image_url: imageUrl }) }),
       });
       onPost(post); onClose();
     } catch (e: any) { setError(e.message || 'Failed to post'); }
@@ -578,6 +588,16 @@ function CreatePostModal({ onClose, onPost }: { onClose: () => void; onPost: (po
             {(['public', 'team'] as const).map(s => (
               <button key={s} type="button" onClick={() => setScope(s)} style={pill(scope === s)}>
                 {s === 'public' ? 'Everyone' : 'Team only'}
+              </button>
+            ))}
+          </div>
+
+          {/* Topic */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.42)' }}>Topic:</span>
+            {TOPICS.map(t => (
+              <button key={t.value} type="button" onClick={() => setTopic(t.value)} style={pill(topic === t.value)}>
+                {t.label}
               </button>
             ))}
           </div>
@@ -866,16 +886,18 @@ export function Community() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [pendingPosts, setPendingPosts] = useState<any[]>([]);
+  const [activeTopic, setActiveTopic] = useState('all');
   const knownPostIdsRef = useRef<Set<string>>(new Set());
   const newestPostIdRef = useRef<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => { await logout(); nav('/'); };
 
-  const loadPage = async (pg: number, reset: boolean) => {
+  const loadPage = async (pg: number, reset: boolean, topic = activeTopic) => {
     if (reset) { setLoading(true); setPosts([]); } else setLoadingMore(true);
     try {
-      const data = await apiFetch(`/api/community/feed?page=${pg}`);
+      const topicParam = topic !== 'all' ? `&topic=${topic}` : '';
+      const data = await apiFetch(`/api/community/feed?page=${pg}${topicParam}`);
       if (reset) knownPostIdsRef.current.clear();
       (data.posts ?? []).forEach((p: any) => knownPostIdsRef.current.add(p.id));
       if (reset && data.posts?.length > 0) newestPostIdRef.current = data.posts[0].id;
@@ -886,7 +908,7 @@ export function Community() {
     finally { setLoading(false); setLoadingMore(false); }
   };
 
-  useEffect(() => { loadPage(1, true); }, []);
+  useEffect(() => { loadPage(1, true, activeTopic); }, [activeTopic]);
 
   // 15-second poll: detect new posts + silently refresh counts
   // Sends lastSeenId so the backend can short-circuit with { unchanged: true }
@@ -988,6 +1010,24 @@ export function Community() {
             <div className="flex-1 min-w-0">
               <div style={{ maxWidth: 680 }}>
                 <ComposerBar name={profile?.name ?? 'A'} onClick={() => setShowCreate(true)} />
+
+                {/* Topic tabs */}
+                <div className="flex gap-2 overflow-x-auto pb-1 mb-4 mt-4 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+                  {[{ value: 'all', label: 'All' }, ...TOPICS].map(t => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => setActiveTopic(t.value)}
+                      className="shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150"
+                      style={activeTopic === t.value
+                        ? { background: '#00E5A0', color: '#000', border: 'none', cursor: 'pointer' }
+                        : { background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.5)', border: 'none', cursor: 'pointer' }
+                      }
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
 
                 {/* New posts banner */}
                 {pendingPosts.length > 0 && (
