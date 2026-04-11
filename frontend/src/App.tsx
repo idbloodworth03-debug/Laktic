@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Component, ReactNode } from 'react';
 import { useAuthStore } from './store/authStore';
+import './store/themeStore'; // initialises theme from localStorage on boot
 
 // ── Global error boundary — catches unhandled render errors in any page ───────
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
