@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { AppLayout, Button, ChatBubble, TypingIndicator, Alert } from '../components/ui';
@@ -53,7 +53,6 @@ function MessageInput({
 // ── Bot chat tab ──────────────────────────────────────────────────────────────
 function BotChat() {
   const { profile } = useAuthStore();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [messages, setMessages] = useState<any[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [input, setInput] = useState('');
@@ -142,15 +141,15 @@ function BotChat() {
 
   const send = () => sendMessage(input.trim());
 
-  // Auto-send ?q= param from "Ask Pace about this"
+  // Auto-send sessionStorage message from "Ask Pace about this"
   useEffect(() => {
     if (autoSentRef.current) return;
-    const q = searchParams.get('q');
+    const q = sessionStorage.getItem('paceQuestion');
     if (!q) return;
     autoSentRef.current = true;
-    setSearchParams({}, { replace: true });
+    sessionStorage.removeItem('paceQuestion');
     sendMessage(q);
-  }, [searchParams]);
+  }, []);
 
   const PROMPTS = [
     'I feel tired this week',
