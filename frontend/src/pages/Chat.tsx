@@ -214,8 +214,9 @@ function BotChat() {
                       className="w-full text-left px-4 py-2.5 transition-colors"
                       style={{
                         background: c.id === conversationId ? 'var(--color-accent-dim)' : 'transparent',
-                        borderBottom: '1px solid var(--color-border)',
-                        border: 'none',
+                        borderTop: 'none',
+                        borderLeft: 'none',
+                        borderRight: 'none',
                         borderBottom: '1px solid var(--color-border)',
                         cursor: 'pointer',
                       }}
