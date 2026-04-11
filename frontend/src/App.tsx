@@ -71,6 +71,7 @@ import { RecruitingSettings, RecruiterSignup, RecruiterDashboard } from './pages
 import { AdminDashboard } from './pages/AdminDashboard';
 import { AthletePro } from './pages/AthletePro';
 import { Privacy } from './pages/Privacy';
+import { Support } from './pages/Support';
 import { AuthCallback } from './pages/AuthCallback';
 import { EmailConfirmationPending } from './pages/EmailConfirmationPending';
 
@@ -165,6 +166,7 @@ export default function App() {
         <Route path="/coach/:username" element={<CoachPublicProfile />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/support" element={<Support />} />
 
         {/* Sprint 2 — AI Features */}
         {/* <Route path="/coach/readiness" element={<RequireCoach><TeamReadiness /></RequireCoach>} /> */}
