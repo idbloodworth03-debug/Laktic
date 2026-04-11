@@ -2116,3 +2116,76 @@ ALTER TABLE public.athlete_profiles
 -- ════════════════════════════════════════════════════════════════════
 -- END Migration 031
 -- ════════════════════════════════════════════════════════════════════
+
+
+-- ════════════════════════════════════════════════════════════════════
+-- Migration 032 — Fix athlete_seasons bot_id FK to SET NULL on coach delete
+-- ════════════════════════════════════════════════════════════════════
+
+ALTER TABLE public.athlete_seasons
+  DROP CONSTRAINT IF EXISTS athlete_seasons_bot_id_fkey;
+
+ALTER TABLE public.athlete_seasons
+  ADD CONSTRAINT athlete_seasons_bot_id_fkey
+  FOREIGN KEY (bot_id) REFERENCES public.coach_bots(id) ON DELETE SET NULL;
+
+DO $$ BEGIN
+  ALTER TABLE public.plan_jobs
+    DROP CONSTRAINT IF EXISTS plan_jobs_bot_id_fkey;
+  ALTER TABLE public.plan_jobs
+    ADD CONSTRAINT plan_jobs_bot_id_fkey
+    FOREIGN KEY (bot_id) REFERENCES public.coach_bots(id) ON DELETE SET NULL;
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'plan_jobs table does not exist, skipping.';
+END $$;
+
+-- ════════════════════════════════════════════════════════════════════
+-- END Migration 032
+-- ════════════════════════════════════════════════════════════════════
+
+
+-- ════════════════════════════════════════════════════════════════════
+-- Migration 033 — Add running_style column to athlete_profiles
+-- ════════════════════════════════════════════════════════════════════
+
+ALTER TABLE public.athlete_profiles
+  ADD COLUMN IF NOT EXISTS running_style TEXT;
+
+-- ════════════════════════════════════════════════════════════════════
+-- END Migration 033
+-- ════════════════════════════════════════════════════════════════════
+
+
+-- ════════════════════════════════════════════════════════════════════
+-- Migration 034 — Community topic filtering
+-- ════════════════════════════════════════════════════════════════════
+
+ALTER TABLE public.team_feed
+  ADD COLUMN IF NOT EXISTS topic TEXT NOT NULL DEFAULT 'general'
+    CHECK (topic IN ('general','running','apparel','races','fun'));
+
+-- ════════════════════════════════════════════════════════════════════
+-- END Migration 034
+-- ════════════════════════════════════════════════════════════════════
+
+
+-- ════════════════════════════════════════════════════════════════════
+-- Migration 035 — Chat conversations
+-- Groups chat messages into named, auto-wiped sessions.
+-- REQUIRED for the Conversations dropdown to work in the chat page.
+-- ════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS public.chat_conversations (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  season_id       UUID REFERENCES public.athlete_seasons(id) ON DELETE CASCADE NOT NULL,
+  name            TEXT NOT NULL DEFAULT 'New Conversation',
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  last_message_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.chat_messages
+  ADD COLUMN IF NOT EXISTS conversation_id UUID REFERENCES public.chat_conversations(id) ON DELETE CASCADE;
+
+-- ════════════════════════════════════════════════════════════════════
+-- END Migration 035
+-- ════════════════════════════════════════════════════════════════════

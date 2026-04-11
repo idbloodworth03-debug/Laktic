@@ -95,11 +95,20 @@ function BotChat() {
     return () => document.removeEventListener('mousedown', handler);
   }, [convOpen]);
 
+  const [convMigrationRequired, setConvMigrationRequired] = useState(false);
+
   const fetchConversations = async () => {
     setConvLoading(true);
     try {
       const data = await apiFetch('/api/athlete/conversations');
-      setConversations(data);
+      // Backend returns { migrationRequired: true, conversations: [] } if table missing
+      if (data && !Array.isArray(data) && data.migrationRequired) {
+        setConvMigrationRequired(true);
+        setConversations([]);
+      } else {
+        setConvMigrationRequired(false);
+        setConversations(Array.isArray(data) ? data : []);
+      }
     } catch {}
     finally { setConvLoading(false); }
   };
@@ -208,6 +217,10 @@ function BotChat() {
               >
                 {convLoading ? (
                   <div className="px-4 py-3 text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Loading…</div>
+                ) : convMigrationRequired ? (
+                  <div className="px-4 py-3 text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
+                    Run migration 035 in Supabase to enable conversations.
+                  </div>
                 ) : conversations.length === 0 ? (
                   <div className="px-4 py-3 text-xs" style={{ color: 'var(--color-text-tertiary)' }}>No saved conversations yet.</div>
                 ) : (

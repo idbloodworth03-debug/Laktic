@@ -694,11 +694,16 @@ router.get(
     await supabase.from('chat_conversations').delete()
       .eq('season_id', season.id).lt('last_message_at', cutoff);
 
-    const { data: convs } = await supabase
+    const { data: convs, error: convsErr } = await supabase
       .from('chat_conversations')
       .select('id, name, created_at, last_message_at')
       .eq('season_id', season.id)
       .order('last_message_at', { ascending: false });
+
+    if (convsErr) {
+      console.error('[conversations] query failed — migration 035 may not be applied:', convsErr.message);
+      return res.json({ migrationRequired: true, conversations: [] });
+    }
 
     res.json(convs || []);
   })

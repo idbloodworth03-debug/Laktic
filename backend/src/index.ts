@@ -121,10 +121,42 @@ app.use('/api', gdprRouter);
 
 app.use(errorHandler);
 
+// ── Schema probe — log missing migrations so Railway logs make it obvious ────
+async function probeSchema() {
+  const { supabase: db } = await import('./db/supabase');
+
+  // Check for chat_conversations (migration 035)
+  const { error } = await db.from('chat_conversations').select('id').limit(1);
+  if (error) {
+    // eslint-disable-next-line no-console
+    console.error(
+      '\n' +
+      '════════════════════════════════════════════════════════\n' +
+      '[MIGRATION REQUIRED] chat_conversations table is missing.\n' +
+      'Run the following SQL in your Supabase SQL Editor:\n\n' +
+      "CREATE TABLE IF NOT EXISTS public.chat_conversations (\n" +
+      "  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n" +
+      "  season_id       UUID REFERENCES public.athlete_seasons(id) ON DELETE CASCADE NOT NULL,\n" +
+      "  name            TEXT NOT NULL DEFAULT 'New Conversation',\n" +
+      "  created_at      TIMESTAMPTZ DEFAULT NOW(),\n" +
+      "  last_message_at TIMESTAMPTZ DEFAULT NOW()\n" +
+      ");\n" +
+      "ALTER TABLE public.chat_messages\n" +
+      "  ADD COLUMN IF NOT EXISTS conversation_id UUID REFERENCES public.chat_conversations(id) ON DELETE CASCADE;\n\n" +
+      'See migrations.sql (Migration 035) for the full script.\n' +
+      '════════════════════════════════════════════════════════\n'
+    );
+  } else {
+    // eslint-disable-next-line no-console
+    console.log('[schema] chat_conversations ✓');
+  }
+}
+
 try {
   app.listen(env.PORT, () => {
     // eslint-disable-next-line no-console
     console.log(`Laktic backend running on port ${env.PORT}`);
+    probeSchema().catch(() => {});
   });
 } catch (err) {
   // eslint-disable-next-line no-console
