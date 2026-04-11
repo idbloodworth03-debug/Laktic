@@ -107,7 +107,8 @@ export const athleteProfileUpdateSchema = z.object({
 });
 
 export const chatMessageSchema = z.object({
-  message: z.string().min(1).max(5000)
+  message: z.string().min(1).max(5000),
+  conversationId: z.string().uuid().optional(),
 });
 
 const raceSchema = z.object({

@@ -55,22 +55,23 @@ function BotChat() {
   const { profile } = useAuthStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const [messages, setMessages] = useState<any[]>([]);
-  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [planUpdated, setPlanUpdated] = useState(false);
   const [error, setError] = useState('');
-  const [clearConfirm, setClearConfirm] = useState(false);
-  const [clearing, setClearing] = useState(false);
   const [activeTeam, setActiveTeam] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const autoSentRef = useRef(false);
 
-  useEffect(() => {
-    apiFetch('/api/athlete/chat')
-      .then(msgs => { setMessages(msgs); setHistoryLoaded(true); })
-      .catch(() => setHistoryLoaded(true));
-  }, []);
+  // Conversations dropdown
+  const [convOpen, setConvOpen] = useState(false);
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [convLoading, setConvLoading] = useState(false);
+  const convRef = useRef<HTMLDivElement>(null);
+
+  // New conversation on every mount — no history fetch needed
+  useEffect(() => { autoSentRef.current = false; }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -85,6 +86,38 @@ function BotChat() {
       .catch(() => {});
   }, []);
 
+  // Close conversations dropdown on outside click
+  useEffect(() => {
+    if (!convOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (convRef.current && !convRef.current.contains(e.target as Node)) setConvOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [convOpen]);
+
+  const openConversations = async () => {
+    setConvOpen(o => !o);
+    if (!convOpen) {
+      setConvLoading(true);
+      try {
+        const data = await apiFetch('/api/athlete/conversations');
+        setConversations(data);
+      } catch {}
+      finally { setConvLoading(false); }
+    }
+  };
+
+  const loadConversation = async (id: string) => {
+    setConvOpen(false);
+    setConversationId(id);
+    setMessages([]);
+    try {
+      const msgs = await apiFetch(`/api/athlete/chat?conversationId=${id}`);
+      setMessages(msgs);
+    } catch {}
+  };
+
   const sendMessage = async (msg: string) => {
     if (!msg || sending) return;
     setInput('');
@@ -93,7 +126,12 @@ function BotChat() {
     setPlanUpdated(false);
     setMessages(prev => [...prev, { id: Date.now(), role: 'athlete', content: msg, plan_was_updated: false }]);
     try {
-      const result = await apiFetch('/api/athlete/chat', { method: 'POST', body: JSON.stringify({ message: msg }) });
+      const result = await apiFetch('/api/athlete/chat', {
+        method: 'POST',
+        body: JSON.stringify({ message: msg, ...(conversationId && { conversationId }) }),
+      });
+      // Backend creates conversation on first message and returns its id
+      if (!conversationId && result.conversationId) setConversationId(result.conversationId);
       setMessages(prev => [...prev, { id: Date.now() + 1, role: 'bot', content: result.botReply, plan_was_updated: result.planUpdated }]);
       if (result.planUpdated) setPlanUpdated(true);
     } catch (e: any) {
@@ -104,26 +142,15 @@ function BotChat() {
 
   const send = () => sendMessage(input.trim());
 
-  // Auto-send ?q= param — only after history is loaded so optimistic message isn't wiped
+  // Auto-send ?q= param from "Ask Pace about this"
   useEffect(() => {
-    if (!historyLoaded || autoSentRef.current) return;
+    if (autoSentRef.current) return;
     const q = searchParams.get('q');
     if (!q) return;
     autoSentRef.current = true;
     setSearchParams({}, { replace: true });
     sendMessage(q);
-  }, [historyLoaded, searchParams]);
-
-  const clearChat = async () => {
-    setClearing(true);
-    try {
-      await apiFetch('/api/athlete/chat', { method: 'DELETE' });
-      setMessages([]);
-      setClearConfirm(false);
-    } catch (e: any) {
-      setError(e.message);
-    } finally { setClearing(false); }
-  };
+  }, [searchParams]);
 
   const PROMPTS = [
     'I feel tired this week',
@@ -132,6 +159,8 @@ function BotChat() {
     'I have a race coming up sooner than expected',
   ];
 
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Toolbar */}
@@ -139,21 +168,71 @@ function BotChat() {
         className="px-6 py-3 flex items-center justify-between shrink-0"
         style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)' }}
       >
-        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          {activeTeam
-            ? <>Training with <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{activeTeam}</span></>
-            : 'Pace is ready to coach'}
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+            {activeTeam
+              ? <>Training with <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{activeTeam}</span></>
+              : 'Pace is ready to coach'}
+          </p>
+
+          {/* Conversations dropdown */}
+          <div ref={convRef} className="relative">
+            <button
+              type="button"
+              onClick={openConversations}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all"
+              style={{
+                background: convOpen ? 'var(--color-accent-dim)' : 'var(--color-bg-tertiary)',
+                color: convOpen ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                border: `1px solid ${convOpen ? 'var(--color-accent)' : 'var(--color-border)'}`,
+              }}
+            >
+              Conversations ▾
+            </button>
+            {convOpen && (
+              <div
+                className="absolute top-full left-0 mt-1 z-50 rounded-xl overflow-hidden"
+                style={{
+                  background: 'var(--color-bg-secondary)',
+                  border: '1px solid var(--color-border)',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                  minWidth: 240,
+                  maxHeight: 320,
+                  overflowY: 'auto',
+                }}
+              >
+                {convLoading ? (
+                  <div className="px-4 py-3 text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Loading…</div>
+                ) : conversations.length === 0 ? (
+                  <div className="px-4 py-3 text-xs" style={{ color: 'var(--color-text-tertiary)' }}>No saved conversations yet.</div>
+                ) : (
+                  conversations.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => loadConversation(c.id)}
+                      className="w-full text-left px-4 py-2.5 transition-colors"
+                      style={{
+                        background: c.id === conversationId ? 'var(--color-accent-dim)' : 'transparent',
+                        borderBottom: '1px solid var(--color-border)',
+                        border: 'none',
+                        borderBottom: '1px solid var(--color-border)',
+                        cursor: 'pointer',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--color-bg-hover)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = c.id === conversationId ? 'var(--color-accent-dim)' : 'transparent'; }}
+                    >
+                      <p className="text-sm font-medium truncate" style={{ color: 'var(--color-text-primary)' }}>{c.name}</p>
+                      <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>{fmtDate(c.last_message_at)}</p>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="flex items-center gap-2">
-          {clearConfirm ? (
-            <>
-              <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Clear all messages?</span>
-              <Button variant="danger" size="sm" loading={clearing} onClick={clearChat}>Confirm</Button>
-              <Button variant="ghost" size="sm" onClick={() => setClearConfirm(false)}>Cancel</Button>
-            </>
-          ) : (
-            <Button variant="ghost" size="sm" onClick={() => setClearConfirm(true)}>Clear Chat</Button>
-          )}
           <Link to="/athlete/plan"><Button variant="ghost" size="sm">View Plan</Button></Link>
           <Link to="/athlete/races"><Button variant="ghost" size="sm">Race Calendar</Button></Link>
         </div>

@@ -678,6 +678,32 @@ router.post(
   })
 );
 
+// ── Chat conversations ────────────────────────────────────────────────────────
+
+// GET /api/athlete/conversations — list all, auto-wipe >7 days old
+router.get(
+  '/conversations',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const season = await getActiveSeasonForTeam(req.athlete.id, req.athlete.active_team_id ?? null, 'id');
+    if (!season) return res.json([]);
+
+    // Wipe conversations with no activity in the last 7 days
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    await supabase.from('chat_conversations').delete()
+      .eq('season_id', season.id).lt('last_message_at', cutoff);
+
+    const { data: convs } = await supabase
+      .from('chat_conversations')
+      .select('id, name, created_at, last_message_at')
+      .eq('season_id', season.id)
+      .order('last_message_at', { ascending: false });
+
+    res.json(convs || []);
+  })
+);
+
 // GET /api/athlete/chat
 router.get(
   '/chat',
@@ -688,10 +714,14 @@ router.get(
 
     if (!season) return res.json([]);
 
+    const { conversationId } = req.query;
+    if (!conversationId) return res.json([]);
+
     const { data: messages } = await supabase
       .from('chat_messages')
       .select('*')
       .eq('season_id', season.id)
+      .eq('conversation_id', conversationId as string)
       .order('created_at', { ascending: true });
 
     res.json(messages || []);
@@ -837,7 +867,7 @@ router.post(
   aiLimiter,
   validate(chatMessageSchema),
   asyncHandler(async (req: AuthRequest, res) => {
-    const { message: rawMessage } = req.body;
+    const { message: rawMessage, conversationId: rawConvId } = req.body;
     if (containsSevereProfanity(rawMessage)) return res.status(400).json({ error: 'Your message contains inappropriate content' });
     const message = filterText(rawMessage);
 
@@ -849,10 +879,21 @@ router.post(
 
     if (!season) return res.status(404).json({ error: 'No active season. Subscribe to a coaching bot first.' });
 
+    // Resolve or create conversation
+    let conversationId: string = rawConvId;
+    if (!conversationId) {
+      const { data: newConv } = await supabase.from('chat_conversations').insert({
+        season_id: season.id,
+        name: 'New Conversation',
+      }).select('id').single();
+      conversationId = newConv!.id;
+    }
+
     const { data: chatHistory } = await supabase
       .from('chat_messages')
       .select('*')
       .eq('season_id', season.id)
+      .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
 
     // Load full athlete context
@@ -995,6 +1036,7 @@ ATHLETE: ${message}`;
       role: 'athlete',
       content: message,
       plan_was_updated: false,
+      conversation_id: conversationId,
     });
 
     // Save bot reply
@@ -1003,9 +1045,31 @@ ATHLETE: ${message}`;
       role: 'bot',
       content: botReply,
       plan_was_updated: planUpdated,
+      conversation_id: conversationId,
     });
 
-    res.json({ botReply, planUpdated, updatedDays });
+    // Update conversation last_message_at
+    await supabase.from('chat_conversations')
+      .update({ last_message_at: new Date().toISOString() })
+      .eq('id', conversationId);
+
+    res.json({ botReply, planUpdated, updatedDays, conversationId });
+
+    // Auto-name the conversation if it's still the default (fire-and-forget)
+    const isFirstExchange = !chatHistory || chatHistory.length === 0;
+    if (isFirstExchange) {
+      openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'Generate a short conversation title (3-5 words, title case, no punctuation) summarizing what the user is asking about. Reply with ONLY the title.' },
+          { role: 'user', content: message },
+        ],
+        max_tokens: 20,
+      }).then(r => {
+        const name = r.choices[0]?.message?.content?.trim().replace(/[".]/g, '') || 'Coaching Session';
+        return supabase.from('chat_conversations').update({ name }).eq('id', conversationId);
+      }).catch(() => {});
+    }
 
     // Auto-extract memories every 10 messages (fire and forget — never delays response)
     const totalMessages = (chatHistory?.length ?? 0) + 2;
