@@ -5,6 +5,10 @@ function isIOS() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window as any).MSStream;
 }
 
+function canWebShare() {
+  return 'share' in navigator;
+}
+
 function isStandalone() {
   return window.matchMedia('(display-mode: standalone)').matches ||
     (window.navigator as any).standalone === true;
@@ -12,9 +16,9 @@ function isStandalone() {
 
 // Opens the native iOS share sheet — user can then tap "Add to Home Screen"
 async function iosShare() {
-  if (navigator.share) {
+  if (canWebShare()) {
     try {
-      await navigator.share({
+      await (navigator as any).share({
         title: 'Laktic — Train Smarter',
         url: window.location.origin,
       });
@@ -35,7 +39,7 @@ export function InstallBanner() {
       setDismissed(true);
       return;
     }
-    if (isIOS() && navigator.share) {
+    if (isIOS() && canWebShare()) {
       setShowIOS(true);
       return;
     }
@@ -117,7 +121,7 @@ export function InstallAppCard() {
   const [installed, setInstalled] = useState(false);
   const [installing, setInstalling] = useState(false);
   const ios = isIOS();
-  const canShare = ios && !!navigator.share;
+  const canShare = ios && canWebShare();
 
   useEffect(() => {
     if (isStandalone()) { setInstalled(true); return; }
