@@ -603,11 +603,15 @@ function WorkoutModal({ wo, onClose, isCompleted, onComplete, togglingComplete, 
 }
 
 // ── Monthly calendar view ─────────────────────────────────────────────────────
-function PlanMonthView({ plan }: { plan: any[] }) {
+function PlanMonthView({ plan, races = [] }: { plan: any[]; races?: any[] }) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selected, setSelected] = useState<CalWorkout | null>(null);
+
+  // Build race lookup by date
+  const racesByDate: Record<string, { name: string; is_goal_race?: boolean }> = {};
+  races.forEach((r: any) => { if (r.date) racesByDate[r.date] = r; });
 
   const workoutsByDate: Record<string, CalWorkout[]> = {};
   plan.forEach((week: any) => {
@@ -694,7 +698,8 @@ function PlanMonthView({ plan }: { plan: any[] }) {
             const dateKey = day
               ? `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
               : '';
-            const dayWorkouts = dateKey ? (workoutsByDate[dateKey] || []) : [];
+            const race = dateKey ? racesByDate[dateKey] : null;
+            const dayWorkouts = (!race && dateKey) ? (workoutsByDate[dateKey] || []) : [];
             const isToday =
               day === today.getDate() &&
               viewMonth === today.getMonth() &&
@@ -735,7 +740,19 @@ function PlanMonthView({ plan }: { plan: any[] }) {
                       {day}
                     </div>
                     <div className="flex flex-col gap-0.5">
-                      {dayWorkouts.map((wo, wi) => {
+                      {race ? (
+                        <div
+                          className="text-[10px] leading-tight px-1.5 py-0.5 rounded-md truncate font-semibold"
+                          style={{
+                            background: PHASE_CAL.race.background,
+                            color: PHASE_CAL.race.color,
+                            border: `1px solid ${PHASE_CAL.race.border}`,
+                          }}
+                          title={race.name}
+                        >
+                          {race.is_goal_race ? '★ ' : ''}{race.name}
+                        </div>
+                      ) : dayWorkouts.map((wo, wi) => {
                         const cal = PHASE_CAL[wo.phase] ?? PHASE_CAL.base;
                         return (
                           <div
@@ -1371,7 +1388,7 @@ export function SeasonPlan() {
           {planView === 'monthly' && (
             <div className="fade-up-1">
               <Card>
-                <PlanMonthView plan={displayPlan} />
+                <PlanMonthView plan={displayPlan} races={season.race_calendar ?? []} />
               </Card>
             </div>
           )}
@@ -1437,6 +1454,9 @@ export function SeasonPlan() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                     {DAYS.map((dayLabel, i) => {
                       const wo = week.workouts?.find((w: any) => w.day_of_week === i + 1);
+                      const raceOnDay = wo?.date
+                        ? (season.race_calendar ?? []).find((r: any) => r.date === wo.date)
+                        : null;
                       const phase = week.phase || 'base';
                       const isCompleted = wo?.date ? completedDates.has(wo.date) : false;
                       const isToggling = wo?.date ? togglingDate === wo.date : false;
@@ -1449,7 +1469,7 @@ export function SeasonPlan() {
                         <div
                           key={i}
                           onClick={() => {
-                            if (!wo) return;
+                            if (!wo || raceOnDay) return;
                             const dateStr = wo.date ?? '';
                             const dateLabel = dateStr
                               ? new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
@@ -1470,7 +1490,14 @@ export function SeasonPlan() {
                             });
                           }}
                           className="transition-all duration-150"
-                          style={{
+                          style={raceOnDay ? {
+                            borderRadius: 14,
+                            border: '1px solid rgba(0,229,160,0.3)',
+                            borderLeft: '3px solid var(--color-accent)',
+                            background: 'var(--color-accent-dim)',
+                            padding: 16,
+                            cursor: 'default',
+                          } : {
                             borderRadius: 14,
                             border: `1px solid ${wo ? (isCompleted ? 'rgba(0,229,160,0.25)' : 'rgba(255,255,255,0.13)') : 'var(--color-border)'}`,
                             borderLeft: wo ? `3px solid ${isCompleted ? 'var(--color-accent)' : woType.border}` : `1px dashed var(--color-border)`,
@@ -1480,10 +1507,10 @@ export function SeasonPlan() {
                             opacity: wo ? (isCompleted ? 0.6 : 1) : 0.35,
                           }}
                           onMouseEnter={e => {
-                            if (wo && !isCompleted) (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.26)';
+                            if (wo && !isCompleted && !raceOnDay) (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.26)';
                           }}
                           onMouseLeave={e => {
-                            if (wo && !isCompleted) (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.13)';
+                            if (wo && !isCompleted && !raceOnDay) (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.13)';
                           }}
                         >
                           <div className="flex items-center justify-between mb-2">
@@ -1496,7 +1523,7 @@ export function SeasonPlan() {
                                   {new Date(wo.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                 </span>
                               )}
-                              {canComplete && (
+                              {canComplete && !raceOnDay && (
                                 <button
                                   onClick={e => { e.stopPropagation(); toggleComplete(wo.date); }}
                                   disabled={isToggling}
@@ -1521,7 +1548,14 @@ export function SeasonPlan() {
                               )}
                             </div>
                           </div>
-                          {wo ? (
+                          {raceOnDay ? (
+                            <div className="flex items-start gap-2">
+                              <span className="shrink-0 rounded-full" style={{ width: 6, height: 6, marginTop: 5, background: 'var(--color-accent)' }} />
+                              <span className="text-sm font-semibold leading-snug" style={{ color: 'var(--color-accent)' }}>
+                                {raceOnDay.is_goal_race ? '★ ' : ''}{raceOnDay.name}
+                              </span>
+                            </div>
+                          ) : wo ? (
                             <>
                               {/* Type dot + title */}
                               <div className="flex items-start gap-2 mb-2">
