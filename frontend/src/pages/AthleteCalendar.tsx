@@ -167,7 +167,28 @@ export function AthleteCalendar() {
       apiFetch('/api/athlete/season').catch(() => ({ season: null }))
     ])
       .then(([eventsData, seasonData]) => {
-        setEvents(eventsData);
+        // Convert personal races from race_calendar into TeamEvent shape
+        const personalRaces: TeamEvent[] = (seasonData?.season?.race_calendar ?? []).map(
+          (race: { name: string; date: string; is_goal_race?: boolean; notes?: string; distance?: string }, idx: number) => ({
+            id: `personal-race-${idx}`,
+            title: race.name,
+            event_type: 'race' as EventType,
+            event_date: race.date,
+            start_time: null,
+            end_time: null,
+            location_name: race.distance ?? null,
+            location_lat: null,
+            location_lng: null,
+            notes: [race.is_goal_race ? 'Goal Race' : null, race.notes ?? null].filter(Boolean).join(' · ') || null,
+            my_attendance: null,
+          })
+        );
+
+        // Merge team events + personal races, sorted by date
+        const allEvents: TeamEvent[] = [...(eventsData ?? []), ...personalRaces]
+          .sort((a, b) => a.event_date.localeCompare(b.event_date));
+        setEvents(allEvents);
+
         if (seasonData?.season?.season_plan) {
           const workouts: PlanWorkout[] = [];
           for (const week of seasonData.season.season_plan) {
@@ -289,8 +310,8 @@ export function AthleteCalendar() {
         ) : events.length === 0 ? (
           <Card>
             <div className="text-center py-10">
-              <p className="text-sm text-[var(--muted)] mb-2">No team events scheduled yet.</p>
-              <p className="text-xs text-[var(--muted)]">Practices and races will appear here.</p>
+              <p className="text-sm text-[var(--muted)] mb-2">No events scheduled yet.</p>
+              <p className="text-xs text-[var(--muted)]">Team practices and your races will appear here.</p>
             </div>
           </Card>
         ) : view === 'month' ? (
