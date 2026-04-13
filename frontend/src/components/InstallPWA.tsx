@@ -1,30 +1,41 @@
 import { useState, useEffect } from 'react';
-import { Download, X, Share, Plus } from 'lucide-react';
+import { Download, X, Share2 } from 'lucide-react';
 
-// Detects iOS Safari
 function isIOS() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window as any).MSStream;
 }
 
-// Detects if already installed as standalone PWA
 function isStandalone() {
   return window.matchMedia('(display-mode: standalone)').matches ||
     (window.navigator as any).standalone === true;
 }
 
-// ── Banner shown at top of app once ──────────────────────────────────────────
+// Opens the native iOS share sheet — user can then tap "Add to Home Screen"
+async function iosShare() {
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: 'Laktic — Train Smarter',
+        url: window.location.origin,
+      });
+    } catch {
+      // user cancelled — ignore
+    }
+  }
+}
+
+// ── Dismissable banner shown once at the top of the app ──────────────────────
 export function InstallBanner() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showIOS, setShowIOS] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    // Don't show if already installed or already dismissed
     if (isStandalone() || localStorage.getItem('laktic-install-dismissed')) {
       setDismissed(true);
       return;
     }
-    if (isIOS()) {
+    if (isIOS() && navigator.share) {
       setShowIOS(true);
       return;
     }
@@ -56,10 +67,7 @@ export function InstallBanner() {
   return (
     <div
       className="flex items-center gap-3 px-4 py-3 mx-4 mt-4 rounded-xl"
-      style={{
-        background: 'var(--color-accent-dim)',
-        border: '1px solid rgba(0,229,160,0.3)',
-      }}
+      style={{ background: 'var(--color-accent-dim)', border: '1px solid rgba(0,229,160,0.3)' }}
     >
       <div
         className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -72,18 +80,21 @@ export function InstallBanner() {
         <p className="text-xs font-semibold" style={{ color: 'var(--color-text-primary)' }}>
           Install Laktic
         </p>
-        {showIOS ? (
-          <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-            Tap <Share size={11} className="inline mx-0.5" /> then <strong>Add to Home Screen</strong>
-          </p>
-        ) : (
-          <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-            Add to your home screen for quick access
-          </p>
-        )}
+        <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+          {showIOS ? 'Add to your home screen' : 'Quick access from your home screen'}
+        </p>
       </div>
 
-      {!showIOS && (
+      {showIOS ? (
+        <button
+          onClick={iosShare}
+          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0 transition-opacity hover:opacity-80"
+          style={{ background: 'var(--color-accent)', color: '#000' }}
+        >
+          <Share2 size={12} />
+          Share
+        </button>
+      ) : (
         <button
           onClick={install}
           className="text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0 transition-opacity hover:opacity-80"
@@ -100,12 +111,13 @@ export function InstallBanner() {
   );
 }
 
-// ── Settings card — permanent install button ──────────────────────────────────
+// ── Settings page — permanent Install App card ────────────────────────────────
 export function InstallAppCard() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [installed, setInstalled] = useState(false);
   const [installing, setInstalling] = useState(false);
   const ios = isIOS();
+  const canShare = ios && !!navigator.share;
 
   useEffect(() => {
     if (isStandalone()) { setInstalled(true); return; }
@@ -142,62 +154,46 @@ export function InstallAppCard() {
           <p className="text-sm" style={{ color: 'var(--color-accent)' }}>
             ✓ Already installed on your device
           </p>
-        ) : ios ? (
+
+        ) : canShare ? (
+          // iOS — tap Share button to open native share sheet → Add to Home Screen
           <div>
-            <p className="text-sm mb-3" style={{ color: 'var(--color-text-secondary)' }}>
-              Add Laktic to your iPhone home screen for fast access — no App Store needed.
+            <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Add Laktic to your iPhone home screen. Tap the button below, then select <strong style={{ color: 'var(--color-text-primary)' }}>"Add to Home Screen"</strong>.
             </p>
-            <div
-              className="rounded-lg p-3 text-xs space-y-2"
-              style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}
+            <button
+              onClick={iosShare}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-85"
+              style={{ background: 'var(--color-accent)', color: '#000' }}
             >
-              <div className="flex items-center gap-2" style={{ color: 'var(--color-text-secondary)' }}>
-                <span
-                  className="w-5 h-5 rounded flex items-center justify-center shrink-0"
-                  style={{ background: 'var(--color-accent)', color: '#000' }}
-                >
-                  1
-                </span>
-                Tap the <Share size={12} className="inline mx-1" style={{ color: 'var(--color-accent)' }} /> Share button in Safari
-              </div>
-              <div className="flex items-center gap-2" style={{ color: 'var(--color-text-secondary)' }}>
-                <span
-                  className="w-5 h-5 rounded flex items-center justify-center shrink-0"
-                  style={{ background: 'var(--color-accent)', color: '#000' }}
-                >
-                  2
-                </span>
-                <span>Scroll down and tap <strong style={{ color: 'var(--color-text-primary)' }}>Add to Home Screen</strong></span>
-              </div>
-              <div className="flex items-center gap-2" style={{ color: 'var(--color-text-secondary)' }}>
-                <span
-                  className="w-5 h-5 rounded flex items-center justify-center shrink-0"
-                  style={{ background: 'var(--color-accent)', color: '#000' }}
-                >
-                  3
-                </span>
-                Tap <strong style={{ color: 'var(--color-text-primary)' }}>Add</strong> — Laktic is now on your home screen
-              </div>
-            </div>
+              <Share2 size={15} />
+              Open Share Menu
+            </button>
+            <p className="text-xs mt-2" style={{ color: 'var(--color-text-tertiary)' }}>
+              Then tap "Add to Home Screen" → "Add"
+            </p>
           </div>
+
         ) : deferredPrompt ? (
+          // Android / Chrome
           <div>
-            <p className="text-sm mb-3" style={{ color: 'var(--color-text-secondary)' }}>
-              Install Laktic directly to your home screen. Works offline and opens like a native app.
+            <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+              Install Laktic directly to your home screen. Opens like a native app — no App Store needed.
             </p>
             <button
               onClick={install}
               disabled={installing}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-85"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-85"
               style={{ background: 'var(--color-accent)', color: '#000' }}
             >
-              <Download size={14} />
+              <Download size={15} />
               {installing ? 'Installing…' : 'Install App'}
             </button>
           </div>
+
         ) : (
           <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            Open Laktic in your mobile browser to install it to your home screen.
+            Open Laktic on your mobile browser to install it to your home screen.
           </p>
         )}
       </div>
