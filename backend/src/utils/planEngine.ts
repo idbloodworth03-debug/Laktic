@@ -943,5 +943,119 @@ export function buildPlanSkeleton(
     });
   }
 
+  // ── Post-process: stamp races + adjust surrounding days ─────────────────────
+  //
+  // For every race in race_calendar:
+  //   • Race day      → Race marker (no workout assigned by the engine)
+  //   • Day before    → Shakeout (goal race: 2mi easy strides; non-goal: keep but cap at 3mi easy)
+  //   • Day after     → Rest / recovery (goal race: full rest; non-goal: very easy 2mi)
+  //
+  // This runs AFTER all weeks are built so dates are already attached.
+
+  const futureDates = new Set<string>();          // dates already processed
+  const workoutsByDate = new Map<string, { week: PlanWeek; wo: PlannedWorkout }>();
+
+  for (const week of weeks) {
+    for (const wo of week.workouts) {
+      if (wo.date) workoutsByDate.set(wo.date, { week, wo });
+    }
+  }
+
+  /** Return YYYY-MM-DD offset by `days` from `dateStr`. */
+  function offsetDate(dateStr: string, days: number): string {
+    const d = new Date(dateStr + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+  }
+
+  for (const race of races) {
+    const raceDate: string = race.date;
+    if (!raceDate || futureDates.has(raceDate)) continue;
+    futureDates.add(raceDate);
+
+    const isGoal = !!race.is_goal_race;
+
+    // ── Race day ──────────────────────────────────────────────────────────────
+    const raceEntry = workoutsByDate.get(raceDate);
+    if (raceEntry) {
+      const wo = raceEntry.wo;
+      wo.title              = race.name;
+      wo.role               = 'race';
+      wo.workoutKey         = 'race_day';
+      wo.isRestDay          = false;
+      wo.totalDistance      = 0;
+      wo.mainSetDistance    = 0;
+      wo.mainSetDescription = `Race day — ${race.name}`;
+      wo.paceGuideline      = 'Race effort';
+      wo.warmupMiles        = 0;
+      wo.cooldownMiles      = 0;
+      wo.libraryDescription = `Today is your ${isGoal ? 'goal ' : ''}race: ${race.name}. Execute your race plan and compete.`;
+    }
+
+    // ── Day before ────────────────────────────────────────────────────────────
+    const prevDate  = offsetDate(raceDate, -1);
+    const prevEntry = workoutsByDate.get(prevDate);
+    if (prevEntry) {
+      const wo = prevEntry.wo;
+      if (isGoal) {
+        // Goal race: full rest or very short shakeout with strides
+        wo.title              = 'Shakeout Run';
+        wo.role               = 'easy';
+        wo.workoutKey         = 'pre_race_shakeout';
+        wo.isRestDay          = false;
+        wo.totalDistance      = 2;
+        wo.mainSetDistance    = 1.5;
+        wo.mainSetDescription = '1.5mi easy + 4 × 20-sec race-pace strides with full recovery';
+        wo.paceGuideline      = paceBands?.easy ?? 'Easy effort';
+        wo.warmupMiles        = 0.25;
+        wo.cooldownMiles      = 0.25;
+        wo.libraryDescription = `Race-eve shakeout before ${race.name}. Keep it very easy — just 2 miles with a few short strides to stay loose. Most of the work is done; today is about feeling fresh.`;
+      } else {
+        // Non-goal race: cap at 3mi easy, remove intensity
+        const capped = Math.min(wo.totalDistance, 3);
+        wo.title              = 'Easy Run (pre-race)';
+        wo.role               = 'easy';
+        wo.workoutKey         = null;
+        wo.isRestDay          = false;
+        wo.totalDistance      = capped;
+        wo.mainSetDistance    = Math.max(0, capped - (wo.warmupMiles + wo.cooldownMiles));
+        wo.mainSetDescription = `${capped}mi easy — keep it relaxed the day before ${race.name}`;
+        wo.paceGuideline      = paceBands?.easy ?? 'Easy effort';
+      }
+    }
+
+    // ── Day after ─────────────────────────────────────────────────────────────
+    const nextDate  = offsetDate(raceDate, 1);
+    const nextEntry = workoutsByDate.get(nextDate);
+    if (nextEntry) {
+      const wo = nextEntry.wo;
+      if (isGoal) {
+        wo.title              = 'Rest Day';
+        wo.role               = 'rest';
+        wo.workoutKey         = null;
+        wo.isRestDay          = true;
+        wo.totalDistance      = 0;
+        wo.mainSetDistance    = 0;
+        wo.mainSetDescription = '';
+        wo.paceGuideline      = '';
+        wo.warmupMiles        = 0;
+        wo.cooldownMiles      = 0;
+        wo.libraryDescription = `Rest day after ${race.name}. Your body needs 24–48 hours before any running. Walk, hydrate, eat well.`;
+      } else {
+        wo.title              = 'Recovery Run';
+        wo.role               = 'easy';
+        wo.workoutKey         = null;
+        wo.isRestDay          = false;
+        wo.totalDistance      = 2;
+        wo.mainSetDistance    = 2;
+        wo.mainSetDescription = '2mi very easy — flush the legs after racing';
+        wo.paceGuideline      = paceBands?.recovery ?? 'Very easy / recovery effort';
+        wo.warmupMiles        = 0;
+        wo.cooldownMiles      = 0;
+        wo.libraryDescription = `Easy recovery run the day after ${race.name}. Two miles at a very relaxed pace — just enough to shake out the legs.`;
+      }
+    }
+  }
+
   return { tier, phase, totalWeeks, weeksOfEaseIn, mpwBand, paceBands, eventPaces, warmup: wc.warmup_mi, cooldown: wc.cooldown_mi, weeks };
 }
