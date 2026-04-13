@@ -107,6 +107,7 @@ function MonthCalView({ events, planWorkouts = [] }: { events: TeamEvent[]; plan
             ? `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
             : '';
           const dayEvents = dateKey ? (eventsByDate[dateKey] || []) : [];
+          const hasRace = dayEvents.some(ev => ev.event_type === 'race');
           const isToday = day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
           return (
             <div key={i} className={`bg-[var(--surface2)] min-h-[72px] p-1.5 ${!day ? 'opacity-20' : ''}`}>
@@ -126,7 +127,7 @@ function MonthCalView({ events, planWorkouts = [] }: { events: TeamEvent[]; plan
                         {ev.title}
                       </div>
                     ))}
-                    {(planByDate[dateKey] || []).map((wo, wi) => (
+                    {!hasRace && (planByDate[dateKey] || []).map((wo, wi) => (
                       <a
                         key={`plan-${wi}`}
                         href="/athlete/plan"
