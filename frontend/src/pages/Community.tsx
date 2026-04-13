@@ -215,7 +215,7 @@ function CommentThread({ postId, onCommentAdded }: { postId: string; onCommentAd
 
 // ── Post Card ─────────────────────────────────────────────────────────────────
 function PostCard({
-  post, currentProfileId, currentRole, onKudo, onDelete, onEdit,
+  post, currentProfileId, currentRole, onKudo, onDelete, onEdit, onOpen, alwaysShowComments,
 }: {
   post: any;
   currentProfileId: string | undefined;
@@ -223,6 +223,8 @@ function PostCard({
   onKudo: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string, newBody: string) => void;
+  onOpen?: () => void;
+  alwaysShowComments?: boolean;
 }) {
   const isCoachPost   = !!post.coach_profiles;
   const name: string  = isCoachPost ? (post.coach_profiles?.name ?? 'Coach') : (post.athlete_profiles?.name ?? 'Athlete');
@@ -231,7 +233,7 @@ function PostCard({
     && ((isCoachPost && currentRole === 'coach') || (!isCoachPost && currentRole === 'athlete'));
   const cfg = POST_TYPE_CONFIG[post.feed_type] ?? POST_TYPE_CONFIG.manual;
 
-  const [showComments, setShowComments] = useState(false);
+  const [showComments, setShowComments] = useState(alwaysShowComments ?? false);
   const [commentCount, setCommentCount] = useState<number>(post.comment_count ?? 0);
   const [editMode, setEditMode]         = useState(false);
   const [editBody, setEditBody]         = useState(post.body);
@@ -281,7 +283,10 @@ function PostCard({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="p-5">
+      <div className="p-5"
+        onClick={onOpen && !editMode && !deleteConfirm ? onOpen : undefined}
+        style={onOpen && !editMode && !deleteConfirm ? { cursor: 'pointer' } : undefined}
+      >
         {/* Header */}
         <div className="flex items-start gap-3 mb-3">
           <UserAvatar
@@ -308,10 +313,12 @@ function PostCard({
             <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>{timeAgo(post.created_at)}</div>
           </div>
           {isAuthor && !editMode && (
-            <PostMenu
-              onEdit={() => { setEditBody(post.body); setEditMode(true); }}
-              onDelete={() => setDeleteConfirm(true)}
-            />
+            <div onClick={e => e.stopPropagation()}>
+              <PostMenu
+                onEdit={() => { setEditBody(post.body); setEditMode(true); }}
+                onDelete={() => setDeleteConfirm(true)}
+              />
+            </div>
           )}
         </div>
 
@@ -396,7 +403,7 @@ function PostCard({
       </div>
 
       {/* Comment thread */}
-      {showComments && (
+      {(showComments || alwaysShowComments) && (
         <CommentThread
           postId={post.id}
           key={post.id}
@@ -438,7 +445,6 @@ const TOPICS: { value: string; label: string }[] = [
 // ── Create Post Modal ─────────────────────────────────────────────────────────
 function CreatePostModal({ onClose, onPost, initialTopic = 'general' }: { onClose: () => void; onPost: (post: any) => void; initialTopic?: string }) {
   const [body, setBody]   = useState('');
-  const [scope, setScope] = useState<'public' | 'team'>('public');
   const [topic, setTopic] = useState(initialTopic);
   const [imageFile, setImageFile]     = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -489,7 +495,7 @@ function CreatePostModal({ onClose, onPost, initialTopic = 'general' }: { onClos
       }
       const post = await apiFetch('/api/community/posts', {
         method: 'POST',
-        body: JSON.stringify({ body: body.trim(), scope, topic, ...(imageUrl && { image_url: imageUrl }) }),
+        body: JSON.stringify({ body: body.trim(), scope: 'public', topic, ...(imageUrl && { image_url: imageUrl }) }),
       });
       onPost(post); onClose();
     } catch (e: any) { setError(e.message || 'Failed to post'); }
@@ -580,16 +586,6 @@ function CreatePostModal({ onClose, onPost, initialTopic = 'general' }: { onClos
             )}
           </div>
 
-          {/* Scope */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Visible to:</span>
-            {(['public', 'team'] as const).map(s => (
-              <button key={s} type="button" onClick={() => setScope(s)} style={pill(scope === s)}>
-                {s === 'public' ? 'Everyone' : 'Team only'}
-              </button>
-            ))}
-          </div>
-
           {/* Topic */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Topic:</span>
@@ -652,12 +648,64 @@ function TopAthletesSidebar() {
   );
 }
 
+// ── Post Detail View ─────────────────────────────────────────────────────────
+function PostDetailView({
+  post: initialPost, currentProfileId, currentRole, onKudo, onDelete, onEdit, onBack,
+}: {
+  post: any;
+  currentProfileId: string | undefined;
+  currentRole: string | undefined;
+  onKudo: (id: string) => void;
+  onDelete: (id: string) => void;
+  onEdit: (id: string, newBody: string) => void;
+  onBack: () => void;
+}) {
+  const [localPost, setLocalPost] = useState(initialPost);
+
+  const handleKudo = (id: string) => {
+    setLocalPost((p: any) => ({ ...p, i_kudoed: !p.i_kudoed, kudo_count: p.i_kudoed ? p.kudo_count - 1 : p.kudo_count + 1 }));
+    onKudo(id);
+  };
+
+  const handleDelete = (id: string) => { onDelete(id); onBack(); };
+
+  const handleEdit = (id: string, newBody: string) => {
+    onEdit(id, newBody);
+    setLocalPost((p: any) => ({ ...p, body: newBody }));
+  };
+
+  return (
+    <div style={{ maxWidth: 680 }}>
+      <button
+        type="button"
+        onClick={onBack}
+        className="flex items-center gap-2 mb-5 text-sm font-medium transition-colors"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: 0 }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-primary)'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-secondary)'; }}
+      >
+        ← Back to feed
+      </button>
+      <PostCard
+        post={localPost}
+        currentProfileId={currentProfileId}
+        currentRole={currentRole}
+        onKudo={handleKudo}
+        onDelete={handleDelete}
+        onEdit={handleEdit}
+        alwaysShowComments
+      />
+    </div>
+  );
+}
+
 // ── Main Community Page ───────────────────────────────────────────────────────
 export function Community() {
   const { profile, clearAuth, role, logout } = useAuthStore();
   const nav = useNavigate();
   const isCoach = role === 'coach';
 
+  const [selectedPost, setSelectedPost] = useState<any>(null);
   const [posts, setPosts]           = useState<any[]>([]);
   const [loading, setLoading]       = useState(true);
   const [page, setPage]             = useState(1);
@@ -771,7 +819,10 @@ export function Community() {
     }
   };
 
-  const deletePost = (postId: string) => setPosts(prev => prev.filter(p => p.id !== postId));
+  const deletePost = (postId: string) => {
+    setPosts(prev => prev.filter(p => p.id !== postId));
+    setSelectedPost((s: any) => (s?.id === postId ? null : s));
+  };
   const editPost   = (postId: string, newBody: string) => setPosts(prev => prev.map(p => p.id === postId ? { ...p, body: newBody } : p));
 
   return (
@@ -795,8 +846,19 @@ export function Community() {
           {/* Two-column layout */}
           <div className="flex flex-col lg:flex-row gap-8 items-start">
 
-            {/* LEFT — Feed, max 680px */}
+            {/* LEFT — Feed or Detail View */}
             <div className="flex-1 min-w-0">
+              {selectedPost ? (
+                <PostDetailView
+                  post={selectedPost}
+                  currentProfileId={profile?.id}
+                  currentRole={role ?? undefined}
+                  onKudo={toggleKudo}
+                  onDelete={deletePost}
+                  onEdit={editPost}
+                  onBack={() => setSelectedPost(null)}
+                />
+              ) : (
               <div style={{ maxWidth: 680 }}>
                 <ComposerBar name={profile?.name ?? 'A'} onClick={() => setShowCreate(true)} />
 
@@ -865,6 +927,7 @@ export function Community() {
                         onKudo={toggleKudo}
                         onDelete={deletePost}
                         onEdit={editPost}
+                        onOpen={() => setSelectedPost(post)}
                       />
                     ))}
                     {loadingMore && <div className="flex justify-center py-4"><Spinner /></div>}
@@ -877,6 +940,7 @@ export function Community() {
                   </div>
                 )}
               </div>
+              )}
             </div>
 
             {/* RIGHT — Sidebar (desktop only) */}
