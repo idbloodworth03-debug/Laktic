@@ -3,8 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { AppLayout, Card, Badge, Button, ReadinessRing, ProgressBar, Spinner, StatCard } from '../components/ui';
-import { UserAvatar } from '../components/UserAvatar';
+import { AppLayout, Card, Badge, ReadinessRing, ProgressBar, Spinner, StatCard } from '../components/ui';
 import { PaceZonesCard } from '../components/PaceZonesCard';
 import { PhaseIndicator } from '../components/PhaseIndicator';
 import { RacePredictionsCard } from '../components/RacePredictionsCard';
@@ -51,16 +50,6 @@ interface RaceEntry {
   distance: string;
 }
 
-interface CommunityPost {
-  id: string;
-  body: string;
-  created_at: string;
-  kudo_count: number;
-  comment_count: number;
-  athlete_profiles: { name: string; avatar_url?: string | null } | null;
-  coach_profiles: { name: string; avatar_url?: string | null } | null;
-}
-
 interface SeasonSummary {
   current_week: number;
   total_weeks: number;
@@ -84,11 +73,6 @@ function daysUntil(dateStr: string) {
   return d;
 }
 
-function formatTime(iso: string) {
-  const d = new Date(iso);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
-
 export function AthleteDashboard() {
   const nav = useNavigate();
   const { profile, clearAuth } = useAuthStore();
@@ -98,7 +82,6 @@ export function AthleteDashboard() {
   const [todayWorkouts, setTodayWorkouts] = useState<WorkoutDay[]>([]);
   const [predictions, setPredictions] = useState<PredictionData[]>([]);
   const [races, setRaces] = useState<RaceEntry[]>([]);
-  const [feed, setFeed] = useState<CommunityPost[]>([]);
   const [selectedDist, setSelectedDist] = useState(0);
 
   // Profile completion banner
@@ -146,19 +129,7 @@ export function AthleteDashboard() {
         const upcoming = (d ?? []).filter((r: any) => new Date(r.race_date) > new Date()).slice(0, 3);
         setRaces(upcoming);
       }).catch(() => {}),
-      apiFetch('/api/community/feed?page=1&sort=relevance').then(d => setFeed((d?.posts ?? []).slice(0, 3))).catch(() => {}),
     ]).finally(() => setLoading(false));
-  }, []);
-
-  // 30-second community preview refresh
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const d = await apiFetch('/api/community/feed?page=1&sort=relevance');
-        setFeed((d?.posts ?? []).slice(0, 3));
-      } catch {}
-    }, 30000);
-    return () => clearInterval(interval);
   }, []);
 
   const submitReadiness = async () => {
@@ -248,8 +219,8 @@ export function AthleteDashboard() {
           </div>
         )}
 
-        {/* 3-column grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,2.5fr)_minmax(0,3fr)_minmax(0,1.5fr)] gap-6">
+        {/* 2-column grid */}
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)] gap-6">
 
           {/* ── LEFT COLUMN ── */}
           <div className="flex flex-col gap-5 fade-up-1">
@@ -346,7 +317,6 @@ export function AthleteDashboard() {
             {/* Quick links */}
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: 'Chat with Pace', href: '/athlete/chat', desc: 'Your AI running coach' },
                 { label: 'Log Activity',  href: '/athlete/activities', desc: 'Record workout' },
                 { label: 'Race Calendar', href: '/athlete/races', desc: 'Events & goals' },
                 { label: 'Nutrition',     href: '/athlete/nutrition', desc: 'Track intake' },
@@ -370,60 +340,6 @@ export function AthleteDashboard() {
 
             {/* Pace zones */}
             <PaceZonesCard />
-          </div>
-
-          {/* ── CENTER COLUMN — Community Feed ── */}
-          <div className="flex flex-col gap-5 fade-up-2">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">Community</p>
-              <Link to="/community">
-                <Button variant="ghost" size="sm">See all <ChevronRight size={12} /></Button>
-              </Link>
-            </div>
-
-            {/* Create post bar */}
-            <Link to="/community">
-              <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card px-4 py-3 flex items-center gap-3 hover:border-[var(--color-border-light)] transition-all duration-150 cursor-pointer group">
-                <UserAvatar url={(profile as any)?.avatar_url} name={profile?.name || ''} size="sm" />
-                <span className="text-sm text-[var(--color-text-tertiary)] group-hover:text-[var(--color-text-secondary)] transition-colors">Share a workout, race result, or update...</span>
-              </div>
-            </Link>
-
-            {/* Feed posts */}
-            {feed.length === 0 ? (
-              <Card>
-                <p className="text-center text-[var(--color-text-tertiary)] text-sm py-8">No community posts yet. Be the first to share!</p>
-              </Card>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {feed.map(post => (
-                  <div key={post.id} className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-4 hover:border-[var(--color-border-light)] transition-all duration-150">
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <div className="flex items-center gap-2">
-                        <UserAvatar
-                          url={post.athlete_profiles?.avatar_url ?? post.coach_profiles?.avatar_url ?? null}
-                          name={post.athlete_profiles?.name ?? post.coach_profiles?.name ?? '?'}
-                          size="sm"
-                        />
-                        <p className="text-[13px] font-medium text-[var(--color-text-primary)] leading-tight">
-                          {post.athlete_profiles?.name ?? post.coach_profiles?.name ?? 'Unknown'}
-                        </p>
-                      </div>
-                      <span className="text-[11px] text-[var(--color-text-tertiary)] shrink-0">{formatTime(post.created_at)}</span>
-                    </div>
-                    <p className="text-[13px] text-[var(--color-text-secondary)] leading-relaxed">{post.body}</p>
-                    {(post.kudo_count > 0 || post.comment_count > 0) && (
-                      <p className="text-[11px] text-[var(--color-text-tertiary)] mt-2">
-                        {[
-                          post.kudo_count > 0 ? `${post.kudo_count} kudos` : '',
-                          post.comment_count > 0 ? `${post.comment_count} comments` : '',
-                        ].filter(Boolean).join(' · ')}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* ── RIGHT COLUMN ── */}
