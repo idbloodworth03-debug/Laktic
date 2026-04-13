@@ -345,10 +345,10 @@ type NavItem = { label: string; href: string; icon: React.ElementType };
 // Primary: shown in mobile bottom bar + top of sidebar
 const ATHLETE_PRIMARY: NavItem[] = [
   { label: 'Dashboard',  href: '/athlete/dashboard', icon: LayoutDashboard },
-  { label: 'Community',  href: '/community',          icon: Globe },
-  { label: 'My Plan',    href: '/athlete/plan',       icon: FileText },
   { label: 'Chat',       href: '/athlete/chat',       icon: MessageSquare },
+  { label: 'My Plan',    href: '/athlete/plan',       icon: FileText },
   { label: 'Progress',   href: '/athlete/progress',   icon: TrendingUp },
+  { label: 'Community',  href: '/community',          icon: Globe },
 ];
 
 // More: shown below a divider in sidebar + in mobile "More" drawer
