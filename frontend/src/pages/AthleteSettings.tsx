@@ -9,6 +9,7 @@ import { StravaConnectButton } from '../components/StravaConnectButton';
 import { useNotifications } from '../hooks/useNotifications';
 import { AvatarUpload } from '../components/AvatarUpload';
 import { derivePaceBands } from '../utils/paceCalculator';
+import { InstallAppCard } from '../components/InstallPWA';
 
 interface StravaStatus {
   connected: boolean;
@@ -830,6 +831,12 @@ export function AthleteSettings() {
               <StravaConnectButton onClick={connectStrava} />
             </div>
           )}
+        </Card>
+
+        {/* Install App */}
+        <Card className="p-6">
+          <h2 className="font-semibold text-base mb-4" style={{ color: 'var(--color-text-primary)' }}>Install App</h2>
+          <InstallAppCard />
         </Card>
       </div>
     </AppLayout>

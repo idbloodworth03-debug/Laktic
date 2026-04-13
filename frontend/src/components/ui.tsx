@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
+import { InstallBanner } from './InstallPWA';
 
 // ── Button ─────────────────────────────────────────────────────────────────────
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -565,6 +566,7 @@ export function AppLayout({ role, name, onLogout, children }: AppLayoutProps) {
         <SidebarContent role={role} name={name} onLogout={onLogout} collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} />
       </div>
       <main className="app-layout-main">
+        <InstallBanner />
         {children}
       </main>
       <BottomTabBar role={role} onLogout={onLogout} />
