@@ -96,6 +96,22 @@ function BotChat() {
   }, [convOpen]);
 
   const [convMigrationRequired, setConvMigrationRequired] = useState(false);
+  const [showRegenConfirm, setShowRegenConfirm] = useState(false);
+  const [regenerating, setRegenerating]         = useState(false);
+  const [regenSuccess, setRegenSuccess]         = useState(false);
+
+  const regenPlan = async () => {
+    setRegenerating(true);
+    try {
+      await apiFetch('/api/athlete/season/regenerate', { method: 'POST' });
+      setShowRegenConfirm(false);
+      setRegenSuccess(true);
+      setTimeout(() => setRegenSuccess(false), 4000);
+    } catch (e: any) {
+      setError(e.message || 'Failed to regenerate plan');
+      setShowRegenConfirm(false);
+    } finally { setRegenerating(false); }
+  };
 
   const fetchConversations = async () => {
     setConvLoading(true);
@@ -177,6 +193,25 @@ function BotChat() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
+      {/* Regenerate Plan confirmation modal */}
+      {showRegenConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowRegenConfirm(false)}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div className="relative w-full max-w-sm rounded-2xl p-6 shadow-2xl"
+            style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}
+            onClick={e => e.stopPropagation()}>
+            <h2 className="font-semibold text-base mb-2" style={{ color: 'var(--color-text-primary)' }}>Regenerate Plan?</h2>
+            <p className="text-sm mb-5 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Are you sure you want to regenerate your plan using the latest data? This will replace your current training schedule.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="ghost" size="sm" onClick={() => setShowRegenConfirm(false)}>Cancel</Button>
+              <Button size="sm" loading={regenerating} onClick={regenPlan}>Regenerate</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div
         className="px-6 py-3 flex items-center justify-between shrink-0"
@@ -264,6 +299,11 @@ function BotChat() {
             action={<Link to="/athlete/plan"><Button size="sm" variant="secondary">View Plan</Button></Link>}
           />
         )}
+        {regenSuccess && (
+          <Alert type="success" message="Your plan has been regenerated successfully." onClose={() => setRegenSuccess(false)}
+            action={<Link to="/athlete/plan"><Button size="sm" variant="secondary">View Plan</Button></Link>}
+          />
+        )}
         {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
         {messages.length === 0 && !sending && (
@@ -324,7 +364,10 @@ function BotChat() {
         hint={
           <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
             The bot can adjust workouts within the next 14 days. For larger changes, use{' '}
-            <Link to="/athlete/races" style={{ color: 'var(--color-accent)' }} className="hover:underline">Regenerate Plan</Link>.
+            <button type="button" onClick={() => setShowRegenConfirm(true)}
+              style={{ color: 'var(--color-accent)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'inherit', textDecoration: 'underline' }}>
+              Regenerate Plan
+            </button>.
           </p>
         }
       />
