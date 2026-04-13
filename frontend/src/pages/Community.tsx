@@ -840,7 +840,6 @@ export function Community() {
           {/* Header */}
           <div className="mb-4">
             <h1 className="font-bold text-2xl sm:text-3xl" style={{ color: 'var(--color-text-primary)' }}>Community</h1>
-            <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>Where wins get celebrated.</p>
           </div>
 
           {/* Two-column layout */}
