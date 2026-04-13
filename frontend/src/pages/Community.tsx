@@ -24,11 +24,11 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-async function uploadCommunityImage(file: File): Promise<string | null> {
+async function uploadCommunityImage(file: File): Promise<string> {
   const ext = file.name.split('.').pop() ?? 'jpg';
   const path = `community/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   const { error } = await supabase.storage.from('community-images').upload(path, file, { contentType: file.type, upsert: false });
-  if (error) return null;
+  if (error) throw new Error(`Image upload failed: ${error.message}`);
   const { data } = supabase.storage.from('community-images').getPublicUrl(path);
   return data.publicUrl;
 }
@@ -481,9 +481,11 @@ function CreatePostModal({ onClose, onPost, initialTopic = 'general' }: { onClos
       let imageUrl: string | undefined;
       if (imageFile) {
         setUploading(true);
-        const url = await uploadCommunityImage(imageFile);
-        setUploading(false);
-        if (url) imageUrl = url;
+        try {
+          imageUrl = await uploadCommunityImage(imageFile);
+        } finally {
+          setUploading(false);
+        }
       }
       const post = await apiFetch('/api/community/posts', {
         method: 'POST',
