@@ -78,7 +78,9 @@ import { EmailConfirmationPending } from './pages/EmailConfirmationPending';
 
 function RequireCoach({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
+  const hydrated = useAuthStore(s => s._hasHydrated);
   const loc = useLocation();
+  if (!hydrated) return null;
   if (!role) return <Navigate to="/" state={{ from: loc }} replace />;
   if (role !== 'coach') return <Navigate to="/athlete/browse" replace />;
   return <>{children}</>;
@@ -87,7 +89,9 @@ function RequireCoach({ children }: { children: React.ReactNode }) {
 function RequireAthlete({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
   const session = useAuthStore(s => s.session);
+  const hydrated = useAuthStore(s => s._hasHydrated);
   const loc = useLocation();
+  if (!hydrated) return null;
   if (!role) return <Navigate to="/" state={{ from: loc }} replace />;
   // Coach role users are redirected to athlete dashboard in athlete-first mode
   if (role !== 'athlete') return <Navigate to="/athlete/dashboard" replace />;
