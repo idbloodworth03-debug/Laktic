@@ -1,6 +1,21 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { Component, ReactNode } from 'react';
+import { Component, ReactNode, useEffect, useState } from 'react';
 import { useAuthStore } from './store/authStore';
+
+// Waits for Zustand's persist middleware to finish loading from localStorage.
+// Without this, the guards redirect to "/" on every page refresh before the
+// stored role is available (Zustand hydration is async even for localStorage).
+function useStoreHydrated() {
+  const [hydrated, setHydrated] = useState(() => useAuthStore.persist.hasHydrated());
+  useEffect(() => {
+    if (hydrated) return;
+    const unsub = useAuthStore.persist.onFinishHydration(() => setHydrated(true));
+    // In case it finished between the useState init and this effect
+    if (useAuthStore.persist.hasHydrated()) setHydrated(true);
+    return unsub;
+  }, []);
+  return hydrated;
+}
 import './store/themeStore'; // initialises theme from localStorage on boot
 
 // ── Global error boundary — catches unhandled render errors in any page ───────
@@ -78,7 +93,7 @@ import { EmailConfirmationPending } from './pages/EmailConfirmationPending';
 
 function RequireCoach({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
-  const hydrated = useAuthStore(s => s._hasHydrated);
+  const hydrated = useStoreHydrated();
   const loc = useLocation();
   if (!hydrated) return null;
   if (!role) return <Navigate to="/" state={{ from: loc }} replace />;
@@ -89,7 +104,7 @@ function RequireCoach({ children }: { children: React.ReactNode }) {
 function RequireAthlete({ children }: { children: React.ReactNode }) {
   const role = useAuthStore(s => s.role);
   const session = useAuthStore(s => s.session);
-  const hydrated = useAuthStore(s => s._hasHydrated);
+  const hydrated = useStoreHydrated();
   const loc = useLocation();
   if (!hydrated) return null;
   if (!role) return <Navigate to="/" state={{ from: loc }} replace />;

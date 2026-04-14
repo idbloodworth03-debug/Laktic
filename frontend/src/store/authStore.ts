@@ -7,7 +7,6 @@ interface AuthState {
   session: any | null;
   role: 'coach' | 'athlete' | null;
   profile: any | null;
-  _hasHydrated: boolean;
   setAuth: (session: any, role: 'coach' | 'athlete', profile: any) => void;
   clearAuth: () => void;
   logout: () => Promise<void>;
@@ -19,7 +18,6 @@ export const useAuthStore = create<AuthState>()(
       session: null,
       role: null,
       profile: null,
-      _hasHydrated: false,
       setAuth: (session, role, profile) => set({ session, role, profile }),
       clearAuth: () => set({ session: null, role: null, profile: null }),
       logout: async () => {
@@ -28,18 +26,6 @@ export const useAuthStore = create<AuthState>()(
         set({ session: null, role: null, profile: null });
       },
     }),
-    {
-      name: 'laktic-auth',
-      // Only persist auth data — not the hydration flag itself
-      partialize: (state) => ({
-        session: state.session,
-        role: state.role,
-        profile: state.profile,
-      }),
-      onRehydrateStorage: () => () => {
-        // Fires after localStorage data is loaded into the store
-        useAuthStore.setState({ _hasHydrated: true });
-      },
-    }
+    { name: 'laktic-auth' }
   )
 );
