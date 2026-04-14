@@ -7,8 +7,7 @@ const router = Router();
 
 async function requireAdmin(req: AuthRequest, res: Response): Promise<boolean> {
   if (!env.ADMIN_EMAIL) { res.status(503).json({ error: 'Admin not configured' }); return false; }
-  const { data: { user } } = await supabase.auth.admin.getUserById(req.user!.id);
-  if (!user || user.email !== env.ADMIN_EMAIL) {
+  if (req.user?.email !== env.ADMIN_EMAIL) {
     res.status(403).json({ error: 'Forbidden' });
     return false;
   }
