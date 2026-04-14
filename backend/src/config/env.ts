@@ -19,6 +19,7 @@ const envSchema = z.object({
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().optional(),
   ADMIN_EMAIL: z.string().email().optional(),
+  ADMIN_SECRET: z.string().min(1).optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_ATHLETE_PRO_PRICE_ID: z.string().optional(),

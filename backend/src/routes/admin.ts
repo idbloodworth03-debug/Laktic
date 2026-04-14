@@ -1,26 +1,20 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { supabase } from '../db/supabase';
-import { auth, AuthRequest } from '../middleware/auth';
 import { env } from '../config/env';
 
 const router = Router();
 
-async function requireAdmin(req: AuthRequest, res: Response): Promise<boolean> {
-  if (!env.ADMIN_EMAIL) { res.status(503).json({ error: 'Admin not configured' }); return false; }
-  if (req.user?.email !== env.ADMIN_EMAIL) {
-    res.status(403).json({ error: 'Forbidden', debug_detected_email: req.user?.email ?? null, debug_expected: env.ADMIN_EMAIL });
+function requireAdmin(req: Request, res: Response): boolean {
+  const key = req.headers['x-admin-key'];
+  if (!env.ADMIN_SECRET || key !== env.ADMIN_SECRET) {
+    res.status(403).json({ error: 'Forbidden' });
     return false;
   }
   return true;
 }
 
-// Temporary debug endpoint — remove after confirming admin access works
-router.get('/whoami', auth, (req: AuthRequest, res: Response) => {
-  res.json({ email: req.user?.email, id: req.user?.id, admin_email_configured: env.ADMIN_EMAIL ?? null });
-});
-
-router.get('/stats', auth, async (req: AuthRequest, res: Response) => {
-  if (!await requireAdmin(req, res)) return;
+router.get('/stats', async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
 
   const [coaches, athletes, plans, purchases, certifications] = await Promise.all([
     supabase.from('coach_profiles').select('id', { count: 'exact', head: true }),
@@ -51,8 +45,8 @@ router.get('/stats', auth, async (req: AuthRequest, res: Response) => {
   });
 });
 
-router.get('/coaches', auth, async (req: AuthRequest, res: Response) => {
-  if (!await requireAdmin(req, res)) return;
+router.get('/coaches', async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
 
   const { data, error } = await supabase
     .from('coach_profiles')
@@ -64,8 +58,8 @@ router.get('/coaches', auth, async (req: AuthRequest, res: Response) => {
   res.json(data);
 });
 
-router.get('/athletes', auth, async (req: AuthRequest, res: Response) => {
-  if (!await requireAdmin(req, res)) return;
+router.get('/athletes', async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
 
   const { data, error } = await supabase
     .from('athlete_profiles')
@@ -77,8 +71,8 @@ router.get('/athletes', auth, async (req: AuthRequest, res: Response) => {
   res.json(data);
 });
 
-router.get('/revenue', auth, async (req: AuthRequest, res: Response) => {
-  if (!await requireAdmin(req, res)) return;
+router.get('/revenue', async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
 
   const { data, error } = await supabase
     .from('plan_purchases')
@@ -92,10 +86,10 @@ router.get('/revenue', auth, async (req: AuthRequest, res: Response) => {
   res.json({ purchases: data, total_cents: total });
 });
 
-router.patch('/coaches/:id', auth, async (req: AuthRequest, res: Response) => {
-  if (!await requireAdmin(req, res)) return;
+router.patch('/coaches/:id', async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
 
-  const allowed = ['license_type','certified_coach'];
+  const allowed = ['license_type', 'certified_coach'];
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in req.body) update[key] = req.body[key];
@@ -106,50 +100,32 @@ router.patch('/coaches/:id', auth, async (req: AuthRequest, res: Response) => {
   res.json(data);
 });
 
-router.delete('/coaches/:id', auth, async (req: AuthRequest, res: Response) => {
-  if (!await requireAdmin(req, res)) return;
+router.delete('/coaches/:id', async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
   const { error } = await supabase.from('coach_profiles').delete().eq('id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true });
 });
 
-router.delete('/athletes/:id', auth, async (req: AuthRequest, res: Response) => {
-  if (!await requireAdmin(req, res)) return;
+router.delete('/athletes/:id', async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
   const { error } = await supabase.from('athlete_profiles').delete().eq('id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true });
 });
 
-// GET /api/admin/activity-feed — recent platform events
-router.get('/activity-feed', auth, async (req: AuthRequest, res: Response) => {
-  if (!await requireAdmin(req, res)) return;
+router.get('/activity-feed', async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
 
   const limit = Math.min(Number(req.query.limit) || 50, 200);
 
   const [newCoaches, newAthletes, newPosts, newPlans] = await Promise.all([
-    supabase
-      .from('coach_profiles')
-      .select('id, name, username, created_at')
-      .order('created_at', { ascending: false })
-      .limit(limit),
-    supabase
-      .from('athlete_profiles')
-      .select('id, name, username, subscription_tier, created_at')
-      .order('created_at', { ascending: false })
-      .limit(limit),
-    supabase
-      .from('community_posts')
-      .select('id, content, created_at, author_id, author_role')
-      .order('created_at', { ascending: false })
-      .limit(limit),
-    supabase
-      .from('season_plans')
-      .select('id, athlete_id, created_at')
-      .order('created_at', { ascending: false })
-      .limit(limit),
+    supabase.from('coach_profiles').select('id, name, username, created_at').order('created_at', { ascending: false }).limit(limit),
+    supabase.from('athlete_profiles').select('id, name, username, subscription_tier, created_at').order('created_at', { ascending: false }).limit(limit),
+    supabase.from('community_posts').select('id, content, created_at, author_id, author_role').order('created_at', { ascending: false }).limit(limit),
+    supabase.from('season_plans').select('id, athlete_id, created_at').order('created_at', { ascending: false }).limit(limit),
   ]);
 
-  // Merge into a unified event stream
   const events: Array<{ type: string; id: string; label: string; meta?: string; ts: string }> = [];
 
   for (const c of newCoaches.data ?? []) {
@@ -159,21 +135,18 @@ router.get('/activity-feed', auth, async (req: AuthRequest, res: Response) => {
     events.push({ type: 'athlete_signup', id: a.id, label: a.name || a.username || 'Athlete', meta: a.subscription_tier, ts: a.created_at });
   }
   for (const p of newPosts.data ?? []) {
-    const preview = (p.content ?? '').slice(0, 80);
-    events.push({ type: 'community_post', id: p.id, label: preview, meta: p.author_role, ts: p.created_at });
+    events.push({ type: 'community_post', id: p.id, label: (p.content ?? '').slice(0, 80), meta: p.author_role, ts: p.created_at });
   }
   for (const s of newPlans.data ?? []) {
     events.push({ type: 'plan_generated', id: s.id, label: `Plan for athlete ${s.athlete_id?.slice(0, 8)}`, ts: s.created_at });
   }
 
   events.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
-
   res.json(events.slice(0, limit));
 });
 
-// GET /api/admin/growth — daily new signups for the last 30 days
-router.get('/growth', auth, async (req: AuthRequest, res: Response) => {
-  if (!await requireAdmin(req, res)) return;
+router.get('/growth', async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
 
   const days = 30;
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
@@ -183,7 +156,6 @@ router.get('/growth', auth, async (req: AuthRequest, res: Response) => {
     supabase.from('athlete_profiles').select('created_at').gte('created_at', since),
   ]);
 
-  // Build a map of date → counts
   const map: Record<string, { coaches: number; athletes: number }> = {};
   const dateLabel = (iso: string) => iso.slice(0, 10);
 
@@ -191,18 +163,10 @@ router.get('/growth', auth, async (req: AuthRequest, res: Response) => {
     const d = new Date(Date.now() - (days - 1 - i) * 24 * 60 * 60 * 1000);
     map[dateLabel(d.toISOString())] = { coaches: 0, athletes: 0 };
   }
+  for (const c of coaches.data ?? []) { const d = dateLabel(c.created_at); if (map[d]) map[d].coaches++; }
+  for (const a of athletes.data ?? []) { const d = dateLabel(a.created_at); if (map[d]) map[d].athletes++; }
 
-  for (const c of coaches.data ?? []) {
-    const d = dateLabel(c.created_at);
-    if (map[d]) map[d].coaches++;
-  }
-  for (const a of athletes.data ?? []) {
-    const d = dateLabel(a.created_at);
-    if (map[d]) map[d].athletes++;
-  }
-
-  const result = Object.entries(map).map(([date, counts]) => ({ date, ...counts }));
-  res.json(result);
+  res.json(Object.entries(map).map(([date, counts]) => ({ date, ...counts })));
 });
 
 export default router;
