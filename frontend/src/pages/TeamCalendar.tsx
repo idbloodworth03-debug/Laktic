@@ -110,6 +110,8 @@ function MonthCalView({ events, onSelectEvent }: { events: CalEvent[]; onSelectE
         <span className="font-display font-semibold text-sm text-[var(--text)]">{monthLabel}</span>
         <button onClick={next} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors text-lg">›</button>
       </div>
+      <div className="overflow-x-auto">
+      <div className="min-w-[420px]">
       <div className="grid grid-cols-7 text-center mb-1">
         {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
           <div key={d} className="text-[10px] text-[var(--muted)] uppercase tracking-wide py-1">{d}</div>
@@ -146,6 +148,8 @@ function MonthCalView({ events, onSelectEvent }: { events: CalEvent[]; onSelectE
             </div>
           );
         })}
+      </div>
+      </div>
       </div>
     </div>
   );

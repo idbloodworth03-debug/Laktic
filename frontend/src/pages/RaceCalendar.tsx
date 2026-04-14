@@ -87,6 +87,8 @@ function MonthView({ races, results }: { races: Race[]; results: RaceResult[] })
         <span className="font-display font-semibold text-sm text-[var(--text)]">{monthLabel}</span>
         <button onClick={nextMonth} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors text-lg">›</button>
       </div>
+      <div className="overflow-x-auto">
+      <div className="min-w-[420px]">
       <div className="grid grid-cols-7 text-center mb-1">
         {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
           <div key={d} className="text-[10px] text-[var(--muted)] uppercase tracking-wide py-1">{d}</div>
@@ -124,6 +126,8 @@ function MonthView({ races, results }: { races: Race[]; results: RaceResult[] })
             </div>
           );
         })}
+      </div>
+      </div>
       </div>
       <div className="flex items-center gap-5 mt-3 text-[10px] text-[var(--muted)]">
         <span className="flex items-center gap-1.5">
@@ -342,7 +346,7 @@ export function RaceCalendar() {
                         <div className="border-t border-[var(--border)]/70 mt-4 pt-4">
                           <h4 className="text-sm font-semibold text-[var(--text)] mb-3">Log Race Result</h4>
                           <div className="flex flex-col gap-3">
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                               <Input label="Distance" value={resultForm.distance} onChange={e => setResultForm(f => ({ ...f, distance: e.target.value }))} placeholder="e.g. 5K" />
                               <Input label="Finish Time" value={resultForm.finish_time} onChange={e => setResultForm(f => ({ ...f, finish_time: e.target.value }))} placeholder="e.g. 18:32" />
                               <Input label="Pace/Mile" value={resultForm.pace_per_mile} onChange={e => setResultForm(f => ({ ...f, pace_per_mile: e.target.value }))} placeholder="e.g. 5:58" />

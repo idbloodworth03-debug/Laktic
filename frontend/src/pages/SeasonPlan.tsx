@@ -174,6 +174,8 @@ function PlanMonthView({ plan }: { plan: any[] }) {
           <button onClick={nextMonth} className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors text-xl">›</button>
         </div>
 
+        <div className="overflow-x-auto">
+        <div className="min-w-[420px]">
         <div className="grid grid-cols-7 text-center mb-1">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
             <div key={d} className="text-[11px] text-[var(--muted)] uppercase tracking-wide py-1">{d}</div>
@@ -224,6 +226,8 @@ function PlanMonthView({ plan }: { plan: any[] }) {
           })}
         </div>
 
+        </div>
+        </div>
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 text-[10px] text-[var(--muted)]">
           {['base', 'build', 'sharpening', 'taper', 'race', 'recovery'].map(phase => (
             <span key={phase} className="flex items-center gap-1.5 capitalize">

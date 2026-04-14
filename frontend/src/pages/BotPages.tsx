@@ -148,7 +148,8 @@ export function BotDetail() {
 
           <Card className="mb-6">
             <h3 className="font-display font-semibold mb-4">Sample Training Week</h3>
-            <div className="grid grid-cols-7 gap-2">
+            <div className="overflow-x-auto">
+            <div className="grid grid-cols-7 gap-2 min-w-[420px]">
               {DAYS.map((day, i) => {
                 const wo = bot.workouts?.find((w: any) => w.day_of_week === i + 1);
                 return (
@@ -166,6 +167,7 @@ export function BotDetail() {
                   </div>
                 );
               })}
+            </div>
             </div>
           </Card>
 
