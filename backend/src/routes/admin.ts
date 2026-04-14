@@ -116,4 +116,89 @@ router.delete('/athletes/:id', auth, async (req: AuthRequest, res: Response) => 
   res.json({ ok: true });
 });
 
+// GET /api/admin/activity-feed — recent platform events
+router.get('/activity-feed', auth, async (req: AuthRequest, res: Response) => {
+  if (!await requireAdmin(req, res)) return;
+
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+
+  const [newCoaches, newAthletes, newPosts, newPlans] = await Promise.all([
+    supabase
+      .from('coach_profiles')
+      .select('id, name, username, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit),
+    supabase
+      .from('athlete_profiles')
+      .select('id, name, username, subscription_tier, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit),
+    supabase
+      .from('community_posts')
+      .select('id, content, created_at, author_id, author_role')
+      .order('created_at', { ascending: false })
+      .limit(limit),
+    supabase
+      .from('season_plans')
+      .select('id, athlete_id, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit),
+  ]);
+
+  // Merge into a unified event stream
+  const events: Array<{ type: string; id: string; label: string; meta?: string; ts: string }> = [];
+
+  for (const c of newCoaches.data ?? []) {
+    events.push({ type: 'coach_signup', id: c.id, label: c.name || c.username || 'Coach', ts: c.created_at });
+  }
+  for (const a of newAthletes.data ?? []) {
+    events.push({ type: 'athlete_signup', id: a.id, label: a.name || a.username || 'Athlete', meta: a.subscription_tier, ts: a.created_at });
+  }
+  for (const p of newPosts.data ?? []) {
+    const preview = (p.content ?? '').slice(0, 80);
+    events.push({ type: 'community_post', id: p.id, label: preview, meta: p.author_role, ts: p.created_at });
+  }
+  for (const s of newPlans.data ?? []) {
+    events.push({ type: 'plan_generated', id: s.id, label: `Plan for athlete ${s.athlete_id?.slice(0, 8)}`, ts: s.created_at });
+  }
+
+  events.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
+
+  res.json(events.slice(0, limit));
+});
+
+// GET /api/admin/growth — daily new signups for the last 30 days
+router.get('/growth', auth, async (req: AuthRequest, res: Response) => {
+  if (!await requireAdmin(req, res)) return;
+
+  const days = 30;
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  const [coaches, athletes] = await Promise.all([
+    supabase.from('coach_profiles').select('created_at').gte('created_at', since),
+    supabase.from('athlete_profiles').select('created_at').gte('created_at', since),
+  ]);
+
+  // Build a map of date → counts
+  const map: Record<string, { coaches: number; athletes: number }> = {};
+  const dateLabel = (iso: string) => iso.slice(0, 10);
+
+  for (let i = 0; i < days; i++) {
+    const d = new Date(Date.now() - (days - 1 - i) * 24 * 60 * 60 * 1000);
+    map[dateLabel(d.toISOString())] = { coaches: 0, athletes: 0 };
+  }
+
+  for (const c of coaches.data ?? []) {
+    const d = dateLabel(c.created_at);
+    if (map[d]) map[d].coaches++;
+  }
+  for (const a of athletes.data ?? []) {
+    const d = dateLabel(a.created_at);
+    if (map[d]) map[d].athletes++;
+  }
+
+  const result = Object.entries(map).map(([date, counts]) => ({ date, ...counts }));
+  res.json(result);
+});
+
 export default router;
