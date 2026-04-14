@@ -10,7 +10,8 @@ export function AdminDashboard() {
   const [coaches, setCoaches] = useState<any[]>([]);
   const [athletes, setAthletes] = useState<any[]>([]);
   const [revenue, setRevenue] = useState<any>(null);
-  const [tab, setTab] = useState<'overview' | 'coaches' | 'athletes' | 'revenue'>('overview');
+  const [tab, setTab] = useState<'overview' | 'coaches' | 'athletes' | 'revenue' | 'activity'>('overview');
+  const [activity, setActivity] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const logout = async () => { const { supabase } = await import('../lib/supabaseClient'); await supabase.auth.signOut(); useAuthStore.getState().clearAuth(); };
@@ -34,10 +35,16 @@ export function AdminDashboard() {
     setRevenue(data);
   };
 
+  const loadActivity = async () => {
+    const data: any = await apiFetch('/api/admin/activity-feed?limit=100');
+    setActivity(data);
+  };
+
   useEffect(() => {
     if (tab === 'coaches') loadCoaches();
     if (tab === 'athletes') loadAthletes();
     if (tab === 'revenue') loadRevenue();
+    if (tab === 'activity') loadActivity();
   }, [tab]);
 
   const toggleCertified = async (coach: any) => {
@@ -78,7 +85,7 @@ export function AdminDashboard() {
 
         {/* Tab nav */}
         <div className="flex gap-2 mb-6 border-b border-[var(--border)] pb-4">
-          {(['overview','coaches','athletes','revenue'] as const).map(t => (
+          {(['overview','coaches','athletes','revenue','activity'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -198,6 +205,37 @@ export function AdminDashboard() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {tab === 'activity' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm text-[var(--muted)]">{activity.length} recent events</p>
+              <button onClick={loadActivity} className="text-xs text-[var(--muted)] hover:text-[var(--text)] border border-[var(--border)] px-3 py-1 rounded-lg">Refresh</button>
+            </div>
+            <div className="space-y-px">
+              {activity.map((e: any, i: number) => {
+                const icons: Record<string, string> = { athlete_signup: '🏃', coach_signup: '🎓', community_post: '💬', plan_generated: '📋' };
+                const colors: Record<string, string> = { athlete_signup: 'text-[#00E5A0]', coach_signup: 'text-blue-400', community_post: 'text-purple-400', plan_generated: 'text-amber-400' };
+                const labels: Record<string, string> = { athlete_signup: 'Athlete signed up', coach_signup: 'Coach signed up', community_post: 'Community post', plan_generated: 'Plan generated' };
+                const diff = Date.now() - new Date(e.ts).getTime();
+                const mins = Math.floor(diff / 60000);
+                const rel = mins < 1 ? 'just now' : mins < 60 ? `${mins}m ago` : mins < 1440 ? `${Math.floor(mins/60)}h ago` : `${Math.floor(mins/1440)}d ago`;
+                return (
+                  <div key={i} className="flex items-start gap-3 px-4 py-3 bg-[var(--surface)] border border-[var(--border)] first:rounded-t-xl last:rounded-b-xl hover:bg-[var(--surface2)] transition-colors">
+                    <span className="text-lg mt-0.5">{icons[e.type] ?? '•'}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className={`text-xs font-semibold ${colors[e.type] ?? 'text-[var(--muted)]'}`}>{labels[e.type] ?? e.type}</span>
+                      {e.meta && <span className="text-xs text-[var(--muted)] ml-2">{e.meta}</span>}
+                      <p className="text-sm text-[var(--text2)] truncate mt-0.5">{e.label || '—'}</p>
+                    </div>
+                    <span className="text-xs text-[var(--muted)] whitespace-nowrap pt-0.5">{rel}</span>
+                  </div>
+                );
+              })}
+              {activity.length === 0 && <p className="text-sm text-[var(--muted)] py-8 text-center">No activity yet</p>}
             </div>
           </div>
         )}
