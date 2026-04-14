@@ -8,11 +8,16 @@ const router = Router();
 async function requireAdmin(req: AuthRequest, res: Response): Promise<boolean> {
   if (!env.ADMIN_EMAIL) { res.status(503).json({ error: 'Admin not configured' }); return false; }
   if (req.user?.email !== env.ADMIN_EMAIL) {
-    res.status(403).json({ error: 'Forbidden' });
+    res.status(403).json({ error: 'Forbidden', debug_detected_email: req.user?.email ?? null, debug_expected: env.ADMIN_EMAIL });
     return false;
   }
   return true;
 }
+
+// Temporary debug endpoint — remove after confirming admin access works
+router.get('/whoami', auth, (req: AuthRequest, res: Response) => {
+  res.json({ email: req.user?.email, id: req.user?.id, admin_email_configured: env.ADMIN_EMAIL ?? null });
+});
 
 router.get('/stats', auth, async (req: AuthRequest, res: Response) => {
   if (!await requireAdmin(req, res)) return;
