@@ -80,9 +80,7 @@
 /* ── Base ─────────────────────────────────────────────────────────────────── */
 * { box-sizing: border-box; }
 
-html {
-  font-size: 16px;
-}
+html { font-size: 16px; }
 
 body {
   background: var(--color-bg-primary);
@@ -224,7 +222,7 @@ h1, h2, h3, h4, h5, h6 {
 
 @media (max-width: 768px) {
   .app-sidebar-sticky { display: none; }
-  /* padding-bottom set by bottom-tab-bar block below to stay in sync */
+  .app-layout-main { padding-bottom: 64px; }
 }
 
 /* ── Legacy fixed sidebar (Navbar backward compat) ─────────────────────────── */
@@ -244,7 +242,7 @@ h1, h2, h3, h4, h5, h6 {
 body.with-sidebar > #root { padding-left: 220px; transition: padding-left 200ms ease; }
 @media (max-width: 768px) {
   .app-sidebar-fixed { display: none !important; }
-  body.with-sidebar > #root { padding-left: 0 !important; padding-bottom: 56px; }
+  body.with-sidebar > #root { padding-left: 0 !important; padding-bottom: 64px; }
 }
 
 /* ── Bottom tab bar (mobile) ───────────────────────────────────────────────── */
@@ -254,14 +252,13 @@ body.with-sidebar > #root { padding-left: 220px; transition: padding-left 200ms 
   bottom: 0;
   left: 0;
   right: 0;
-  height: 56px;
+  height: 64px;
   background: var(--color-bg-secondary);
   border-top: 1px solid var(--color-border);
   z-index: 40;
 }
 @media (max-width: 768px) {
   .bottom-tab-bar { display: flex; }
-  .app-layout-main { padding-bottom: 56px; }
 }
 
 /* ── Progress bar ─────────────────────────────────────────────────────────── */

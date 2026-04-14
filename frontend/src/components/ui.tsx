@@ -520,15 +520,15 @@ function BottomTabBar({ role, onLogout }: BottomTabBarProps) {
         {primary.map(({ label, href, icon: Icon }) => {
           const active = current === href || (href !== '/' && current.startsWith(href));
           return (
-            <a key={href} href={href} className={`flex flex-col items-center justify-center flex-1 gap-0.5 overflow-hidden px-0.5 transition-all duration-150 ${active ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-tertiary)]'}`}>
-              <Icon size={17} />
-              <span className="text-[8px] font-semibold uppercase tracking-normal leading-tight w-full text-center truncate">{label}</span>
+            <a key={href} href={href} className={`flex flex-col items-center justify-center flex-1 gap-1 transition-all duration-150 ${active ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-tertiary)]'}`}>
+              <Icon size={18} />
+              <span className="text-[9px] font-semibold uppercase tracking-wide">{label}</span>
             </a>
           );
         })}
-        <button onClick={() => setMoreOpen(o => !o)} className="flex flex-col items-center justify-center flex-1 gap-0.5 overflow-hidden px-0.5 text-[var(--color-text-tertiary)]">
-          <Menu size={17} />
-          <span className="text-[8px] font-semibold uppercase tracking-normal leading-tight">More</span>
+        <button onClick={() => setMoreOpen(o => !o)} className="flex flex-col items-center justify-center flex-1 gap-1 text-[var(--color-text-tertiary)]">
+          <Menu size={18} />
+          <span className="text-[9px] font-semibold uppercase tracking-wide">More</span>
         </button>
       </nav>
 
