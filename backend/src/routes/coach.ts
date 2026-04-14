@@ -113,8 +113,9 @@ router.post(
   asyncHandler(async (req: AuthRequest, res) => {
     console.log('[POST /bot] coach_id:', req.coach.id, 'body:', JSON.stringify(req.body));
     const { name, philosophy, event_focus, level_focus, personality, personality_prompt } = req.body;
-    const existing = await supabase.from('coach_bots').select('id').eq('coach_id', req.coach.id).single();
-    if (existing.data) { console.log('[POST /bot] Bot already exists for coach:', req.coach.id); return res.status(400).json({ error: 'Bot already exists' }); }
+    const { data: existingBot, error: existingErr } = await supabase.from('coach_bots').select('id').eq('coach_id', req.coach.id).single();
+    if (existingErr && existingErr.code !== 'PGRST116') return res.status(500).json({ error: existingErr.message });
+    if (existingBot) { console.log('[POST /bot] Bot already exists for coach:', req.coach.id); return res.status(400).json({ error: 'Bot already exists' }); }
 
     const { data, error } = await supabase
       .from('coach_bots')

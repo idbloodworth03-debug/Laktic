@@ -97,7 +97,7 @@ function RequireCoach({ children }: { children: React.ReactNode }) {
   const loc = useLocation();
   if (!hydrated) return null;
   if (!role) return <Navigate to="/" state={{ from: loc }} replace />;
-  if (role !== 'coach') return <Navigate to="/athlete/browse" replace />;
+  if (role !== 'coach') return <Navigate to="/athlete/dashboard" replace />;
   return <>{children}</>;
 }
 

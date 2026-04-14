@@ -46,15 +46,18 @@ export async function requireAthlete(req: AuthRequest, res: Response, next: Next
     return next();
   }
 
-  // Profile missing for a valid authenticated user — auto-create a blank one
+  // Profile missing for a valid authenticated user — upsert to handle race conditions
   const name = req.user.email?.split('@')[0] ?? 'Athlete';
   const { data: created, error: createErr } = await supabase
     .from('athlete_profiles')
-    .insert({ user_id: req.user.id, name })
+    .upsert({ user_id: req.user.id, name }, { onConflict: 'user_id', ignoreDuplicates: false })
     .select()
     .single();
 
   if (createErr || !created) {
+    // Last resort: re-fetch in case a concurrent request already created it
+    const { data: refetched } = await supabase.from('athlete_profiles').select('*').eq('user_id', req.user.id).single();
+    if (refetched) { req.athlete = refetched; return next(); }
     console.error('[requireAthlete] auto-create failed:', createErr?.message);
     return res.status(403).json({ error: 'Not an athlete' });
   }
