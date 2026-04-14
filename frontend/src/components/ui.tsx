@@ -345,7 +345,7 @@ type NavItem = { label: string; href: string; icon: React.ElementType };
 
 // Primary: shown in mobile bottom bar + top of sidebar
 const ATHLETE_PRIMARY: NavItem[] = [
-  { label: 'Dashboard',  href: '/athlete/dashboard', icon: LayoutDashboard },
+  { label: 'Home',  href: '/athlete/dashboard', icon: LayoutDashboard },
   { label: 'Pace',       href: '/athlete/chat',       icon: MessageSquare },
   { label: 'My Plan',    href: '/athlete/plan',       icon: FileText },
   { label: 'Progress',   href: '/athlete/progress',   icon: TrendingUp },
@@ -362,7 +362,7 @@ const ATHLETE_MORE: NavItem[] = [
 ];
 
 const COACH_PRIMARY: NavItem[] = [
-  { label: 'Dashboard',  href: '/coach/dashboard',  icon: LayoutDashboard },
+  { label: 'Home',  href: '/coach/dashboard',  icon: LayoutDashboard },
   { label: 'My Team',    href: '/coach/progress',   icon: Users },
   { label: 'Community',  href: '/community',        icon: Globe },
   { label: 'Calendar',   href: '/coach/calendar',   icon: Calendar },
