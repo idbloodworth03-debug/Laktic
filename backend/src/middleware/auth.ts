@@ -18,6 +18,13 @@ export async function auth(req: AuthRequest, res: Response, next: NextFunction) 
     return res.status(401).json({ error: 'Invalid token' });
   }
   req.user = { id: user.id, email: user.email };
+
+  // Block banned emails
+  if (user.email) {
+    const { data: ban } = await supabase.from('banned_emails').select('id').eq('email', user.email.toLowerCase()).maybeSingle();
+    if (ban) return res.status(403).json({ error: 'Account banned' });
+  }
+
   next();
 }
 
@@ -29,6 +36,7 @@ export async function requireCoach(req: AuthRequest, res: Response, next: NextFu
     .eq('user_id', req.user.id)
     .single();
   if (error || !data) return res.status(403).json({ error: 'Not a coach' });
+  if (data.suspended) return res.status(403).json({ error: 'Account suspended' });
   req.coach = data;
   next();
 }
@@ -42,6 +50,7 @@ export async function requireAthlete(req: AuthRequest, res: Response, next: Next
     .single();
 
   if (!error && data) {
+    if (data.suspended) return res.status(403).json({ error: 'Account suspended' });
     req.athlete = data;
     return next();
   }

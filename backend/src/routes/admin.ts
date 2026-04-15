@@ -13,21 +13,25 @@ function requireAdmin(req: Request, res: Response): boolean {
   return true;
 }
 
+// ── Stats ─────────────────────────────────────────────────────────────────────
+
 router.get('/stats', async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
 
-  const [coaches, athletes, plans, purchases, certifications] = await Promise.all([
+  const [coaches, athletes, plans, purchases, certifications, bans] = await Promise.all([
     supabase.from('coach_profiles').select('id', { count: 'exact', head: true }),
     supabase.from('athlete_profiles').select('id', { count: 'exact', head: true }),
     supabase.from('marketplace_plans').select('id', { count: 'exact', head: true }).eq('published', true),
     supabase.from('plan_purchases').select('id', { count: 'exact', head: true }),
     supabase.from('coach_certifications').select('id', { count: 'exact', head: true }).eq('passed', true),
+    supabase.from('banned_emails').select('id', { count: 'exact', head: true }),
   ]);
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const [newCoaches, newAthletes] = await Promise.all([
+  const [newCoaches, newAthletes, suspended] = await Promise.all([
     supabase.from('coach_profiles').select('id', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
     supabase.from('athlete_profiles').select('id', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
+    supabase.from('athlete_profiles').select('id', { count: 'exact', head: true }).eq('suspended', true),
   ]);
 
   res.json({
@@ -37,6 +41,8 @@ router.get('/stats', async (req: Request, res: Response) => {
       published_plans: plans.count ?? 0,
       plan_purchases: purchases.count ?? 0,
       certified_coaches: certifications.count ?? 0,
+      banned_emails: bans.count ?? 0,
+      suspended_athletes: suspended.count ?? 0,
     },
     last_30_days: {
       new_coaches: newCoaches.count ?? 0,
@@ -45,14 +51,16 @@ router.get('/stats', async (req: Request, res: Response) => {
   });
 });
 
+// ── Users ─────────────────────────────────────────────────────────────────────
+
 router.get('/coaches', async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
 
   const { data, error } = await supabase
     .from('coach_profiles')
-    .select('id, name, username, license_type, certified_coach, created_at')
+    .select('id, user_id, name, username, license_type, certified_coach, suspended, created_at')
     .order('created_at', { ascending: false })
-    .limit(200);
+    .limit(500);
 
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
@@ -63,28 +71,33 @@ router.get('/athletes', async (req: Request, res: Response) => {
 
   const { data, error } = await supabase
     .from('athlete_profiles')
-    .select('id, name, username, subscription_tier, created_at')
+    .select('id, user_id, name, username, subscription_tier, suspended, created_at')
     .order('created_at', { ascending: false })
-    .limit(200);
+    .limit(500);
 
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 
-router.get('/revenue', async (req: Request, res: Response) => {
+// ── Suspend / unsuspend ───────────────────────────────────────────────────────
+
+router.patch('/coaches/:id/suspend', async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
-
-  const { data, error } = await supabase
-    .from('plan_purchases')
-    .select('id, amount_paid_cents, purchased_at, plan:marketplace_plans(title, price_cents, coach:coach_profiles(name))')
-    .order('purchased_at', { ascending: false })
-    .limit(100);
-
+  const { suspended } = req.body;
+  const { data, error } = await supabase.from('coach_profiles').update({ suspended: !!suspended }).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
-
-  const total = (data ?? []).reduce((sum, p) => sum + (p.amount_paid_cents ?? 0), 0);
-  res.json({ purchases: data, total_cents: total });
+  res.json(data);
 });
+
+router.patch('/athletes/:id/suspend', async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  const { suspended } = req.body;
+  const { data, error } = await supabase.from('athlete_profiles').update({ suspended: !!suspended }).eq('id', req.params.id).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// ── Update coach fields ───────────────────────────────────────────────────────
 
 router.patch('/coaches/:id', async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
@@ -100,19 +113,106 @@ router.patch('/coaches/:id', async (req: Request, res: Response) => {
   res.json(data);
 });
 
+// ── Delete (profile + auth user) ──────────────────────────────────────────────
+
 router.delete('/coaches/:id', async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
+
+  const { data: coach } = await supabase.from('coach_profiles').select('user_id').eq('id', req.params.id).single();
   const { error } = await supabase.from('coach_profiles').delete().eq('id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
+
+  if (coach?.user_id) {
+    await supabase.auth.admin.deleteUser(coach.user_id).catch(() => {});
+  }
   res.json({ ok: true });
 });
 
 router.delete('/athletes/:id', async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
+
+  const { data: athlete } = await supabase.from('athlete_profiles').select('user_id').eq('id', req.params.id).single();
   const { error } = await supabase.from('athlete_profiles').delete().eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+
+  if (athlete?.user_id) {
+    await supabase.auth.admin.deleteUser(athlete.user_id).catch(() => {});
+  }
+  res.json({ ok: true });
+});
+
+// ── Banned emails ─────────────────────────────────────────────────────────────
+
+router.get('/bans', async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  const { data, error } = await supabase.from('banned_emails').select('*').order('banned_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+router.post('/bans', async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  const { email, reason } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+
+  const { data, error } = await supabase
+    .from('banned_emails')
+    .insert({ email: email.toLowerCase().trim(), reason: reason ?? null })
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+router.delete('/bans/:id', async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+  const { error } = await supabase.from('banned_emails').delete().eq('id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true });
 });
+
+// ── Revenue ───────────────────────────────────────────────────────────────────
+
+router.get('/revenue', async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+
+  const { data, error } = await supabase
+    .from('plan_purchases')
+    .select('id, amount_paid_cents, purchased_at, plan:marketplace_plans(title, price_cents, coach:coach_profiles(name))')
+    .order('purchased_at', { ascending: false })
+    .limit(500);
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  const purchases = data ?? [];
+  const total = purchases.reduce((sum, p) => sum + (p.amount_paid_cents ?? 0), 0);
+
+  // Monthly breakdown (last 12 months)
+  const monthMap: Record<string, number> = {};
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
+    monthMap[d.toISOString().slice(0, 7)] = 0;
+  }
+  for (const p of purchases) {
+    const m = (p.purchased_at as string).slice(0, 7);
+    if (m in monthMap) monthMap[m] += p.amount_paid_cents ?? 0;
+  }
+  const monthly = Object.entries(monthMap).map(([month, cents]) => ({ month, cents }));
+
+  // Per-coach breakdown
+  const coachMap: Record<string, { name: string; cents: number; count: number }> = {};
+  for (const p of purchases) {
+    const name = (p.plan as any)?.coach?.name ?? 'Unknown';
+    if (!coachMap[name]) coachMap[name] = { name, cents: 0, count: 0 };
+    coachMap[name].cents += p.amount_paid_cents ?? 0;
+    coachMap[name].count++;
+  }
+  const by_coach = Object.values(coachMap).sort((a, b) => b.cents - a.cents);
+
+  res.json({ purchases, total_cents: total, monthly, by_coach });
+});
+
+// ── Activity feed ─────────────────────────────────────────────────────────────
 
 router.get('/activity-feed', async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
@@ -128,22 +228,16 @@ router.get('/activity-feed', async (req: Request, res: Response) => {
 
   const events: Array<{ type: string; id: string; label: string; meta?: string; ts: string }> = [];
 
-  for (const c of newCoaches.data ?? []) {
-    events.push({ type: 'coach_signup', id: c.id, label: c.name || c.username || 'Coach', ts: c.created_at });
-  }
-  for (const a of newAthletes.data ?? []) {
-    events.push({ type: 'athlete_signup', id: a.id, label: a.name || a.username || 'Athlete', meta: a.subscription_tier, ts: a.created_at });
-  }
-  for (const p of newPosts.data ?? []) {
-    events.push({ type: 'community_post', id: p.id, label: (p.content ?? '').slice(0, 80), meta: p.author_role, ts: p.created_at });
-  }
-  for (const s of newPlans.data ?? []) {
-    events.push({ type: 'plan_generated', id: s.id, label: `Plan for athlete ${s.athlete_id?.slice(0, 8)}`, ts: s.created_at });
-  }
+  for (const c of newCoaches.data ?? []) events.push({ type: 'coach_signup', id: c.id, label: c.name || c.username || 'Coach', ts: c.created_at });
+  for (const a of newAthletes.data ?? []) events.push({ type: 'athlete_signup', id: a.id, label: a.name || a.username || 'Athlete', meta: a.subscription_tier, ts: a.created_at });
+  for (const p of newPosts.data ?? []) events.push({ type: 'community_post', id: p.id, label: (p.content ?? '').slice(0, 80), meta: p.author_role, ts: p.created_at });
+  for (const s of newPlans.data ?? []) events.push({ type: 'plan_generated', id: s.id, label: `Plan for athlete ${s.athlete_id?.slice(0, 8)}`, ts: s.created_at });
 
   events.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
   res.json(events.slice(0, limit));
 });
+
+// ── Growth chart ──────────────────────────────────────────────────────────────
 
 router.get('/growth', async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
