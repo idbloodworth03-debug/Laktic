@@ -18,31 +18,41 @@ function requireAdmin(req: Request, res: Response): boolean {
 router.get('/stats', async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
 
-  const [coaches, athletes, plans, purchases, certifications, bans] = await Promise.all([
+  const today = new Date().toISOString().slice(0, 10);
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+
+  const [coaches, athletes, plans, purchases, certifications, bans, activeToday, pendingCoaches, newUsers, suspended] = await Promise.all([
     supabase.from('coach_profiles').select('id', { count: 'exact', head: true }),
     supabase.from('athlete_profiles').select('id', { count: 'exact', head: true }),
     supabase.from('marketplace_plans').select('id', { count: 'exact', head: true }).eq('published', true),
     supabase.from('plan_purchases').select('id', { count: 'exact', head: true }),
     supabase.from('coach_certifications').select('id', { count: 'exact', head: true }).eq('passed', true),
     supabase.from('banned_emails').select('id', { count: 'exact', head: true }),
+    supabase.from('daily_readiness').select('athlete_id', { count: 'exact', head: true }).eq('date', today),
+    supabase.from('coach_profiles').select('id', { count: 'exact', head: true }).eq('certified_coach', false).eq('suspended', false),
+    supabase.from('athlete_profiles').select('id', { count: 'exact', head: true }).gte('created_at', sevenDaysAgo),
+    supabase.from('athlete_profiles').select('id', { count: 'exact', head: true }).eq('suspended', true),
   ]);
 
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const [newCoaches, newAthletes, suspended] = await Promise.all([
+  const [newCoaches, newAthletes] = await Promise.all([
     supabase.from('coach_profiles').select('id', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
     supabase.from('athlete_profiles').select('id', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
-    supabase.from('athlete_profiles').select('id', { count: 'exact', head: true }).eq('suspended', true),
   ]);
 
   res.json({
     totals: {
       coaches: coaches.count ?? 0,
       athletes: athletes.count ?? 0,
+      total_users: (coaches.count ?? 0) + (athletes.count ?? 0),
       published_plans: plans.count ?? 0,
       plan_purchases: purchases.count ?? 0,
       certified_coaches: certifications.count ?? 0,
       banned_emails: bans.count ?? 0,
       suspended_athletes: suspended.count ?? 0,
+      active_today: activeToday.count ?? 0,
+      pending_approvals: pendingCoaches.count ?? 0,
+      new_users_7d: newUsers.count ?? 0,
     },
     last_30_days: {
       new_coaches: newCoaches.count ?? 0,
@@ -235,6 +245,90 @@ router.get('/activity-feed', async (req: Request, res: Response) => {
 
   events.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
   res.json(events.slice(0, limit));
+});
+
+// ── Combined users list (coaches + athletes, with computed status) ─────────────
+
+router.get('/users', async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+
+  const [coaches, athletes] = await Promise.all([
+    supabase.from('coach_profiles').select('id, user_id, name, username, license_type, certified_coach, suspended, created_at').order('created_at', { ascending: false }).limit(500),
+    supabase.from('athlete_profiles').select('id, user_id, name, username, subscription_tier, suspended, created_at').order('created_at', { ascending: false }).limit(500),
+  ]);
+
+  const users = [
+    ...(coaches.data ?? []).map((c: any) => {
+      let status: string;
+      if (c.suspended) status = 'suspended';
+      else if (!c.certified_coach) status = 'pending';
+      else if (c.created_at > sevenDaysAgo) status = 'new';
+      else status = 'active';
+      return { ...c, role: 'coach', status };
+    }),
+    ...(athletes.data ?? []).map((a: any) => {
+      let status: string;
+      if (a.suspended) status = 'suspended';
+      else if (a.created_at > sevenDaysAgo) status = 'new';
+      else status = 'active';
+      return { ...a, role: 'athlete', status };
+    }),
+  ].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  res.json(users);
+});
+
+// ── Alerts (generated from platform state) ────────────────────────────────────
+
+router.get('/alerts', async (req: Request, res: Response) => {
+  if (!requireAdmin(req, res)) return;
+
+  const oneDayAgo = new Date(Date.now() - 86400000).toISOString();
+
+  const [pendingCoaches, suspendedAthletes, newAthletes] = await Promise.all([
+    supabase.from('coach_profiles').select('id, name, username, created_at').eq('certified_coach', false).eq('suspended', false).order('created_at', { ascending: false }).limit(50),
+    supabase.from('athlete_profiles').select('id, name').eq('suspended', true).limit(50),
+    supabase.from('athlete_profiles').select('id, name, created_at').gte('created_at', oneDayAgo).order('created_at', { ascending: false }).limit(20),
+  ]);
+
+  const alerts: Array<{ id: string; severity: string; title: string; detail: string; ts: string }> = [];
+
+  const pending = pendingCoaches.data ?? [];
+  if (pending.length > 0) {
+    alerts.push({
+      id: 'pending_coaches',
+      severity: 'medium',
+      title: `${pending.length} coach${pending.length > 1 ? 'es' : ''} awaiting certification`,
+      detail: pending.slice(0, 5).map((c: any) => c.name || c.username || 'Coach').join(', ') + (pending.length > 5 ? ` +${pending.length - 5} more` : ''),
+      ts: pending[0].created_at,
+    });
+  }
+
+  const suspended = suspendedAthletes.data ?? [];
+  if (suspended.length > 0) {
+    alerts.push({
+      id: 'suspended_users',
+      severity: 'high',
+      title: `${suspended.length} athlete${suspended.length > 1 ? 's' : ''} currently suspended`,
+      detail: suspended.slice(0, 5).map((u: any) => u.name || 'Athlete').join(', ') + (suspended.length > 5 ? ` +${suspended.length - 5} more` : ''),
+      ts: new Date().toISOString(),
+    });
+  }
+
+  const newA = newAthletes.data ?? [];
+  if (newA.length > 0) {
+    alerts.push({
+      id: 'new_athletes',
+      severity: 'info',
+      title: `${newA.length} new athlete${newA.length > 1 ? 's' : ''} joined in the last 24h`,
+      detail: newA.slice(0, 5).map((u: any) => u.name || 'Athlete').join(', ') + (newA.length > 5 ? ` +${newA.length - 5} more` : ''),
+      ts: newA[0].created_at,
+    });
+  }
+
+  res.json(alerts);
 });
 
 // ── Growth chart ──────────────────────────────────────────────────────────────
