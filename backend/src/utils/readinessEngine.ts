@@ -305,17 +305,23 @@ export async function computeReadiness(
   }).length;
 
   if (recentCount < 3) {
+    // Fall back to today's subjective log score if available, otherwise 70
+    const logScore: number | null = (todayLog as any)?.score ?? null;
+    const fallback = logScore !== null ? logScore : 70;
+    const { label, color, recommendation } = labelAndRecommendation(fallback, 0);
     return {
-      score: 70,
-      label: 'Moderate',
-      color: 'yellow',
-      recommendation: 'Connect Strava or log some activities to get an accurate readiness score.',
+      score: fallback,
+      label,
+      color,
+      recommendation: logScore !== null
+        ? recommendation
+        : 'Connect Strava or log some activities to get an accurate readiness score.',
       signals: {
         atl: 0, ctl: 0, tsb: 0,
         consecutiveTrainingDays: 0, daysSinceLastRun: 999,
         recentPaceDeviation: null, sleepHours: null, complianceRate,
       },
-      needsMoreData: true,
+      needsMoreData: logScore === null,
     };
   }
 
