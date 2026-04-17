@@ -181,6 +181,7 @@ export function RunTracker() {
   }, []);
 
   const startTimer = useCallback(() => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     timerRef.current = setInterval(() => setElapsed(prev => prev + 1), 1000);
   }, []);
 
@@ -226,6 +227,7 @@ export function RunTracker() {
   const handleResume = useCallback(() => {
     if (pauseStartRef.current) {
       pausedSecondsRef.current += Math.floor((Date.now() - pauseStartRef.current) / 1000);
+      pauseStartRef.current = null;
     }
     setRunState('running');
     startWatchingGPS();
