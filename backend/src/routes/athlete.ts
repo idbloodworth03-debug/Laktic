@@ -1477,19 +1477,23 @@ router.post(
       route_coordinates,
     } = req.body;
 
-    if (!distance_meters || !moving_time_seconds || !start_date) {
+    const distMeters = Number(distance_meters);
+    const movingTime = Number(moving_time_seconds);
+    const elapsedTime = elapsed_time_seconds !== undefined ? Number(elapsed_time_seconds) : undefined;
+
+    if (!start_date || !isFinite(distMeters) || !isFinite(movingTime)) {
       return res.status(400).json({ error: 'distance_meters, moving_time_seconds, and start_date are required' });
     }
 
-    if (moving_time_seconds <= 0 || moving_time_seconds > 86400) {
+    if (movingTime <= 0 || movingTime > 86400) {
       return res.status(400).json({ error: 'moving_time_seconds must be between 1 and 86400' });
     }
 
-    if (distance_meters < 10) {
+    if (distMeters < 10) {
       return res.status(400).json({ error: 'distance_meters must be at least 10' });
     }
 
-    if (elapsed_time_seconds !== undefined && elapsed_time_seconds < moving_time_seconds) {
+    if (elapsedTime !== undefined && (!isFinite(elapsedTime) || elapsedTime < movingTime)) {
       return res.status(400).json({ error: 'elapsed_time_seconds cannot be less than moving_time_seconds' });
     }
 
@@ -1501,10 +1505,10 @@ router.post(
         activity_type: 'Run',
         name: name || 'Manual Run',
         start_date,
-        distance_meters,
-        moving_time_seconds,
-        elapsed_time_seconds: elapsed_time_seconds ?? moving_time_seconds,
-        average_speed: average_speed ?? (distance_meters / moving_time_seconds),
+        distance_meters: distMeters,
+        moving_time_seconds: movingTime,
+        elapsed_time_seconds: elapsedTime ?? movingTime,
+        average_speed: average_speed ?? (distMeters / movingTime),
         total_elevation_gain: total_elevation_gain ?? 0,
         average_heartrate: average_heartrate ?? null,
         raw_data: route_coordinates ? { route_coordinates } : null,
