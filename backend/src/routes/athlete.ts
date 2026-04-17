@@ -1485,6 +1485,10 @@ router.post(
       return res.status(400).json({ error: 'moving_time_seconds must be between 1 and 86400' });
     }
 
+    if (distance_meters < 10) {
+      return res.status(400).json({ error: 'distance_meters must be at least 10' });
+    }
+
     if (elapsed_time_seconds !== undefined && elapsed_time_seconds < moving_time_seconds) {
       return res.status(400).json({ error: 'elapsed_time_seconds cannot be less than moving_time_seconds' });
     }

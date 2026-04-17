@@ -150,6 +150,7 @@ export function RunTracker() {
       (pos) => {
         setGpsError(null);
         const { latitude: lat, longitude: lon } = pos.coords;
+        if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
         const ts = Date.now();
         const newPos: [number, number] = [lat, lon];
         setCurrentPos(newPos);
@@ -197,8 +198,9 @@ export function RunTracker() {
     if ('wakeLock' in navigator) {
       try {
         if (wakeLockRef.current) { wakeLockRef.current.release().catch(() => {}); wakeLockRef.current = null; }
-        wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
-      } catch { /* device may not support it */ }
+        const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000));
+        wakeLockRef.current = await Promise.race([(navigator as any).wakeLock.request('screen'), timeout]);
+      } catch { /* device may not support it or timed out */ }
     }
   }, []);
 
