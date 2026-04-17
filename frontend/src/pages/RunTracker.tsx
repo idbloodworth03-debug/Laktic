@@ -148,26 +148,29 @@ export function RunTracker() {
     if (watchIdRef.current !== null) { navigator.geolocation.clearWatch(watchIdRef.current); watchIdRef.current = null; }
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
+        setGpsError(null);
         const { latitude: lat, longitude: lon } = pos.coords;
         const ts = Date.now();
         const newPos: [number, number] = [lat, lon];
         setCurrentPos(newPos);
         if (lastCoordRef.current) {
           const d = haversine(lastCoordRef.current.lat, lastCoordRef.current.lon, lat, lon);
-          // Add to trail if moved ≥1m and <100m (filters pure noise, allows smooth line)
-          if (d >= 1 && d <= 100) {
+          if (d >= 2 && d <= 100) {
+            // Valid movement — draw and count
             setRoutePoints(prev => [...prev, newPos]);
-            // Count distance only for ≥2m moves to avoid jitter inflating mileage
-            if (d >= 2 && d <= 50) {
-              setDistanceM(prev => prev + d);
-            }
+            setDistanceM(prev => prev + d);
+            lastCoordRef.current = { lat, lon };
+            coordsRef.current.push({ lat, lon, ts });
+          } else if (d > 100) {
+            // GPS glitch — reset anchor without drawing or counting distance
             lastCoordRef.current = { lat, lon };
           }
+          // d < 2: noise, ignore entirely
         } else {
           setRoutePoints(prev => prev.length === 0 ? [newPos] : [...prev, newPos]);
           lastCoordRef.current = { lat, lon };
+          coordsRef.current.push({ lat, lon, ts });
         }
-        coordsRef.current.push({ lat, lon, ts });
       },
       (err) => setGpsError(`GPS error: ${err.message}`),
       { enableHighAccuracy: true, maximumAge: 0 } as PositionOptions
@@ -193,6 +196,7 @@ export function RunTracker() {
   const acquireWakeLock = useCallback(async () => {
     if ('wakeLock' in navigator) {
       try {
+        if (wakeLockRef.current) { wakeLockRef.current.release().catch(() => {}); wakeLockRef.current = null; }
         wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
       } catch { /* device may not support it */ }
     }

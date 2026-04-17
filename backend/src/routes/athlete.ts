@@ -1481,8 +1481,8 @@ router.post(
       return res.status(400).json({ error: 'distance_meters, moving_time_seconds, and start_date are required' });
     }
 
-    if (moving_time_seconds > 86400 || moving_time_seconds < 0) {
-      return res.status(400).json({ error: 'moving_time_seconds must be between 0 and 86400' });
+    if (moving_time_seconds <= 0 || moving_time_seconds > 86400) {
+      return res.status(400).json({ error: 'moving_time_seconds must be between 1 and 86400' });
     }
 
     if (elapsed_time_seconds !== undefined && elapsed_time_seconds < moving_time_seconds) {
