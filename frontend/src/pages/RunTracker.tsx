@@ -222,6 +222,7 @@ export function RunTracker() {
     stopWatchingGPS();
     stopTimer();
     pauseStartRef.current = Date.now();
+    lastCoordRef.current = null;
     releaseWakeLock();
   }, [stopWatchingGPS, stopTimer, releaseWakeLock]);
 
