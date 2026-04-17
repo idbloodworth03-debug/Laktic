@@ -145,6 +145,7 @@ export function RunTracker() {
 
   const startWatchingGPS = useCallback(() => {
     if (!navigator.geolocation) return;
+    if (watchIdRef.current !== null) { navigator.geolocation.clearWatch(watchIdRef.current); watchIdRef.current = null; }
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude: lat, longitude: lon } = pos.coords;
