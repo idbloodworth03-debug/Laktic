@@ -232,10 +232,8 @@ export function AdminDashboard() {
             <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Platform management</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button onClick={() => setTab('users')} title={`${pendingCount} pending certifications`}
-              style={{ position: 'relative', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>
+            <button title="Notifications" style={{ position: 'relative', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', cursor: 'default', fontSize: 16, lineHeight: 1 }}>
               🔔
-              {pendingCount > 0 && <span style={{ position: 'absolute', top: -5, right: -5, background: '#ef4444', color: '#fff', borderRadius: '50%', width: 17, height: 17, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{pendingCount > 9 ? '9+' : pendingCount}</span>}
             </button>
             <span style={{ padding: '3px 10px', background: 'rgba(239,68,68,0.15)', color: '#ef4444', borderRadius: 999, fontSize: 11, fontWeight: 700 }}>ADMIN</span>
             <button onClick={() => { sessionStorage.removeItem('admin_key'); setAdminKey(null); }}
@@ -248,7 +246,7 @@ export function AdminDashboard() {
           {TABS.map(t => (
             <button key={t} onClick={() => setTab(t)}
               style={{ padding: '8px 16px', background: 'none', border: 'none', borderBottom: tab === t ? '2px solid #00E5A0' : '2px solid transparent', cursor: 'pointer', fontSize: 13, fontWeight: tab === t ? 600 : 400, color: tab === t ? 'var(--text)' : 'var(--muted)', textTransform: 'capitalize', marginBottom: -1 }}>
-              {t}{t === 'users' && pendingCount > 0 && <span style={{ marginLeft: 5, background: '#f59e0b', color: '#000', borderRadius: 999, fontSize: 10, padding: '1px 5px', fontWeight: 700 }}>{pendingCount}</span>}
+              {t}
             </button>
           ))}
         </div>
@@ -396,62 +394,95 @@ export function AdminDashboard() {
         )}
 
         {/* ── REVENUE ─── */}
-        {tab === 'revenue' && revenue && (
+        {tab === 'revenue' && revenue && (() => {
+          const momPct: number | null = revenue.mom_growth_pct ?? null;
+          const arpu = stats?.totals?.athletes > 0 ? Math.round(revenue.total_cents / stats.totals.athletes) : 0;
+          const maxMonthly = Math.max(...(revenue.monthly ?? []).map((m: any) => m.cents), 1);
+          return (
           <div>
-            {/* Summary cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14, marginBottom: 28 }}>
+            {/* Top KPI row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 14, marginBottom: 16 }}>
               {[
-                { label: 'Total Revenue', value: fmtMoney(revenue.total_cents), color: '#00E5A0' },
-                { label: 'Transactions', value: String(revenue.purchases.length), color: '#fff' },
-                { label: 'Avg. Sale', value: revenue.purchases.length ? fmtMoney(Math.round(revenue.total_cents / revenue.purchases.length)) : '—', color: '#fff' },
+                { label: 'All-Time Revenue', value: fmtMoney(revenue.total_cents), color: '#00E5A0', sub: `${revenue.purchases.length} transaction${revenue.purchases.length !== 1 ? 's' : ''}` },
+                { label: 'This Month', value: fmtMoney(revenue.current_month_cents ?? 0), color: '#00E5A0', sub: `Last month: ${fmtMoney(revenue.last_month_cents ?? 0)}` },
+                { label: 'MoM Growth', value: momPct === null ? '—' : `${momPct >= 0 ? '+' : ''}${momPct}%`, color: momPct === null ? 'var(--muted)' : momPct >= 0 ? '#00E5A0' : '#ef4444', sub: 'vs previous month' },
+                { label: 'Avg. Sale', value: revenue.purchases.length ? fmtMoney(Math.round(revenue.total_cents / revenue.purchases.length)) : '—', color: '#fff', sub: 'per transaction' },
+                { label: 'ARPU', value: arpu > 0 ? fmtMoney(arpu) : '—', color: '#60a5fa', sub: 'avg revenue per athlete' },
+                { label: 'Best Month', value: revenue.best_month?.cents > 0 ? fmtMoney(revenue.best_month.cents) : '—', color: '#fbbf24', sub: revenue.best_month?.month ?? '—' },
               ].map(c => (
                 <div key={c.label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '18px 16px' }}>
                   <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>{c.label}</p>
-                  <p style={{ fontSize: 26, fontWeight: 700, color: c.color, fontFamily: 'monospace' }}>{c.value}</p>
+                  <p style={{ fontSize: 24, fontWeight: 700, color: c.color, fontFamily: 'monospace', margin: 0 }}>{c.value}</p>
+                  {c.sub && <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>{c.sub}</p>}
                 </div>
               ))}
             </div>
 
-            {/* Monthly breakdown */}
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px', marginBottom: 20 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 16 }}>Monthly Revenue (last 12 months)</p>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', height: 80 }}>
+            {/* Monthly bar chart */}
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px', marginBottom: 16 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 16 }}>Monthly Revenue — Last 12 Months</p>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', height: 100 }}>
                 {(revenue.monthly ?? []).map((m: any) => {
-                  const max = Math.max(...(revenue.monthly ?? []).map((x: any) => x.cents), 1);
-                  const h = Math.max(4, Math.round((m.cents / max) * 72));
+                  const isCurrentMonth = m.month === new Date().toISOString().slice(0, 7);
+                  const h = Math.max(4, Math.round((m.cents / maxMonthly) * 88));
                   return (
                     <div key={m.month} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                      <span style={{ fontSize: 9, color: 'var(--muted)' }}>{m.cents > 0 ? fmtMoney(m.cents) : ''}</span>
-                      <div style={{ width: '100%', height: h, background: m.cents > 0 ? '#00E5A0' : 'var(--border)', borderRadius: 3 }} />
-                      <span style={{ fontSize: 9, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{m.month.slice(5)}</span>
+                      <span style={{ fontSize: 9, color: 'var(--muted)', textAlign: 'center' }}>{m.cents > 0 ? fmtMoney(m.cents) : ''}</span>
+                      <div style={{ width: '100%', height: h, background: isCurrentMonth ? '#00E5A0' : m.cents > 0 ? 'rgba(0,229,160,0.45)' : 'var(--border)', borderRadius: 3 }} />
+                      <span style={{ fontSize: 9, color: isCurrentMonth ? '#00E5A0' : 'var(--muted)', whiteSpace: 'nowrap', fontWeight: isCurrentMonth ? 700 : 400 }}>{m.month.slice(5)}</span>
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            {/* Per-coach breakdown */}
-            {(revenue.by_coach ?? []).length > 0 && (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, marginBottom: 20, overflow: 'hidden' }}>
-                <p style={{ fontSize: 13, fontWeight: 600, padding: '16px 18px', borderBottom: '1px solid var(--border)' }}>Revenue by Coach</p>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead><tr><Th>Coach</Th><Th>Sales</Th><Th>Revenue</Th></tr></thead>
-                  <tbody>
-                    {revenue.by_coach.map((c: any) => (
-                      <tr key={c.name}>
-                        <Td style={{ fontWeight: 500 }}>{c.name}</Td>
-                        <Td style={{ color: 'var(--muted)' }}>{c.count}</Td>
-                        <Td style={{ color: '#00E5A0', fontFamily: 'monospace' }}>{fmtMoney(c.cents)}</Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {/* Plans + Coaches side by side */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              {/* By plan */}
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+                <p style={{ fontSize: 13, fontWeight: 600, padding: '14px 18px', borderBottom: '1px solid var(--border)', margin: 0 }}>Revenue by Plan</p>
+                {(revenue.by_plan ?? []).length === 0
+                  ? <p style={{ padding: 20, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>No data</p>
+                  : <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr><Th>Plan</Th><Th>Sales</Th><Th>Avg</Th><Th>Total</Th></tr></thead>
+                      <tbody>
+                        {revenue.by_plan.map((p: any) => (
+                          <tr key={p.title}>
+                            <Td style={{ fontWeight: 500, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</Td>
+                            <Td style={{ color: 'var(--muted)' }}>{p.count}</Td>
+                            <Td style={{ color: 'var(--muted)', fontFamily: 'monospace' }}>{fmtMoney(p.avg_cents)}</Td>
+                            <Td style={{ color: '#00E5A0', fontFamily: 'monospace' }}>{fmtMoney(p.cents)}</Td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                }
               </div>
-            )}
 
-            {/* Transaction list */}
+              {/* By coach */}
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+                <p style={{ fontSize: 13, fontWeight: 600, padding: '14px 18px', borderBottom: '1px solid var(--border)', margin: 0 }}>Revenue by Coach</p>
+                {(revenue.by_coach ?? []).length === 0
+                  ? <p style={{ padding: 20, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>No data</p>
+                  : <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr><Th>Coach</Th><Th>Sales</Th><Th>Revenue</Th></tr></thead>
+                      <tbody>
+                        {revenue.by_coach.map((c: any) => (
+                          <tr key={c.name}>
+                            <Td style={{ fontWeight: 500 }}>{c.name}</Td>
+                            <Td style={{ color: 'var(--muted)' }}>{c.count}</Td>
+                            <Td style={{ color: '#00E5A0', fontFamily: 'monospace' }}>{fmtMoney(c.cents)}</Td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                }
+              </div>
+            </div>
+
+            {/* All transactions */}
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
                 <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>All Transactions</p>
                 <button onClick={exportCsv} style={{ fontSize: 12, padding: '5px 12px', background: 'rgba(0,229,160,0.1)', border: '1px solid rgba(0,229,160,0.3)', borderRadius: 7, color: '#00E5A0', cursor: 'pointer', fontWeight: 600 }}>Export CSV</button>
               </div>
@@ -471,7 +502,8 @@ export function AdminDashboard() {
               {revenue.purchases.length === 0 && <p style={{ padding: 24, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>No purchases yet</p>}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* ── BANS ─── */}
         {tab === 'bans' && <BansTab bans={bans} setBans={setBans} af={af} />}

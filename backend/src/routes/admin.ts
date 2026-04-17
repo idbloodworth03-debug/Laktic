@@ -229,7 +229,29 @@ router.get('/revenue', async (req: Request, res: Response) => {
   }
   const by_coach = Object.values(coachMap).sort((a, b) => b.cents - a.cents);
 
-  res.json({ purchases, total_cents: total, monthly, by_coach });
+  // Per-plan breakdown
+  const planMap: Record<string, { title: string; cents: number; count: number; avg_cents: number }> = {};
+  for (const p of purchases) {
+    const title = (p.plan as any)?.title ?? 'Unknown Plan';
+    if (!planMap[title]) planMap[title] = { title, cents: 0, count: 0, avg_cents: 0 };
+    planMap[title].cents += p.amount_paid_cents ?? 0;
+    planMap[title].count++;
+  }
+  for (const k of Object.keys(planMap)) {
+    planMap[k].avg_cents = Math.round(planMap[k].cents / planMap[k].count);
+  }
+  const by_plan = Object.values(planMap).sort((a, b) => b.cents - a.cents);
+
+  // Current month and last month
+  const nowMonth = new Date().toISOString().slice(0, 7);
+  const lastMonthDate = new Date(); lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
+  const lastMonth = lastMonthDate.toISOString().slice(0, 7);
+  const current_month_cents = monthly.find(m => m.month === nowMonth)?.cents ?? 0;
+  const last_month_cents = monthly.find(m => m.month === lastMonth)?.cents ?? 0;
+  const mom_growth_pct = last_month_cents === 0 ? null : Math.round(((current_month_cents - last_month_cents) / last_month_cents) * 100);
+  const best_month = monthly.reduce((best, m) => m.cents > best.cents ? m : best, { month: '', cents: 0 });
+
+  res.json({ purchases, total_cents: total, monthly, by_coach, by_plan, current_month_cents, last_month_cents, mom_growth_pct, best_month });
 });
 
 // ── Activity feed ─────────────────────────────────────────────────────────────
