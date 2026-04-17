@@ -37,6 +37,7 @@ function formatTime(seconds: number): string {
 function formatPace(distanceMeters: number, elapsedSeconds: number): string {
   if (distanceMeters < 10 || elapsedSeconds < 1) return '--:--';
   const paceSecPerMile = (elapsedSeconds / distanceMeters) * 1609.34;
+  if (!isFinite(paceSecPerMile)) return '--:--';
   const m = Math.floor(paceSecPerMile / 60);
   const s = Math.round(paceSecPerMile % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
@@ -138,8 +139,8 @@ export function RunTracker() {
         setCurrentPos([lat, lon]);
         setMapCenter([lat, lon]);
       },
-      () => setGpsError('Unable to access GPS. Please allow location access and try again.'),
-      { enableHighAccuracy: true, timeout: 10000 }
+      () => setGpsError('GPS signal not found. Make sure location access is allowed, then try again.'),
+      { enableHighAccuracy: true, timeout: 20000 }
     );
   }, []);
 
@@ -297,7 +298,7 @@ export function RunTracker() {
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [runState]);
 
-  const miles = parseFloat(formatMiles(distanceM));
+  const miles = distanceM / 1609.34;
   const pace = formatPace(distanceM, elapsed);
   const isTracking = runState === 'running' || runState === 'paused';
 
