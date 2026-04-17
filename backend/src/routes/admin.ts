@@ -20,6 +20,7 @@ router.get('/stats', async (req: Request, res: Response) => {
 
   const today = new Date().toISOString().slice(0, 10);
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+  const fourteenDaysAgo = new Date(Date.now() - 14 * 86400000).toISOString();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
 
   const [coaches, athletes, plans, purchases, certifications, bans, activeToday, pendingCoaches, newUsers, suspended] = await Promise.all([
@@ -35,9 +36,12 @@ router.get('/stats', async (req: Request, res: Response) => {
     supabase.from('athlete_profiles').select('id', { count: 'exact', head: true }).eq('suspended', true),
   ]);
 
-  const [newCoaches, newAthletes] = await Promise.all([
+  const [newCoaches, newAthletes, prevWeekAthletes, newCoaches7d, prevWeekCoaches] = await Promise.all([
     supabase.from('coach_profiles').select('id', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
     supabase.from('athlete_profiles').select('id', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
+    supabase.from('athlete_profiles').select('id', { count: 'exact', head: true }).gte('created_at', fourteenDaysAgo).lt('created_at', sevenDaysAgo),
+    supabase.from('coach_profiles').select('id', { count: 'exact', head: true }).gte('created_at', sevenDaysAgo),
+    supabase.from('coach_profiles').select('id', { count: 'exact', head: true }).gte('created_at', fourteenDaysAgo).lt('created_at', sevenDaysAgo),
   ]);
 
   res.json({
@@ -57,6 +61,12 @@ router.get('/stats', async (req: Request, res: Response) => {
     last_30_days: {
       new_coaches: newCoaches.count ?? 0,
       new_athletes: newAthletes.count ?? 0,
+    },
+    week_over_week: {
+      new_athletes_7d: newUsers.count ?? 0,
+      new_athletes_prev_7d: prevWeekAthletes.count ?? 0,
+      new_coaches_7d: newCoaches7d.count ?? 0,
+      new_coaches_prev_7d: prevWeekCoaches.count ?? 0,
     },
   });
 });
