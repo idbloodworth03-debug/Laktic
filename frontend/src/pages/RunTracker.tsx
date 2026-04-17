@@ -238,6 +238,11 @@ export function RunTracker() {
   }, [startWatchingGPS, startTimer, acquireWakeLock]);
 
   const handleStop = useCallback(() => {
+    // Flush any open pause so pause→stop without resume doesn't lose that time
+    if (pauseStartRef.current) {
+      pausedSecondsRef.current += Math.floor((Date.now() - pauseStartRef.current) / 1000);
+      pauseStartRef.current = null;
+    }
     stopWatchingGPS();
     stopTimer();
     releaseWakeLock();
@@ -295,7 +300,13 @@ export function RunTracker() {
 
       {/* Compact header — Back button only */}
       <div style={{ padding: '12px 20px 6px', flexShrink: 0 }}>
-        <button onClick={() => nav('/athlete/dashboard')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 14, cursor: 'pointer', padding: 0 }}>
+        <button
+          onClick={() => {
+            if ((runState === 'running' || runState === 'paused') && !window.confirm('Leave this page? Your run will be lost.')) return;
+            nav('/athlete/dashboard');
+          }}
+          style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 14, cursor: 'pointer', padding: 0 }}
+        >
           ← Back
         </button>
       </div>
