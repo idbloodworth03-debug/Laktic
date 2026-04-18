@@ -948,7 +948,7 @@ export function Community() {
   const { profile, clearAuth, role, logout } = useAuthStore();
   const nav = useNavigate();
   const isCoach = role === 'coach';
-  const [activeSection, setActiveSection] = useState<'feed' | 'friends' | 'people'>('feed');
+  const [activeSection, setActiveSection] = useState<'feed' | 'friends' | 'people'>('friends');
 
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [posts, setPosts]           = useState<any[]>([]);
@@ -1087,18 +1087,18 @@ export function Community() {
             <h1 className="font-bold text-2xl sm:text-3xl mb-3" style={{ color: 'var(--color-text-primary)' }}>Community</h1>
             {/* Section tabs */}
             <div className="flex gap-2">
-              {(['feed', 'friends', 'people'] as const).map(s => (
+              {(['friends', 'feed', 'people'] as const).map(s => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => { setActiveSection(s); setSelectedPost(null); }}
-                  className="px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 capitalize"
+                  className="px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150"
                   style={activeSection === s
                     ? { background: '#00E5A0', color: '#000', border: 'none', cursor: 'pointer' }
                     : { background: 'var(--color-bg-hover)', color: 'var(--color-text-secondary)', border: 'none', cursor: 'pointer' }
                   }
                 >
-                  {s === 'feed' ? 'Feed' : s === 'friends' ? "Friends' Runs" : 'People'}
+                  {s === 'friends' ? 'Friends' : s === 'feed' ? 'Community' : 'People'}
                 </button>
               ))}
             </div>
