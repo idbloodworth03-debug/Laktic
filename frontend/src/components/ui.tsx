@@ -659,7 +659,9 @@ function UsernameGate() {
 interface AppLayoutProps { role?: string; name?: string; onLogout?: () => void; children: React.ReactNode; }
 function FloatingProfileButton() {
   const { profile, role } = useAuthStore();
+  const current = typeof window !== 'undefined' ? window.location.pathname : '';
   if (!role) return null;
+  if (current.includes('/settings') || current.includes('/athlete/profile')) return null;
   const href = role === 'athlete' ? '/athlete/profile' : '/coach/settings';
   const avatarUrl = (profile as any)?.avatar_url ?? null;
   const name = (profile as any)?.name ?? 'U';

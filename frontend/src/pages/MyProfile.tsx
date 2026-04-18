@@ -28,7 +28,7 @@ export function MyProfile() {
 
   const [name, setName]       = useState(profile?.name ?? '');
   const [username, setUsername] = useState(profile?.username ?? '');
-  const [bio, setBio]         = useState(profile?.bio ?? '');
+  const [bio, setBio]         = useState(profile?.running_style ?? '');
   const [saving, setSaving]   = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [saveErr, setSaveErr] = useState('');
@@ -68,9 +68,9 @@ export function MyProfile() {
     try {
       const updated = await apiFetch('/api/athlete/profile', {
         method: 'PATCH',
-        body: JSON.stringify({ name: name.trim(), username: uClean || undefined, bio: bio.trim() || null }),
+        body: JSON.stringify({ name: name.trim(), username: uClean || undefined, running_style: bio.trim() || null }),
       });
-      setAuth(session, role as 'athlete', { ...profile, name: name.trim(), username: uClean, bio: bio.trim(), ...updated });
+      setAuth(session, role as 'athlete', { ...profile, name: name.trim(), username: uClean, running_style: bio.trim(), ...updated });
       setSaveMsg('Saved!');
       setTimeout(() => setSaveMsg(''), 3000);
     } catch (e: any) {
