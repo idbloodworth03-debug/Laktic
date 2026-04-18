@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, FileText, MessageSquare, TrendingUp, User,
   ChevronLeft, ChevronRight, Settings, LogOut, Activity,
   Calendar, ShoppingBag, Award, BarChart2, BookOpen, Shield, RefreshCw,
-  Menu, X, Utensils, Globe, Store, Sun, Moon, Home,
+  Menu, X, Utensils, Globe, Store, Sun, Moon, Home, Footprints,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
@@ -345,18 +345,19 @@ type NavItem = { label: string; href: string; icon: React.ElementType };
 
 // Primary: shown in mobile bottom bar + top of sidebar
 const ATHLETE_PRIMARY: NavItem[] = [
-  { label: 'Home',  href: '/athlete/dashboard', icon: Home },
-  { label: 'Pace',       href: '/athlete/chat',       icon: MessageSquare },
-  { label: 'My Plan',    href: '/athlete/plan',       icon: FileText },
-  { label: 'Progress',   href: '/athlete/progress',   icon: TrendingUp },
-  { label: 'Community',  href: '/community',          icon: Globe },
+  { label: 'Home',      href: '/athlete/dashboard', icon: Home         },
+  { label: 'Pace',      href: '/athlete/chat',       icon: MessageSquare },
+  { label: 'My Plan',   href: '/athlete/plan',       icon: FileText     },
+  { label: 'Progress',  href: '/athlete/progress',   icon: TrendingUp   },
+  { label: 'Runs',      href: '/athlete/runs',       icon: Footprints   },
 ];
 
 // More: shown below a divider in sidebar + in mobile "More" drawer
 const ATHLETE_MORE: NavItem[] = [
-  { label: 'Activities', href: '/athlete/activities', icon: Activity },
-  { label: 'Calendar',   href: '/athlete/calendar',   icon: Calendar },
-  { label: 'Analytics',  href: '/athlete/analytics',  icon: BarChart2 },
+  { label: 'Community', href: '/community',          icon: Globe        },
+  { label: 'Activities', href: '/athlete/activities', icon: Activity    },
+  { label: 'Calendar',   href: '/athlete/calendar',   icon: Calendar    },
+  { label: 'Analytics',  href: '/athlete/analytics',  icon: BarChart2   },
   { label: 'Races',      href: '/athlete/races',      icon: Award },
   { label: 'Settings',   href: '/athlete/settings',   icon: Settings },
 ];

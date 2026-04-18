@@ -224,6 +224,24 @@ router.get(
   }
 );
 
+// GET /api/athlete/activities/:id — Single activity
+router.get(
+  '/activities/:id',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { id } = req.params;
+    const { data, error } = await supabase
+      .from('athlete_activities')
+      .select('*')
+      .eq('id', id)
+      .eq('athlete_id', req.athlete.id)
+      .single();
+    if (error || !data) return res.status(404).json({ error: 'Activity not found' });
+    res.json({ activity: data });
+  })
+);
+
 // GET /api/athlete/activities — List activities (paginated, date range filter)
 router.get(
   '/activities',
