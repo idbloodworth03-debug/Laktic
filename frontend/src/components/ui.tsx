@@ -556,6 +556,103 @@ function BottomTabBar({ role, onLogout }: BottomTabBarProps) {
   );
 }
 
+// ── UsernameGate ───────────────────────────────────────────────────────────────
+import { apiFetch } from '../lib/api';
+
+function UsernameGate() {
+  const { role, profile, setAuth, session } = useAuthStore();
+  const needsUsername = role === 'athlete' && profile && !profile.username;
+  const [value, setValue] = useState('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  if (!needsUsername) return null;
+
+  const save = async () => {
+    const clean = value.trim().toLowerCase();
+    if (!clean) { setError('Username is required.'); return; }
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(clean)) {
+      setError('3–20 chars: letters, numbers, underscores only.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const updated = await apiFetch('/api/athlete/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ username: clean }),
+      });
+      setAuth(session, 'athlete', { ...profile, username: clean, ...updated });
+    } catch (e: any) {
+      setError(e.message?.includes('unique') ? 'That username is already taken.' : (e.message || 'Failed to save.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '24px',
+    }}>
+      <div style={{
+        background: '#111', border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: 20, padding: '36px 32px', maxWidth: 420, width: '100%',
+        fontFamily: "'DM Sans', sans-serif",
+      }}>
+        <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(0,229,160,0.1)', border: '1px solid rgba(0,229,160,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+          <span style={{ fontSize: 22 }}>@</span>
+        </div>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#fff', marginBottom: 8 }}>Choose your username</h2>
+        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 24, lineHeight: 1.6 }}>
+          Your username lets friends find and follow you. You can't skip this step.
+        </p>
+        {error && (
+          <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, marginBottom: 16, fontSize: 13, color: '#f87171' }}>
+            {error}
+          </div>
+        )}
+        <div style={{ position: 'relative', marginBottom: 8 }}>
+          <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.35)', fontSize: 15, pointerEvents: 'none' }}>@</span>
+          <input
+            type="text"
+            autoFocus
+            value={value}
+            onChange={e => { setValue(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20)); setError(''); }}
+            onKeyDown={e => { if (e.key === 'Enter') save(); }}
+            placeholder="yourhandle"
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              padding: '13px 14px 13px 30px',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 10, color: '#fff', fontSize: 15, outline: 'none',
+            }}
+          />
+        </div>
+        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginBottom: 24 }}>
+          3–20 characters · letters, numbers, underscores
+        </p>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving || !value.trim()}
+          style={{
+            width: '100%', padding: '14px', borderRadius: 10,
+            background: saving || !value.trim() ? 'rgba(0,229,160,0.4)' : '#00E5A0',
+            color: '#000', fontSize: 15, fontWeight: 700, border: 'none',
+            cursor: saving || !value.trim() ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {saving ? 'Saving…' : 'Set Username'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── AppLayout ──────────────────────────────────────────────────────────────────
 // Use this for all authenticated pages. Sticky sidebar + flex layout.
 interface AppLayoutProps { role?: string; name?: string; onLogout?: () => void; children: React.ReactNode; }
@@ -563,6 +660,7 @@ export function AppLayout({ role, name, onLogout, children }: AppLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   return (
     <div className="app-layout-wrap bg-[var(--color-bg-primary)]">
+      <UsernameGate />
       <div className={`app-sidebar-sticky ${collapsed ? 'collapsed' : ''}`}>
         <SidebarContent role={role} name={name} onLogout={onLogout} collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} />
       </div>
