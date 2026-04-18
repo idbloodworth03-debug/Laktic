@@ -991,12 +991,187 @@ function AthleteRow({ athlete, onToggleFollow }: { athlete: any; onToggleFollow:
   );
 }
 
+// ── Suggested / Contacts tab ──────────────────────────────────────────────────
+function SuggestedTab() {
+  type Step = 'prompt' | 'loading' | 'results' | 'no-api';
+  const [step, setStep] = useState<Step>(() =>
+    typeof navigator !== 'undefined' && 'contacts' in navigator ? 'prompt' : 'no-api'
+  );
+  const [matches, setMatches]         = useState<any[]>([]);
+  const [nonMatches, setNonMatches]   = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [err, setErr]                 = useState('');
+
+  useEffect(() => {
+    if (step === 'no-api') {
+      apiFetch('/api/social/suggestions').then(setSuggestions).catch(() => {});
+    }
+  }, [step]);
+
+  const requestContacts = async () => {
+    setStep('loading');
+    setErr('');
+    try {
+      const raw = await (navigator as any).contacts.select(['name', 'email', 'tel'], { multiple: true });
+      const formatted = (raw ?? []).map((c: any) => ({
+        name:  Array.isArray(c.name)  ? c.name[0]  : c.name,
+        email: Array.isArray(c.email) ? c.email[0] : c.email,
+        tel:   Array.isArray(c.tel)   ? c.tel[0]   : c.tel,
+      }));
+      const res = await apiFetch('/api/social/contacts-match', {
+        method: 'POST',
+        body: JSON.stringify({ contacts: formatted }),
+      });
+      setMatches(res.matches ?? []);
+      setNonMatches(res.nonMatches ?? []);
+      setStep('results');
+    } catch (e: any) {
+      const msg = e?.message ?? '';
+      if (msg.toLowerCase().includes('not allowed') || msg.toLowerCase().includes('denied') || e?.name === 'SecurityError') {
+        setErr('Contacts access was denied. You can allow it in your browser settings.');
+        setStep('prompt');
+      } else {
+        setStep('no-api');
+        apiFetch('/api/social/suggestions').then(setSuggestions).catch(() => {});
+      }
+    }
+  };
+
+  const toggleFollow = async (athleteId: string) => {
+    const res = await apiFetch(`/api/social/follow/${athleteId}`, { method: 'POST' });
+    const update = (prev: any[]) => prev.map(a => a.id === athleteId ? { ...a, is_following: res.following } : a);
+    setMatches(update);
+    setSuggestions(update);
+  };
+
+  const inviteContact = (c: { name: string; email: string; phone?: string; tel?: string }) => {
+    const phone = c.phone ?? c.tel;
+    const msg = encodeURIComponent(
+      `Hey ${c.name || 'there'}! I'm using Laktic to track my training. Come join me — it's a free AI coaching app for runners. Check it out at ${window.location.origin}`
+    );
+    if (c.email) {
+      window.open(`mailto:${c.email}?subject=${encodeURIComponent('Join me on Laktic!')}&body=${msg}`, '_blank');
+    } else if (phone) {
+      window.open(`sms:${phone}?body=${msg}`, '_blank');
+    }
+  };
+
+  if (step === 'no-api') {
+    return (
+      <div style={{ maxWidth: 680 }}>
+        <div style={{ background: 'rgba(0,229,160,0.06)', border: '1px solid rgba(0,229,160,0.18)', borderRadius: 14, padding: '14px 16px', marginBottom: 20 }}>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', margin: 0, lineHeight: 1.6 }}>
+            Contact suggestions aren't available on this device or browser. Here are some active athletes you can follow.
+          </p>
+        </div>
+        {suggestions.length === 0 ? (
+          <p style={{ fontSize: 14, color: 'var(--color-text-tertiary)', textAlign: 'center', padding: '32px 0' }}>No suggestions yet — check back soon.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {suggestions.map(a => (
+              <AthleteRow key={a.id} athlete={a} onToggleFollow={toggleFollow} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (step === 'prompt') {
+    return (
+      <div style={{ maxWidth: 520, margin: '0 auto', padding: '12px 0' }}>
+        <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 20, padding: '36px 28px', textAlign: 'center' }}>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>👥</div>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 10 }}>Find friends on Laktic</h2>
+          <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', lineHeight: 1.65, maxWidth: 320, margin: '0 auto 24px' }}>
+            Allow access to your contacts and we'll show you which of your friends are already using Laktic. Anyone who isn't yet can get an invite.
+          </p>
+          {err && <p style={{ fontSize: 12, color: '#f87171', marginBottom: 16 }}>{err}</p>}
+          <button
+            type="button"
+            onClick={requestContacts}
+            style={{ padding: '12px 32px', borderRadius: 12, fontWeight: 700, fontSize: 14, background: '#00E5A0', color: '#000', border: 'none', cursor: 'pointer' }}
+          >
+            Allow Contacts Access
+          </button>
+          <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 14, opacity: 0.6 }}>
+            Your contacts are never stored or shared.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'loading') {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <Spinner size="lg" />
+        <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>Searching your contacts…</p>
+      </div>
+    );
+  }
+
+  // results
+  const hasAny = matches.length > 0 || nonMatches.length > 0;
+  return (
+    <div style={{ maxWidth: 680 }}>
+      {!hasAny ? (
+        <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 16, padding: '48px 32px', textAlign: 'center' }}>
+          <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 8 }}>None of your contacts are on Laktic yet</p>
+          <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', lineHeight: 1.65 }}>Be the first in your circle — share the app with your running friends!</p>
+        </div>
+      ) : (
+        <>
+          {matches.length > 0 && (
+            <section style={{ marginBottom: 28 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>
+                On Laktic ({matches.length})
+              </p>
+              <div className="flex flex-col gap-2">
+                {matches.map(a => <AthleteRow key={a.id} athlete={a} onToggleFollow={toggleFollow} />)}
+              </div>
+            </section>
+          )}
+
+          {nonMatches.length > 0 && (
+            <section>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>
+                Invite to Laktic ({nonMatches.length})
+              </p>
+              <div className="flex flex-col gap-2">
+                {nonMatches.map((c, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '12px 14px' }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'var(--color-text-secondary)', flexShrink: 0 }}>
+                      {(c.name?.[0] ?? '?').toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name || c.email}</div>
+                      {c.email && <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email}</div>}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => inviteContact(c)}
+                      style={{ padding: '6px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600, border: '1px solid rgba(0,229,160,0.4)', background: 'transparent', color: '#00E5A0', cursor: 'pointer', flexShrink: 0 }}
+                    >
+                      Invite
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Main Community Page ───────────────────────────────────────────────────────
 export function Community() {
   const { profile, clearAuth, role, logout } = useAuthStore();
   const nav = useNavigate();
   const isCoach = role === 'coach';
-  const [activeSection, setActiveSection] = useState<'feed' | 'friends' | 'friends-runs' | 'people'>('friends');
+  const [activeSection, setActiveSection] = useState<'feed' | 'friends' | 'friends-runs' | 'people' | 'suggested'>('friends');
 
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [posts, setPosts]           = useState<any[]>([]);
@@ -1134,19 +1309,19 @@ export function Community() {
           <div className="mb-4">
             <h1 className="font-bold text-2xl sm:text-3xl mb-3" style={{ color: 'var(--color-text-primary)' }}>Community</h1>
             {/* Section tabs */}
-            <div className="flex gap-2">
-              {(['friends', 'friends-runs', 'feed', 'people'] as const).map(s => (
+            <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {(['friends', 'friends-runs', 'feed', 'people', 'suggested'] as const).map(s => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => { setActiveSection(s); setSelectedPost(null); }}
-                  className="px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150"
+                  className="px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 shrink-0"
                   style={activeSection === s
                     ? { background: '#00E5A0', color: '#000', border: 'none', cursor: 'pointer' }
                     : { background: 'var(--color-bg-hover)', color: 'var(--color-text-secondary)', border: 'none', cursor: 'pointer' }
                   }
                 >
-                  {s === 'friends' ? 'Friends' : s === 'friends-runs' ? "Friends' Runs" : s === 'feed' ? 'Community' : 'People'}
+                  {s === 'friends' ? 'Friends' : s === 'friends-runs' ? "Friends' Runs" : s === 'feed' ? 'Community' : s === 'people' ? 'People' : 'Suggested'}
                 </button>
               ))}
             </div>
@@ -1163,6 +1338,8 @@ export function Community() {
                 <FriendsRunsTab nav={nav} />
               ) : activeSection === 'people' ? (
                 <PeopleTab />
+              ) : activeSection === 'suggested' ? (
+                <SuggestedTab />
               ) : selectedPost ? (
                 <PostDetailView
                   post={selectedPost}
