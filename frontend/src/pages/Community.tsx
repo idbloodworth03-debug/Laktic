@@ -699,11 +699,304 @@ function PostDetailView({
   );
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmtMiles(m: number) { return (m / 1609.34).toFixed(2); }
+function fmtPace(speedMs: number) {
+  if (!speedMs || !isFinite(speedMs)) return '--:--';
+  const pps = 1609.34 / speedMs;
+  const m = Math.floor(pps / 60);
+  const s = Math.round(pps % 60);
+  return `${m}:${s.toString().padStart(2, '0')} /mi`;
+}
+function fmtTime(s: number) {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+  return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+}
+
+// ── Run card shown in Friends feed ────────────────────────────────────────────
+function FriendRunCard({ activity, nav }: { activity: any; nav: ReturnType<typeof useNavigate> }) {
+  const athlete = activity.athlete;
+  const miles = fmtMiles(activity.distance_meters ?? 0);
+  const pace = fmtPace(activity.average_speed ?? 0);
+  const elapsed = fmtTime(activity.moving_time_seconds ?? 0);
+  const dateStr = new Date(activity.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+  return (
+    <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 14, padding: '14px 16px' }}>
+      {/* Athlete header */}
+      <div className="flex items-center gap-3 mb-3">
+        <UserAvatar name={athlete?.name ?? '?'} url={athlete?.avatar_url} size="sm" />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold truncate" style={{ color: 'var(--color-text-primary)' }}>{athlete?.name}</div>
+          {athlete?.username && (
+            <div className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>@{athlete.username}</div>
+          )}
+        </div>
+        <div className="text-xs shrink-0" style={{ color: 'var(--color-text-tertiary)' }}>{dateStr}</div>
+      </div>
+      {/* Run name */}
+      <div className="text-sm font-medium mb-2 truncate" style={{ color: 'var(--color-text-primary)' }}>{activity.name || 'Run'}</div>
+      {/* Stats row */}
+      <div className="flex gap-4 text-xs font-mono">
+        <div>
+          <span style={{ color: 'var(--color-text-tertiary)' }}>dist </span>
+          <span style={{ color: '#00E5A0', fontWeight: 700 }}>{miles} mi</span>
+        </div>
+        <div>
+          <span style={{ color: 'var(--color-text-tertiary)' }}>pace </span>
+          <span style={{ color: 'var(--color-text-primary)' }}>{pace}</span>
+        </div>
+        <div>
+          <span style={{ color: 'var(--color-text-tertiary)' }}>time </span>
+          <span style={{ color: 'var(--color-text-primary)' }}>{elapsed}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Friends tab — who you follow ─────────────────────────────────────────────
+function FriendsTab({ nav: _nav }: { nav: ReturnType<typeof useNavigate> }) {
+  const [following, setFollowing] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch('/api/social/following')
+      .then(setFollowing)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const unfollow = async (athleteId: string) => {
+    await apiFetch(`/api/social/follow/${athleteId}`, { method: 'POST' });
+    setFollowing(prev => prev.filter(f => f.id !== athleteId));
+  };
+
+  if (loading) return <div className="flex justify-center py-16"><Spinner size="lg" /></div>;
+
+  if (following.length === 0) {
+    return (
+      <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 16, padding: '48px 32px', textAlign: 'center', maxWidth: 680 }}>
+        <p className="font-bold text-lg mb-2" style={{ color: 'var(--color-text-primary)' }}>No friends yet</p>
+        <p className="text-sm" style={{ color: 'var(--color-text-tertiary)', lineHeight: 1.6, maxWidth: 300, margin: '0 auto' }}>
+          Search for athletes by username in the <strong>People</strong> tab to start following them.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2" style={{ maxWidth: 680 }}>
+      <p className="text-xs mb-1" style={{ color: 'var(--color-text-tertiary)' }}>Following {following.length} {following.length === 1 ? 'athlete' : 'athletes'}</p>
+      {following.map(athlete => (
+        <AthleteRow key={athlete.id} athlete={{ ...athlete, is_following: true }} onToggleFollow={unfollow} />
+      ))}
+    </div>
+  );
+}
+
+// ── Friends' Runs tab ─────────────────────────────────────────────────────────
+function FriendsRunsTab({ nav }: { nav: ReturnType<typeof useNavigate> }) {
+  const [activities, setActivities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch('/api/social/friends-feed')
+      .then(setActivities)
+      .catch(() => setActivities([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-16"><Spinner size="lg" /></div>;
+
+  if (activities.length === 0) {
+    return (
+      <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 16, padding: '48px 32px', textAlign: 'center' }}>
+        <p className="font-bold text-lg mb-2" style={{ color: 'var(--color-text-primary)' }}>No runs from friends yet</p>
+        <p className="text-sm" style={{ color: 'var(--color-text-tertiary)', lineHeight: 1.6, maxWidth: 300, margin: '0 auto 20px' }}>
+          Find athletes to follow in the <strong>People</strong> tab and their runs will appear here.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3" style={{ maxWidth: 680 }}>
+      {activities.map(act => (
+        <FriendRunCard key={act.id} activity={act} nav={nav} />
+      ))}
+    </div>
+  );
+}
+
+// ── People / search tab ───────────────────────────────────────────────────────
+function PeopleTab() {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<any[]>([]);
+  const [following, setFollowing] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [loadingFollowing, setLoadingFollowing] = useState(true);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    apiFetch('/api/social/following')
+      .then(setFollowing)
+      .catch(() => {})
+      .finally(() => setLoadingFollowing(false));
+  }, []);
+
+  const search = (q: string) => {
+    setQuery(q);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!q.trim()) { setResults([]); return; }
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const data = await apiFetch(`/api/social/search?q=${encodeURIComponent(q.trim())}`);
+        setResults(data);
+      } catch {}
+      finally { setSearching(false); }
+    }, 350);
+  };
+
+  const toggleFollow = async (athleteId: string) => {
+    const res = await apiFetch(`/api/social/follow/${athleteId}`, { method: 'POST' });
+    if (res.following) {
+      setFollowing(prev => {
+        const found = results.find(r => r.id === athleteId);
+        if (found && !prev.find(f => f.id === athleteId)) return [found, ...prev];
+        return prev;
+      });
+    } else {
+      setFollowing(prev => prev.filter(f => f.id !== athleteId));
+    }
+    setResults(prev => prev.map(r => r.id === athleteId ? { ...r, is_following: res.following } : r));
+  };
+
+  const unfollowFromList = async (athleteId: string) => {
+    await apiFetch(`/api/social/follow/${athleteId}`, { method: 'POST' });
+    setFollowing(prev => prev.filter(f => f.id !== athleteId));
+  };
+
+  const showResults = query.trim().length > 0;
+
+  return (
+    <div style={{ maxWidth: 680 }}>
+      {/* Search bar */}
+      <div style={{ position: 'relative', marginBottom: 20 }}>
+        <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 16, color: 'rgba(255,255,255,0.3)', pointerEvents: 'none' }}>@</span>
+        <input
+          type="text"
+          value={query}
+          onChange={e => search(e.target.value)}
+          placeholder="Search by username..."
+          style={{
+            width: '100%', boxSizing: 'border-box',
+            padding: '12px 14px 12px 32px',
+            background: 'var(--color-bg-secondary)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 12, color: 'var(--color-text-primary)',
+            fontSize: 14, outline: 'none',
+          }}
+        />
+        {searching && (
+          <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)' }}>
+            <Spinner size="sm" />
+          </span>
+        )}
+      </div>
+
+      {/* Search results */}
+      {showResults && (
+        <div className="flex flex-col gap-2 mb-6">
+          {results.length === 0 && !searching ? (
+            <p className="text-sm text-center py-4" style={{ color: 'var(--color-text-tertiary)' }}>No athletes found for "@{query}"</p>
+          ) : results.map(athlete => (
+            <AthleteRow key={athlete.id} athlete={athlete} onToggleFollow={toggleFollow} />
+          ))}
+        </div>
+      )}
+
+      {/* Following list */}
+      {!showResults && (
+        <>
+          <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--color-text-tertiary)' }}>
+            Following ({following.length})
+          </div>
+          {loadingFollowing ? (
+            <div className="flex justify-center py-8"><Spinner /></div>
+          ) : following.length === 0 ? (
+            <p className="text-sm" style={{ color: 'var(--color-text-tertiary)' }}>You're not following anyone yet. Search for athletes above.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {following.map(athlete => (
+                <AthleteRow key={athlete.id} athlete={{ ...athlete, is_following: true }} onToggleFollow={unfollowFromList} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function AthleteRow({ athlete, onToggleFollow }: { athlete: any; onToggleFollow: (id: string) => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const toggle = async () => {
+    setBusy(true);
+    setErr('');
+    try {
+      await onToggleFollow(athlete.id);
+    } catch (e: any) {
+      setErr(e?.message || 'Could not update follow. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ background: 'var(--color-bg-secondary)', border: `1px solid ${err ? 'rgba(248,113,113,0.35)' : 'var(--color-border)'}`, borderRadius: 12, padding: '12px 14px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <UserAvatar name={athlete.name ?? '?'} url={athlete.avatar_url} size="sm" />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold truncate" style={{ color: 'var(--color-text-primary)' }}>{athlete.name}</div>
+          {athlete.username && (
+            <div className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>@{athlete.username}</div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={toggle}
+          disabled={busy}
+          style={{
+            padding: '6px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+            cursor: busy ? 'not-allowed' : 'pointer', border: 'none',
+            background: athlete.is_following ? 'rgba(255,255,255,0.08)' : '#00E5A0',
+            color: athlete.is_following ? 'var(--color-text-secondary)' : '#000',
+            transition: 'opacity 0.15s',
+            opacity: busy ? 0.6 : 1,
+          }}
+        >
+          {busy ? '…' : athlete.is_following ? 'Following' : 'Follow'}
+        </button>
+      </div>
+      {err && (
+        <p style={{ fontSize: 11, color: '#f87171', marginTop: 6, marginBottom: 0 }}>{err}</p>
+      )}
+    </div>
+  );
+}
+
 // ── Main Community Page ───────────────────────────────────────────────────────
 export function Community() {
   const { profile, clearAuth, role, logout } = useAuthStore();
   const nav = useNavigate();
   const isCoach = role === 'coach';
+  const [activeSection, setActiveSection] = useState<'feed' | 'friends' | 'friends-runs' | 'people'>('friends');
 
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [posts, setPosts]           = useState<any[]>([]);
@@ -839,15 +1132,38 @@ export function Community() {
         <div className="w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
           {/* Header */}
           <div className="mb-4">
-            <h1 className="font-bold text-2xl sm:text-3xl" style={{ color: 'var(--color-text-primary)' }}>Community</h1>
+            <h1 className="font-bold text-2xl sm:text-3xl mb-3" style={{ color: 'var(--color-text-primary)' }}>Community</h1>
+            {/* Section tabs */}
+            <div className="flex gap-2">
+              {(['friends', 'friends-runs', 'feed', 'people'] as const).map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => { setActiveSection(s); setSelectedPost(null); }}
+                  className="px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150"
+                  style={activeSection === s
+                    ? { background: '#00E5A0', color: '#000', border: 'none', cursor: 'pointer' }
+                    : { background: 'var(--color-bg-hover)', color: 'var(--color-text-secondary)', border: 'none', cursor: 'pointer' }
+                  }
+                >
+                  {s === 'friends' ? 'Friends' : s === 'friends-runs' ? "Friends' Runs" : s === 'feed' ? 'Community' : 'People'}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Two-column layout */}
           <div className="flex flex-col lg:flex-row gap-8 items-start">
 
-            {/* LEFT — Feed or Detail View */}
+            {/* LEFT — section content */}
             <div className="flex-1 min-w-0">
-              {selectedPost ? (
+              {activeSection === 'friends' ? (
+                <FriendsTab nav={nav} />
+              ) : activeSection === 'friends-runs' ? (
+                <FriendsRunsTab nav={nav} />
+              ) : activeSection === 'people' ? (
+                <PeopleTab />
+              ) : selectedPost ? (
                 <PostDetailView
                   post={selectedPost}
                   currentProfileId={profile?.id}
