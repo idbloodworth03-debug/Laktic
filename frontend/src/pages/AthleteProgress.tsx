@@ -195,6 +195,7 @@ export function AthleteProgress() {
           <div className="flex gap-2">
             <Link to="/athlete/plan"><Button variant="ghost" size="sm">Plan</Button></Link>
             <Link to="/athlete/races"><Button variant="ghost" size="sm">Races</Button></Link>
+            <Link to="/athlete/runs"><Button variant="ghost" size="sm">Runs</Button></Link>
             <Button variant="secondary" size="sm" onClick={loadData} loading={loading}>Refresh</Button>
             <Button variant="secondary" size="sm" onClick={downloadReport}>Download Report</Button>
           </div>
