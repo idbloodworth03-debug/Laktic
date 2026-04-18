@@ -171,8 +171,64 @@ export function AthleteProgress() {
     }
   };
 
+  type Period = 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'this-year';
+  const [period, setPeriod] = useState<Period>('this-week');
+
   const currentWeek = summaries.length > 0 ? summaries[summaries.length - 1] : null;
   const prs = races.filter(r => r.is_pr);
+
+  const periodLabels: Record<Period, string> = {
+    'this-week': 'This Week',
+    'last-week': 'Last Week',
+    'this-month': 'This Month',
+    'last-month': 'Last Month',
+    'this-year': 'This Year',
+  };
+
+  function getPeriodStats(p: Period): WeeklySummary | null {
+    if (summaries.length === 0) return null;
+    const sorted = [...summaries].sort((a, b) => b.week_start.localeCompare(a.week_start));
+    if (p === 'this-week') return sorted[0] ?? null;
+    if (p === 'last-week') return sorted[1] ?? null;
+    const now = new Date();
+    let filtered: WeeklySummary[];
+    if (p === 'this-month') {
+      filtered = sorted.filter(s => {
+        const d = new Date(s.week_start + 'T00:00:00Z');
+        return d.getUTCFullYear() === now.getUTCFullYear() && d.getUTCMonth() === now.getUTCMonth();
+      });
+    } else if (p === 'last-month') {
+      const lm = new Date(now.getUTCFullYear(), now.getUTCMonth() - 1, 1);
+      filtered = sorted.filter(s => {
+        const d = new Date(s.week_start + 'T00:00:00Z');
+        return d.getUTCFullYear() === lm.getUTCFullYear() && d.getUTCMonth() === lm.getUTCMonth();
+      });
+    } else {
+      filtered = sorted.filter(s => new Date(s.week_start + 'T00:00:00Z').getUTCFullYear() === now.getUTCFullYear());
+    }
+    if (filtered.length === 0) return null;
+    const totalMiles = filtered.reduce((a, s) => a + s.total_distance_miles, 0);
+    const totalRuns = filtered.reduce((a, s) => a + s.run_count, 0);
+    const longestRun = Math.max(...filtered.map(s => s.longest_run_miles));
+    const paceWeeks = filtered.filter(s => parsePace(s.avg_pace_per_mile) > 0);
+    const avgPaceSec = paceWeeks.length > 0
+      ? paceWeeks.reduce((a, s) => a + parsePace(s.avg_pace_per_mile), 0) / paceWeeks.length
+      : 0;
+    const avgPaceStr = avgPaceSec > 0 ? formatPace(avgPaceSec) : '--';
+    return {
+      week_start: filtered[filtered.length - 1].week_start,
+      total_distance_miles: Math.round(totalMiles * 10) / 10,
+      total_duration_minutes: filtered.reduce((a, s) => a + s.total_duration_minutes, 0),
+      run_count: totalRuns,
+      avg_pace_per_mile: avgPaceStr,
+      avg_heartrate: null,
+      longest_run_miles: Math.round(longestRun * 10) / 10,
+      intensity_score: null,
+      compliance_pct: null,
+    };
+  }
+
+  const periodStats = getPeriodStats(period);
 
   const volumeData = summaries.map(s => ({
     label: weekLabel(s.week_start),
@@ -190,14 +246,8 @@ export function AthleteProgress() {
         <div className="flex flex-col items-center mb-6 fade-up gap-4">
           <h1 className="font-display text-2xl font-bold text-[var(--color-text-primary)]">Training Progress</h1>
           <div className="flex gap-2 flex-wrap justify-center">
-            <Link to="/athlete/plan">
-              <button style={{ background: '#00E5A0', color: '#000', border: 'none', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Plan</button>
-            </Link>
-            <Link to="/athlete/races">
-              <button style={{ background: '#00E5A0', color: '#000', border: 'none', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Races</button>
-            </Link>
             <Link to="/athlete/runs">
-              <button style={{ background: '#00E5A0', color: '#000', border: 'none', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Runs</button>
+              <button style={{ background: '#111', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Runs</button>
             </Link>
             <Button variant="secondary" size="sm" onClick={downloadReport}>Download Report</Button>
           </div>
@@ -229,28 +279,49 @@ export function AthleteProgress() {
               </div>
             )}
 
-            {currentWeek && (
-              <Card title="This Week">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <StatBox label="Distance" value={`${currentWeek.total_distance_miles.toFixed(1)} mi`} accent />
-                  <StatBox label="Runs" value={String(currentWeek.run_count)} />
-                  <StatBox label="Avg Pace" value={currentWeek.avg_pace_per_mile || '--'} />
-                  <StatBox label="Longest Run" value={currentWeek.longest_run_miles > 0 ? `${currentWeek.longest_run_miles} mi` : '--'} />
-                </div>
-                {currentWeek.compliance_pct !== null && (
-                  <div className="mt-4 flex items-center gap-3">
-                    <div className="text-xs text-[var(--color-text-tertiary)] uppercase tracking-wide shrink-0">Plan Compliance</div>
-                    <div className="flex-1 h-1.5 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          currentWeek.compliance_pct >= 80 ? 'bg-gradient-to-r from-[#00b87a] to-[#00E5A0]'
-                          : currentWeek.compliance_pct >= 50 ? 'bg-gradient-to-r from-amber-700 to-amber-500'
-                          : 'bg-gradient-to-r from-red-800 to-red-500'}`}
-                        style={{ width: `${currentWeek.compliance_pct}%` }}
-                      />
+            {(currentWeek || summaries.length > 0) && (
+              <Card
+                title={periodLabels[period]}
+                action={
+                  <select
+                    value={period}
+                    onChange={e => setPeriod(e.target.value as Period)}
+                    style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--color-text-primary)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '4px 8px', fontSize: 12, cursor: 'pointer' }}
+                  >
+                    <option value="this-week">This Week</option>
+                    <option value="last-week">Last Week</option>
+                    <option value="this-month">This Month</option>
+                    <option value="last-month">Last Month</option>
+                    <option value="this-year">This Year</option>
+                  </select>
+                }
+              >
+                {periodStats ? (
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <StatBox label="Distance" value={`${periodStats.total_distance_miles.toFixed(1)} mi`} accent />
+                      <StatBox label="Runs" value={String(periodStats.run_count)} />
+                      <StatBox label="Avg Pace" value={periodStats.avg_pace_per_mile || '--'} />
+                      <StatBox label="Longest Run" value={periodStats.longest_run_miles > 0 ? `${periodStats.longest_run_miles} mi` : '--'} />
                     </div>
-                    <span className="text-xs font-semibold text-[var(--color-text-primary)] shrink-0">{currentWeek.compliance_pct}%</span>
-                  </div>
+                    {periodStats.compliance_pct !== null && (
+                      <div className="mt-4 flex items-center gap-3">
+                        <div className="text-xs text-[var(--color-text-tertiary)] uppercase tracking-wide shrink-0">Plan Compliance</div>
+                        <div className="flex-1 h-1.5 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              periodStats.compliance_pct >= 80 ? 'bg-gradient-to-r from-[#00b87a] to-[#00E5A0]'
+                              : periodStats.compliance_pct >= 50 ? 'bg-gradient-to-r from-amber-700 to-amber-500'
+                              : 'bg-gradient-to-r from-red-800 to-red-500'}`}
+                            style={{ width: `${periodStats.compliance_pct}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-semibold text-[var(--color-text-primary)] shrink-0">{periodStats.compliance_pct}%</span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-xs text-[var(--color-text-tertiary)] py-2">No data for this period.</div>
                 )}
               </Card>
             )}
