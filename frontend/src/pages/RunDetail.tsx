@@ -146,7 +146,6 @@ export function RunDetail() {
               {activity.total_elevation_gain > 0 && (
                 <DStat label="Elevation Gain" value={`${Math.round(activity.total_elevation_gain * 3.28084)} ft`} />
               )}
-              <DStat label="Source" value={activity.source} />
             </div>
           </>
         ) : null}
