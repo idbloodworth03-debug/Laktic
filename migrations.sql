@@ -2189,3 +2189,30 @@ ALTER TABLE public.chat_messages
 -- ════════════════════════════════════════════════════════════════════
 -- END Migration 035
 -- ════════════════════════════════════════════════════════════════════
+
+
+-- ════════════════════════════════════════════════════════════════════
+-- Migration 036 — Athlete follows (social graph)
+-- ════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS public.athlete_follows (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  follower_id  UUID NOT NULL REFERENCES public.athlete_profiles(id) ON DELETE CASCADE,
+  following_id UUID NOT NULL REFERENCES public.athlete_profiles(id) ON DELETE CASCADE,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (follower_id, following_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_athlete_follows_follower  ON public.athlete_follows(follower_id);
+CREATE INDEX IF NOT EXISTS idx_athlete_follows_following ON public.athlete_follows(following_id);
+
+ALTER TABLE public.athlete_follows ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "follows_select" ON public.athlete_follows FOR SELECT USING (true);
+CREATE POLICY "follows_insert" ON public.athlete_follows FOR INSERT
+  WITH CHECK (follower_id IN (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid()));
+CREATE POLICY "follows_delete" ON public.athlete_follows FOR DELETE
+  USING (follower_id IN (SELECT id FROM public.athlete_profiles WHERE user_id = auth.uid()));
+
+-- ════════════════════════════════════════════════════════════════════
+-- END Migration 036
+-- ════════════════════════════════════════════════════════════════════

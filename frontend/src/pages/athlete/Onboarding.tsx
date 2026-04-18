@@ -43,6 +43,7 @@ interface OnboardingData {
   seasonEndDate: string;
   biggestChallenges: string[]; // multi-select
   planType: string;
+  username: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -63,6 +64,7 @@ const EMPTY: OnboardingData = {
   seasonStartDate: '', seasonEndDate: '',
   biggestChallenges: [],
   planType: '',
+  username: '',
   email: '', password: '', confirmPassword: '',
 };
 
@@ -879,6 +881,9 @@ export function Onboarding() {
   // ── Account creation ──────────────────────────────────────────────────────
   const createAccount = async () => {
     setError('');
+    const usernameVal = data.username.trim().toLowerCase();
+    if (!usernameVal) { setError('Username is required.'); return; }
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(usernameVal)) { setError('Username must be 3–20 characters: letters, numbers, underscores only.'); return; }
     if (!data.email.trim()) { setError('Email is required.'); return; }
     if (data.password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     if (data.password !== data.confirmPassword) { setError('Passwords do not match.'); return; }
@@ -934,6 +939,7 @@ export function Onboarding() {
       if (data.biggestChallenges.length) patch.biggest_challenges = data.biggestChallenges;
       if (data.seasonStartDate) patch.season_start_date = data.seasonStartDate;
       if (data.seasonEndDate) patch.season_end_date = data.seasonEndDate;
+      patch.username = usernameVal;
 
       // Save plan type for MeetPaceSplash to pass to plan generation
       if (data.planType) sessionStorage.setItem('laktic_plan_type', data.planType);
@@ -1509,7 +1515,7 @@ export function Onboarding() {
       // STEP 16 — Account Creation
       case 16: return (
         <Shell step={step} onBack={back} onNext={createAccount} nextLabel="Create Account"
-          nextDisabled={!data.email || !data.password || data.password !== data.confirmPassword}
+          nextDisabled={!data.username || !data.email || !data.password || data.password !== data.confirmPassword}
           nextLoading={loading}
         >
           <h2 style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 700, letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: '12px' }}>Almost done.</h2>
@@ -1522,6 +1528,20 @@ export function Onboarding() {
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '16px' }}>
+            <div>
+              <FieldLabel>Username</FieldLabel>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.35)', fontSize: '15px', pointerEvents: 'none' }}>@</span>
+                <StyledInput
+                  type="text"
+                  placeholder="yourhandle"
+                  value={data.username}
+                  onChange={e => set({ username: e.target.value.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20) })}
+                  style={{ paddingLeft: '28px' }}
+                />
+              </div>
+              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '5px' }}>3–20 chars · letters, numbers, underscores · used so friends can find you</p>
+            </div>
             <div>
               <FieldLabel>Email</FieldLabel>
               <StyledInput type="email" placeholder="you@example.com" value={data.email} onChange={e => set({ email: e.target.value })} />

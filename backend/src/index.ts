@@ -43,6 +43,7 @@ import trainingAnalyticsRouter from './routes/trainingAnalytics';
 import certificationRouter from './routes/certification';
 import recruitingRouter from './routes/recruiting';
 import adminRouter from './routes/admin';
+import socialRouter from './routes/social';
 import cron from 'node-cron';
 import { runRaceCountdownCron } from './services/notificationService';
 import { runGameplanCron } from './routes/gameplans';
@@ -116,6 +117,7 @@ app.use('/api/training-analytics', trainingAnalyticsRouter);
 app.use('/api/certification', certificationRouter);
 app.use('/api/recruiting', recruitingRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/social', socialRouter);
 
 app.use('/api', gdprRouter);
 

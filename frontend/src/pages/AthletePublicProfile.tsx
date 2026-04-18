@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { Badge, Spinner } from '../components/ui';
 import { UserAvatar } from '../components/UserAvatar';
+import { useAuthStore } from '../store/authStore';
 
 type PublicAthlete = {
   id: string;
@@ -58,9 +59,13 @@ function MiniStatCard({ label, value }: { label: string; value: string | number 
 
 export function AthletePublicProfile() {
   const { username } = useParams<{ username: string }>();
+  const { role } = useAuthStore();
+  const isLoggedIn = !!role;
   const [athlete, setAthlete] = useState<PublicAthlete | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [following, setFollowing] = useState<boolean | null>(null);
+  const [followBusy, setFollowBusy] = useState(false);
 
   useEffect(() => {
     if (!username) return;
@@ -69,6 +74,23 @@ export function AthletePublicProfile() {
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, [username]);
+
+  useEffect(() => {
+    if (!athlete || !isLoggedIn) return;
+    apiFetch(`/api/social/is-following/${athlete.id}`)
+      .then(r => setFollowing(r.following))
+      .catch(() => {});
+  }, [athlete?.id, isLoggedIn]);
+
+  const toggleFollow = async () => {
+    if (!athlete || followBusy) return;
+    setFollowBusy(true);
+    try {
+      const res = await apiFetch(`/api/social/follow/${athlete.id}`, { method: 'POST' });
+      setFollowing(res.following);
+    } catch {}
+    finally { setFollowBusy(false); }
+  };
 
   useEffect(() => {
     if (!athlete) return;
@@ -119,7 +141,25 @@ export function AthletePublicProfile() {
           <div className="flex items-start gap-4 mb-4">
             <UserAvatar url={athlete.avatar_url} name={athlete.name} size="lg" />
             <div className="flex-1 min-w-0">
-              <h1 className="text-3xl font-bold">{athlete.name}</h1>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-3xl font-bold">{athlete.name}</h1>
+                {isLoggedIn && following !== null && (
+                  <button
+                    type="button"
+                    onClick={toggleFollow}
+                    disabled={followBusy}
+                    style={{
+                      padding: '6px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                      cursor: followBusy ? 'not-allowed' : 'pointer', border: 'none',
+                      background: following ? 'rgba(255,255,255,0.08)' : '#00E5A0',
+                      color: following ? 'var(--color-text-secondary)' : '#000',
+                      opacity: followBusy ? 0.6 : 1, transition: 'opacity 0.15s',
+                    }}
+                  >
+                    {following ? 'Following' : 'Follow'}
+                  </button>
+                )}
+              </div>
               <p className="text-[var(--color-text-tertiary)] text-sm mt-0.5">@{athlete.username}</p>
               {athlete.primary_events?.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
