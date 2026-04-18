@@ -187,16 +187,18 @@ export function AthleteProgress() {
   return (
     <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
       <div className="max-w-5xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-6 fade-up">
-          <div>
-            <h1 className="font-display text-2xl font-bold text-[var(--color-text-primary)]">Training Progress</h1>
-            <p className="text-sm text-[var(--color-text-tertiary)] mt-1">Weekly volume, pace trends, and race results</p>
-          </div>
-          <div className="flex gap-2">
-            <Link to="/athlete/plan"><Button variant="ghost" size="sm">Plan</Button></Link>
-            <Link to="/athlete/races"><Button variant="ghost" size="sm">Races</Button></Link>
-            <Link to="/athlete/runs"><Button variant="ghost" size="sm">Runs</Button></Link>
-            <Button variant="secondary" size="sm" onClick={loadData} loading={loading}>Refresh</Button>
+        <div className="flex flex-col items-center mb-6 fade-up gap-4">
+          <h1 className="font-display text-2xl font-bold text-[var(--color-text-primary)]">Training Progress</h1>
+          <div className="flex gap-2 flex-wrap justify-center">
+            <Link to="/athlete/plan">
+              <button style={{ background: '#00E5A0', color: '#000', border: 'none', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Plan</button>
+            </Link>
+            <Link to="/athlete/races">
+              <button style={{ background: '#00E5A0', color: '#000', border: 'none', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Races</button>
+            </Link>
+            <Link to="/athlete/runs">
+              <button style={{ background: '#00E5A0', color: '#000', border: 'none', borderRadius: 10, padding: '8px 20px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Runs</button>
+            </Link>
             <Button variant="secondary" size="sm" onClick={downloadReport}>Download Report</Button>
           </div>
         </div>
