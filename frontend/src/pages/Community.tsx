@@ -758,8 +758,50 @@ function FriendRunCard({ activity, nav }: { activity: any; nav: ReturnType<typeo
   );
 }
 
-// ── Friends tab ───────────────────────────────────────────────────────────────
-function FriendsTab({ nav }: { nav: ReturnType<typeof useNavigate> }) {
+// ── Friends tab — who you follow ─────────────────────────────────────────────
+function FriendsTab({ nav: _nav }: { nav: ReturnType<typeof useNavigate> }) {
+  const [following, setFollowing] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch('/api/social/following')
+      .then(setFollowing)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const unfollow = async (athleteId: string) => {
+    try {
+      await apiFetch(`/api/social/follow/${athleteId}`, { method: 'POST' });
+      setFollowing(prev => prev.filter(f => f.id !== athleteId));
+    } catch {}
+  };
+
+  if (loading) return <div className="flex justify-center py-16"><Spinner size="lg" /></div>;
+
+  if (following.length === 0) {
+    return (
+      <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 16, padding: '48px 32px', textAlign: 'center', maxWidth: 680 }}>
+        <p className="font-bold text-lg mb-2" style={{ color: 'var(--color-text-primary)' }}>No friends yet</p>
+        <p className="text-sm" style={{ color: 'var(--color-text-tertiary)', lineHeight: 1.6, maxWidth: 300, margin: '0 auto' }}>
+          Search for athletes by username in the <strong>People</strong> tab to start following them.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2" style={{ maxWidth: 680 }}>
+      <p className="text-xs mb-1" style={{ color: 'var(--color-text-tertiary)' }}>Following {following.length} {following.length === 1 ? 'athlete' : 'athletes'}</p>
+      {following.map(athlete => (
+        <AthleteRow key={athlete.id} athlete={{ ...athlete, is_following: true }} onToggleFollow={unfollow} />
+      ))}
+    </div>
+  );
+}
+
+// ── Friends' Runs tab ─────────────────────────────────────────────────────────
+function FriendsRunsTab({ nav }: { nav: ReturnType<typeof useNavigate> }) {
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -948,7 +990,7 @@ export function Community() {
   const { profile, clearAuth, role, logout } = useAuthStore();
   const nav = useNavigate();
   const isCoach = role === 'coach';
-  const [activeSection, setActiveSection] = useState<'feed' | 'friends' | 'people'>('friends');
+  const [activeSection, setActiveSection] = useState<'feed' | 'friends' | 'friends-runs' | 'people'>('friends');
 
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [posts, setPosts]           = useState<any[]>([]);
@@ -1087,7 +1129,7 @@ export function Community() {
             <h1 className="font-bold text-2xl sm:text-3xl mb-3" style={{ color: 'var(--color-text-primary)' }}>Community</h1>
             {/* Section tabs */}
             <div className="flex gap-2">
-              {(['friends', 'feed', 'people'] as const).map(s => (
+              {(['friends', 'friends-runs', 'feed', 'people'] as const).map(s => (
                 <button
                   key={s}
                   type="button"
@@ -1098,7 +1140,7 @@ export function Community() {
                     : { background: 'var(--color-bg-hover)', color: 'var(--color-text-secondary)', border: 'none', cursor: 'pointer' }
                   }
                 >
-                  {s === 'friends' ? 'Friends' : s === 'feed' ? 'Community' : 'People'}
+                  {s === 'friends' ? 'Friends' : s === 'friends-runs' ? "Friends' Runs" : s === 'feed' ? 'Community' : 'People'}
                 </button>
               ))}
             </div>
@@ -1111,6 +1153,8 @@ export function Community() {
             <div className="flex-1 min-w-0">
               {activeSection === 'friends' ? (
                 <FriendsTab nav={nav} />
+              ) : activeSection === 'friends-runs' ? (
+                <FriendsRunsTab nav={nav} />
               ) : activeSection === 'people' ? (
                 <PeopleTab />
               ) : selectedPost ? (
