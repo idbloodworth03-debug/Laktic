@@ -63,6 +63,7 @@ import { Activities } from './pages/Activities';
 import { RunTracker } from './pages/RunTracker';
 import { RunsTab } from './pages/RunsTab';
 import { RunDetail } from './pages/RunDetail';
+import { MyProfile } from './pages/MyProfile';
 import { AthleteProgress } from './pages/AthleteProgress';
 import { CoachTeamProgress } from './pages/CoachTeamProgress';
 import { CoachSettings } from './pages/CoachSettings';
@@ -163,6 +164,7 @@ export default function App() {
         <Route path="/athlete/track" element={<RequireAthlete><RunTracker /></RequireAthlete>} />
         <Route path="/athlete/runs" element={<RequireAthlete><RunsTab /></RequireAthlete>} />
         <Route path="/athlete/runs/:id" element={<RequireAthlete><RunDetail /></RequireAthlete>} />
+        <Route path="/athlete/profile" element={<RequireAthlete><MyProfile /></RequireAthlete>} />
         <Route path="/athlete/progress" element={<RequireAthlete><AthleteProgress /></RequireAthlete>} />
         <Route path="/athlete/calendar" element={<RequireAthlete><AthleteCalendar /></RequireAthlete>} />
         <Route path="/athlete/nutrition" element={<RequireAthlete><NutritionPage /></RequireAthlete>} />

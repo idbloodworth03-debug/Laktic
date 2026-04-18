@@ -66,6 +66,7 @@ export const athleteProfileUpdateSchema = z.object({
   pr_mile: z.string().max(20).nullish(),
   pr_5k: z.string().max(20).nullish(),
   username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/).optional(),
+  bio: z.string().max(500).nullish(),
   public_sections: z.object({
     races: z.boolean(),
     stats: z.boolean(),

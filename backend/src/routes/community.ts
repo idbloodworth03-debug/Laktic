@@ -359,4 +359,39 @@ router.get(
   })
 );
 
+// ── GET /api/community/my-posts — posts by the current user ─────────────────
+router.get(
+  '/my-posts',
+  auth,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { data: ap } = await supabase
+      .from('athlete_profiles').select('id').eq('user_id', req.user!.id).maybeSingle();
+    const { data: cp } = !ap
+      ? await supabase.from('coach_profiles').select('id').eq('user_id', req.user!.id).maybeSingle()
+      : { data: null };
+
+    if (!ap && !cp) return res.json([]);
+
+    let query = supabase
+      .from('team_feed')
+      .select('id, body, created_at, scope, topic, image_url, feed_kudos(id), post_comments(id)')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (ap) query = query.eq('athlete_id', ap.id);
+    else     query = query.eq('coach_id', cp!.id);
+
+    const { data, error } = await query;
+    if (error) return res.status(400).json({ error: error.message });
+
+    return res.json((data ?? []).map((p: any) => ({
+      ...p,
+      kudo_count:    Array.isArray(p.feed_kudos)    ? p.feed_kudos.length    : 0,
+      comment_count: Array.isArray(p.post_comments) ? p.post_comments.length : 0,
+      feed_kudos:    undefined,
+      post_comments: undefined,
+    })));
+  })
+);
+
 export default router;

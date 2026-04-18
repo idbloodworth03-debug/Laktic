@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import {
   LayoutDashboard, Users, FileText, MessageSquare, TrendingUp, User,
@@ -656,11 +657,51 @@ function UsernameGate() {
 // ── AppLayout ──────────────────────────────────────────────────────────────────
 // Use this for all authenticated pages. Sticky sidebar + flex layout.
 interface AppLayoutProps { role?: string; name?: string; onLogout?: () => void; children: React.ReactNode; }
+function FloatingProfileButton() {
+  const { profile, role } = useAuthStore();
+  if (!role) return null;
+  const href = role === 'athlete' ? '/athlete/profile' : '/coach/settings';
+  const avatarUrl = (profile as any)?.avatar_url ?? null;
+  const name = (profile as any)?.name ?? 'U';
+  const initial = name.charAt(0).toUpperCase();
+  const [imgErr, setImgErr] = React.useState(false);
+
+  return (
+    <Link
+      to={href}
+      title="My Profile"
+      style={{
+        position: 'fixed', top: 14, right: 16, zIndex: 300,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: 36, height: 36, borderRadius: '50%',
+        border: '2px solid rgba(0,229,160,0.4)',
+        background: '#111',
+        textDecoration: 'none',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+        overflow: 'hidden',
+        flexShrink: 0,
+      }}
+    >
+      {avatarUrl && !imgErr ? (
+        <img
+          src={avatarUrl}
+          alt={name}
+          onError={() => setImgErr(true)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      ) : (
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#00E5A0' }}>{initial}</span>
+      )}
+    </Link>
+  );
+}
+
 export function AppLayout({ role, name, onLogout, children }: AppLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   return (
     <div className="app-layout-wrap bg-[var(--color-bg-primary)]">
       <UsernameGate />
+      <FloatingProfileButton />
       <div className={`app-sidebar-sticky ${collapsed ? 'collapsed' : ''}`}>
         <SidebarContent role={role} name={name} onLogout={onLogout} collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} />
       </div>
