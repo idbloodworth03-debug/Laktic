@@ -99,28 +99,39 @@ router.get('/following', auth, requireAthlete, asyncHandler(async (req: AuthRequ
   return res.json(list);
 }));
 
-// ── GET /api/social/friends-feed — recent runs from people I follow ───────────
+// ── GET /api/social/friends-feed — recent runs from mutual friends only ────────
 router.get('/friends-feed', auth, requireAthlete, asyncHandler(async (req: AuthRequest, res) => {
   const callerId = await getAthleteId(req.user!.id);
   if (!callerId) return res.json([]);
 
-  // Who do I follow?
-  const { data: follows } = await supabase
+  // People I follow
+  const { data: iFollow } = await supabase
     .from('athlete_follows')
     .select('following_id')
     .eq('follower_id', callerId);
 
-  const ids = (follows ?? []).map((f: any) => f.following_id);
-  if (ids.length === 0) return res.json([]);
+  const iFollowSet = new Set((iFollow ?? []).map((f: any) => f.following_id));
+  if (iFollowSet.size === 0) return res.json([]);
+
+  // People who follow me back — mutual friends only
+  const { data: followMe } = await supabase
+    .from('athlete_follows')
+    .select('follower_id')
+    .eq('following_id', callerId)
+    .in('follower_id', [...iFollowSet]);
+
+  const friendIds = (followMe ?? []).map((f: any) => f.follower_id);
+  if (friendIds.length === 0) return res.json([]);
 
   const { data, error } = await supabase
     .from('athlete_activities')
     .select(`
       id, name, start_date, distance_meters, moving_time_seconds,
-      average_speed, activity_type, athlete_id,
+      elapsed_time_seconds, average_speed, average_heartrate, max_heartrate,
+      total_elevation_gain, activity_type, source, athlete_id, raw_data,
       athlete_profiles!athlete_id(id, name, username, avatar_url)
     `)
-    .in('athlete_id', ids)
+    .in('athlete_id', friendIds)
     .ilike('activity_type', '%run%')
     .order('start_date', { ascending: false })
     .limit(40);
