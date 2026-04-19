@@ -45,9 +45,9 @@ export function BrowseBots() {
     <div className="min-h-screen">
       <Navbar role="athlete" name={profile?.name} onLogout={logout} />
       <div className="max-w-6xl mx-auto px-6 py-10">
-        <div className="flex items-end justify-between mb-6 fade-up">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 fade-up gap-3">
           <div>
-            <h1 className="font-display text-3xl font-bold">Find Your Coach Bot</h1>
+            <h1 className="font-display text-2xl sm:text-3xl font-bold">Find Your Coach Bot</h1>
             <p className="text-sm text-[var(--muted)] mt-1">Subscribe to get a personalized season plan built on your coach's methods.</p>
           </div>
           <div className="flex gap-3">

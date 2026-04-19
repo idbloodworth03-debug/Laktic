@@ -222,8 +222,8 @@ export function KnowledgeDocuments() {
         </div>
       )}
       <div className="max-w-4xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="font-display text-3xl font-bold">Training Knowledge</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-3">
+          <h1 className="font-display text-2xl sm:text-3xl font-bold">Training Knowledge</h1>
           <Link to="/coach/dashboard"><Button variant="ghost" size="sm">← Dashboard</Button></Link>
         </div>
         <p className="text-sm text-[var(--muted)] mb-8">

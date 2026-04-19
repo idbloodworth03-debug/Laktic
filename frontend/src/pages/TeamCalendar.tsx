@@ -291,12 +291,12 @@ export function TeamCalendar() {
       <Navbar role="coach" name={profile?.name} onLogout={logout} />
       <div className="max-w-5xl mx-auto px-6 py-10">
 
-        <div className="flex items-center justify-between mb-6 fade-up">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 fade-up gap-3">
           <div>
-            <h1 className="font-display text-3xl font-bold text-[var(--text)]">Team Calendar</h1>
+            <h1 className="font-display text-2xl sm:text-3xl font-bold text-[var(--text)]">Team Calendar</h1>
             <p className="text-sm text-[var(--muted)] mt-1">Schedule practices, races, and team events.</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button variant="secondary" size="sm" onClick={loadReport} loading={reportLoading}>Attendance Report</Button>
             <Link to="/coach/dashboard"><Button variant="ghost" size="sm">Dashboard</Button></Link>
             <Button size="sm" onClick={openCreate}>+ Add Event</Button>

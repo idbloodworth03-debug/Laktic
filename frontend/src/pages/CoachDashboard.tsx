@@ -144,33 +144,30 @@ export function CoachDashboard() {
       })()}
 
       <div className="max-w-5xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-8 fade-up">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 fade-up gap-3">
           <div>
-            <h1 className="font-display text-3xl font-bold">Coach Dashboard</h1>
+            <h1 className="font-display text-2xl sm:text-3xl font-bold">Coach Dashboard</h1>
             <p className="text-sm text-[var(--muted)] mt-1">
               {bot?.is_published
                 ? 'Your bot is live. Athletes subscribe and train with your methods autonomously.'
                 : 'Set up your bot to start coaching athletes.'}
             </p>
           </div>
-          {!bot && (
-            <Link to="/coach/bot/setup">
-              <Button variant="primary">Create Your Bot</Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {!bot && (
+              <Link to="/coach/bot/setup">
+                <Button variant="primary" size="sm">Create Your Bot</Button>
+              </Link>
+            )}
+            {bot && (
+              <Link to="/coach/bot/edit">
+                <Button variant="secondary" size="sm">Edit Bot</Button>
+              </Link>
+            )}
+            <Link to="/coach/settings">
+              <Button variant="ghost" size="sm">Settings</Button>
             </Link>
-          )}
-          {bot && !bot.is_published && (
-            <Link to="/coach/bot/edit">
-              <Button variant="secondary">Edit Bot</Button>
-            </Link>
-          )}
-          {bot?.is_published && (
-            <Link to="/coach/bot/edit">
-              <Button variant="secondary">Edit Bot</Button>
-            </Link>
-          )}
-          <Link to="/coach/settings">
-            <Button variant="ghost" size="sm">Settings</Button>
-          </Link>
+          </div>
         </div>
 
         {!bot && (

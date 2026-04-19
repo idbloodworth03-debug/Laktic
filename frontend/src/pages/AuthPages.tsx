@@ -46,7 +46,7 @@ export function Landing() {
       </div>
 
       {/* Nav bar */}
-      <div className="relative z-10 flex items-center justify-between px-8 pt-6">
+      <div className="relative z-10 flex items-center justify-between px-4 sm:px-8 pt-6">
         <span className="font-display font-black text-xl text-brand-400 tracking-tighter">LAKTIC</span>
         <div className="flex items-center gap-4 text-sm">
           <Link to="/login/coach" className="text-[var(--muted)] hover:text-[var(--text)] transition-colors">Coach login</Link>
@@ -63,7 +63,7 @@ export function Landing() {
           Now in early access
         </div>
 
-        <h1 className="font-hero font-extrabold text-7xl sm:text-8xl tracking-tight leading-[1.05] mb-5 max-w-2xl">
+        <h1 className="font-hero font-extrabold text-4xl sm:text-6xl lg:text-7xl tracking-tight leading-[1.05] mb-5 max-w-2xl">
           <span className="text-gradient">From your coach's</span>
           <br />
           <span className="text-[var(--text)]">philosophy to</span>

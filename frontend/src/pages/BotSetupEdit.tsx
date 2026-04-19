@@ -104,9 +104,9 @@ export function BotSetupEdit() {
     <div className="min-h-screen">
       <Navbar role="coach" name={profile?.name} onLogout={logout} />
       <div className="max-w-4xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-3">
           <div>
-            <h1 className="font-display text-3xl font-bold">{isEdit ? 'Edit Your Bot' : 'Create Your Bot'}</h1>
+            <h1 className="font-display text-2xl sm:text-3xl font-bold">{isEdit ? 'Edit Your Bot' : 'Create Your Bot'}</h1>
             <p className="text-sm text-[var(--muted)] mt-1">Build your coaching identity. The AI coaches every athlete in your voice.</p>
           </div>
           <Link to="/coach/dashboard"><Button variant="ghost" size="sm">← Dashboard</Button></Link>

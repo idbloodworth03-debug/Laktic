@@ -300,9 +300,9 @@ export function SeasonPlan() {
 
       <div className="max-w-5xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="flex items-start justify-between mb-4 fade-up gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 fade-up gap-3">
           <div>
-            <h1 className="font-display text-3xl font-bold text-[var(--text)]">Season Plan</h1>
+            <h1 className="font-display text-2xl sm:text-3xl font-bold text-[var(--text)]">Season Plan</h1>
             <p className="text-sm text-[var(--muted)] mt-0.5">
               {season.coach_bots?.name} · {plan.length} weeks
               {!season.ai_used && <span className="ml-2 text-amber-400 text-xs font-medium">Template fallback</span>}
