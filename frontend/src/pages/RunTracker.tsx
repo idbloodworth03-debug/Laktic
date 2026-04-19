@@ -59,16 +59,29 @@ function MapFollow({ pos }: { pos: [number, number] }) {
   return null;
 }
 
-// Jumps to actual GPS location once on first lock
+// Jumps to actual GPS location once on first lock — keeps current zoom
 function SetViewOnGPS({ pos }: { pos: [number, number] }) {
   const map = useMap();
   const done = useRef(false);
   useEffect(() => {
     if (!done.current) {
       done.current = true;
-      map.setView(pos, 20);
+      map.setView(pos, 16);
     }
   }, [pos, map]);
+  return null;
+}
+
+// Zooms in to street level once when run is started
+function ZoomOnStart({ triggered }: { triggered: boolean }) {
+  const map = useMap();
+  const did = useRef(false);
+  useEffect(() => {
+    if (triggered && !did.current) {
+      did.current = true;
+      map.flyTo(map.getCenter(), 19, { duration: 0.8 });
+    }
+  }, [triggered, map]);
   return null;
 }
 
@@ -350,6 +363,7 @@ export function RunTracker() {
           )}
           {currentPos && <PositionDot pos={currentPos} />}
           {currentPos && <SetViewOnGPS pos={currentPos} />}
+          <ZoomOnStart triggered={isTracking} />
           {isTracking && currentPos && <MapFollow pos={currentPos} />}
         </MapContainer>
 
