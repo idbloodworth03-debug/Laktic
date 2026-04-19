@@ -99,13 +99,10 @@ function PasswordGate({ onUnlock }: { onUnlock: (key: string) => void }) {
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 function fmtRelative(iso: string | null | undefined): string {
   if (!iso) return 'Never';
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
+  const date = new Date(iso);
+  const now = new Date();
+  if (date.toDateString() === now.toDateString()) return 'Today';
+  const days = Math.floor((Date.now() - date.getTime()) / 86400000);
   if (days < 30) return `${days}d ago`;
   return fmtDate(iso);
 }
