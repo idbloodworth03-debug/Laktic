@@ -725,7 +725,10 @@ function FriendRunCard({ activity, nav }: { activity: any; nav: ReturnType<typeo
   const dateStr = new Date(activity.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
   return (
-    <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 14, padding: '14px 16px' }}>
+    <div
+      onClick={() => nav(`/athlete/runs/${activity.id}`, { state: { activity } })}
+      style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 14, padding: '14px 16px', cursor: 'pointer' }}
+    >
       {/* Athlete header */}
       <div className="flex items-center gap-3 mb-3">
         <UserAvatar name={athlete?.name ?? '?'} url={athlete?.avatar_url} size="sm" />
