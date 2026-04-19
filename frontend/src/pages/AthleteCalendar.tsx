@@ -96,6 +96,8 @@ function MonthCalView({ events, planWorkouts = [] }: { events: TeamEvent[]; plan
         <span className="font-display font-semibold text-sm text-[var(--text)]">{monthLabel}</span>
         <button onClick={next} className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors text-lg">›</button>
       </div>
+      <div className="overflow-x-auto">
+      <div className="min-w-[420px]">
       <div className="grid grid-cols-7 text-center mb-1">
         {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
           <div key={d} className="text-[10px] text-[var(--muted)] uppercase tracking-wide py-1">{d}</div>
@@ -144,6 +146,8 @@ function MonthCalView({ events, planWorkouts = [] }: { events: TeamEvent[]; plan
             </div>
           );
         })}
+      </div>
+      </div>
       </div>
     </div>
   );
@@ -282,9 +286,9 @@ export function AthleteCalendar() {
     <div className="min-h-screen bg-[var(--color-bg-primary)]">
       <div className="max-w-3xl mx-auto px-6 py-10">
 
-        <div className="flex items-center justify-between mb-6 fade-up">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 fade-up gap-3">
           <div>
-            <h1 className="font-display text-3xl font-bold text-[var(--text)]">Team Calendar</h1>
+            <h1 className="font-display text-2xl sm:text-3xl font-bold text-[var(--text)]">Team Calendar</h1>
             <p className="text-sm text-[var(--muted)] mt-1">Your team's schedule — practices, races, and events.</p>
           </div>
           <div className="flex gap-2">

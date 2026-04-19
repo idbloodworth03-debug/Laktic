@@ -28,7 +28,7 @@ export function Button({ variant = 'primary', loading, size = 'md', children, di
   ].join(' ');
   const sizes = { sm: 'px-3 py-1.5 text-xs', md: 'px-4 py-2 text-sm', lg: 'px-5 py-2.5 text-sm', xl: 'px-6 py-3 text-base' };
   const variants = {
-    primary:   'bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-black focus-visible:ring-[var(--color-accent)]/40',
+    primary:   'bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] hover:-translate-y-px hover:shadow-glow text-black focus-visible:ring-[var(--color-accent)]/40',
     secondary: 'bg-transparent border border-[var(--color-border-light)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] focus-visible:ring-[var(--color-border-light)]',
     ghost:     'bg-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] focus-visible:ring-[var(--color-border)]',
     danger:    'bg-[var(--color-danger)] hover:brightness-110 text-white focus-visible:ring-[var(--color-danger)]/40',
@@ -70,7 +70,10 @@ export function Textarea({ label, error, className = '', ...rest }: TextareaProp
 interface CardProps { title?: string; children: React.ReactNode; className?: string; action?: React.ReactNode; }
 export function Card({ title, children, className = '', action }: CardProps) {
   return (
-    <div className={`bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-5 shadow-card transition-all duration-150 hover:border-[var(--color-border-light)] ${className}`}>
+    <div
+      className={`bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-5 shadow-card transition-all duration-200 hover:border-[var(--color-border-light)] hover:-translate-y-px ${className}`}
+      style={{ backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}
+    >
       {(title || action) && (
         <div className="flex items-center justify-between mb-4">
           {title && <p className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">{title}</p>}
@@ -86,7 +89,10 @@ export function Card({ title, children, className = '', action }: CardProps) {
 interface StatCardProps { label: string; value: string | number; sub?: string; accent?: boolean; }
 export function StatCard({ label, value, sub, accent }: StatCardProps) {
   return (
-    <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-5 shadow-card">
+    <div
+      className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-5 shadow-card"
+      style={{ backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}
+    >
       <p className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-2">{label}</p>
       <p className={`font-mono text-3xl font-medium leading-none ${accent ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-primary)]'}`}>{value}</p>
       {sub && <p className="text-xs text-[var(--color-text-tertiary)] mt-2">{sub}</p>}

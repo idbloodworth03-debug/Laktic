@@ -146,7 +146,7 @@ export function Activities() {
                       <Badge label={a.source} color="gray" />
                     </div>
 
-                    <div className="grid grid-cols-4 gap-3 mt-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
                       <StatCell label="Distance" value={formatDistance(a.distance_meters)} />
                       <StatCell label="Pace" value={formatPace(a.average_speed)} />
                       <StatCell label="Duration" value={formatDuration(a.moving_time_seconds)} />
