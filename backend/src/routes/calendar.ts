@@ -471,7 +471,7 @@ router.get(
       const dtend = nextDay.toISOString().slice(0, 10).replace(/-/g, '');
 
       icsLines.push('BEGIN:VEVENT');
-      icsLines.push(`UID:${uid}@laktic.app`);
+      icsLines.push(`UID:${uid}@laktic.com`);
       icsLines.push(`DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`);
       icsLines.push(`DTSTART;VALUE=DATE:${dtstart}`);
       icsLines.push(`DTEND;VALUE=DATE:${dtend}`);

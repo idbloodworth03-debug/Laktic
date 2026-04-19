@@ -6,7 +6,7 @@
  */
 
 const RESEND_API = 'https://api.resend.com/emails';
-const FROM_ADDRESS = 'Laktic <hello@laktic.app>';
+const FROM_ADDRESS = 'Laktic <noreply@laktic.com>';
 
 async function send(to: string, subject: string, html: string): Promise<void> {
   const key = process.env.RESEND_API_KEY;
@@ -66,7 +66,7 @@ export async function sendCoachWelcomeEmail(email: string, name: string): Promis
   <p>Questions? Just reply to this email. We read everything.</p>
   <p style="font-size:13px;color:#68876e;">Your free trial runs for 14 days. No credit card required right now.</p>
 
-  <div class="footer">Laktic · AI-powered athlete coaching · <a href="${process.env.FRONTEND_URL}" style="color:#22c55e;">laktic.app</a></div>
+  <div class="footer">Laktic · AI-powered athlete coaching · <a href="${process.env.FRONTEND_URL}" style="color:#22c55e;">laktic.com</a></div>
 </div>
 </body>
 </html>`
@@ -104,7 +104,7 @@ export async function sendAthleteWelcomeEmail(email: string, name: string): Prom
 
   <a href="${process.env.FRONTEND_URL}/athlete/join" class="btn">Join Your Team →</a>
 
-  <div class="footer">Laktic · AI-powered athlete coaching · <a href="${process.env.FRONTEND_URL}" style="color:#22c55e;">laktic.app</a></div>
+  <div class="footer">Laktic · AI-powered athlete coaching · <a href="${process.env.FRONTEND_URL}" style="color:#22c55e;">laktic.com</a></div>
 </div>
 </body>
 </html>`

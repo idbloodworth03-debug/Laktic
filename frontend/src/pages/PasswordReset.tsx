@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import { Button, Input, Card, Alert } from '../components/ui';
+import { Button, Input, Alert } from '../components/ui';
 
 // ── Forgot Password ──────────────────────────────────────────────────────────
 export function ForgotPassword() {
@@ -26,14 +26,57 @@ export function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-md fade-up">
-        <div className="text-center mb-8">
-          <Link to="/" className="font-display font-black text-3xl text-brand-400 tracking-tighter">LAKTIC</Link>
-          <h1 className="font-display text-xl font-semibold mt-3">Reset your password</h1>
-          <p className="text-sm text-[var(--muted)] mt-1">We'll send a reset link to your email.</p>
+    <div
+      className="min-h-screen flex"
+      style={{ background: 'var(--color-bg-primary)' }}
+    >
+      {/* Left panel */}
+      <div
+        className="hidden md:flex flex-col justify-between w-2/5 p-12"
+        style={{ background: 'var(--color-bg-secondary)', borderRight: '1px solid var(--color-border)' }}
+      >
+        <Link
+          to="/"
+          className="text-2xl font-black tracking-tighter"
+          style={{ color: 'var(--color-accent)', fontFamily: "'DM Sans', sans-serif" }}
+        >
+          LAKTIC
+        </Link>
+        <div>
+          <p className="text-4xl font-bold leading-tight mb-4" style={{ color: 'var(--color-text-primary)' }}>
+            Reset your<br /><span style={{ color: 'var(--color-accent)' }}>password.</span>
+          </p>
+          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+            We'll send a link to your inbox. You'll be back to training in 60 seconds.
+          </p>
         </div>
-        <Card>
+        <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
+          Remember it?{' '}
+          <Link to="/login/athlete" style={{ color: 'var(--color-accent)' }} className="hover:underline">
+            Sign in
+          </Link>
+        </p>
+      </div>
+
+      {/* Right panel */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm fade-up">
+          <div className="mb-8 md:hidden text-center">
+            <Link
+              to="/"
+              className="text-2xl font-black tracking-tighter"
+              style={{ color: 'var(--color-accent)' }}
+            >
+              LAKTIC
+            </Link>
+          </div>
+          <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>
+            Reset password
+          </h1>
+          <p className="text-sm mb-8" style={{ color: 'var(--color-text-secondary)' }}>
+            Enter your email to receive a reset link.
+          </p>
+
           <div className="flex flex-col gap-4">
             {sent ? (
               <Alert
@@ -56,11 +99,14 @@ export function ForgotPassword() {
                 </Button>
               </>
             )}
-            <p className="text-center text-sm text-[var(--muted)]">
-              Remember it? <Link to="/login/athlete" className="text-brand-400 hover:underline">Sign in</Link>
+            <p className="text-center text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              Remember it?{' '}
+              <Link to="/login/athlete" style={{ color: 'var(--color-accent)' }} className="hover:underline">
+                Sign in
+              </Link>
             </p>
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   );
@@ -75,8 +121,11 @@ export function ResetPassword() {
   const [error, setError] = useState('');
   const [sessionReady, setSessionReady] = useState(false);
 
-  // Supabase redirects here with a token in the URL hash.
-  // onAuthStateChange fires with event PASSWORD_RECOVERY once the session is set.
+  const pwTooShort = password.length > 0 && password.length < 8;
+  const confirmMismatch = confirm.length > 0 && password !== confirm;
+  const confirmMatch = confirm.length > 0 && password === confirm && password.length >= 8;
+  const canSubmit = sessionReady && !loading && password.length >= 8 && password === confirm;
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') setSessionReady(true);
@@ -85,8 +134,12 @@ export function ResetPassword() {
   }, []);
 
   const handle = async () => {
-    if (password !== confirm) { setError('Passwords do not match.'); return; }
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    if (password !== confirm) {
+      setError('Passwords do not match.');
+      document.getElementById('reset-confirm-pw-page')?.focus();
+      return;
+    }
     setError(''); setLoading(true);
     try {
       const { error: err } = await supabase.auth.updateUser({ password });
@@ -100,18 +153,48 @@ export function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-md fade-up">
-        <div className="text-center mb-8">
-          <Link to="/" className="font-display font-black text-3xl text-brand-400 tracking-tighter">LAKTIC</Link>
-          <h1 className="font-display text-xl font-semibold mt-3">Choose a new password</h1>
-          <p className="text-sm text-[var(--muted)] mt-1">Must be at least 8 characters.</p>
+    <div
+      className="min-h-screen flex"
+      style={{ background: 'var(--color-bg-primary)' }}
+    >
+      <div
+        className="hidden md:flex flex-col justify-between w-2/5 p-12"
+        style={{ background: 'var(--color-bg-secondary)', borderRight: '1px solid var(--color-border)' }}
+      >
+        <Link
+          to="/"
+          className="text-2xl font-black tracking-tighter"
+          style={{ color: 'var(--color-accent)' }}
+        >
+          LAKTIC
+        </Link>
+        <div>
+          <p className="text-4xl font-bold leading-tight mb-4" style={{ color: 'var(--color-text-primary)' }}>
+            New<br /><span style={{ color: 'var(--color-accent)' }}>password.</span>
+          </p>
+          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+            Must be at least 8 characters.
+          </p>
         </div>
-        <Card>
+        <div />
+      </div>
+
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm fade-up">
+          <div className="mb-8 md:hidden text-center">
+            <Link to="/" className="text-2xl font-black tracking-tighter" style={{ color: 'var(--color-accent)' }}>
+              LAKTIC
+            </Link>
+          </div>
+          <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>
+            Choose a new password
+          </h1>
+          <p className="text-sm mb-8" style={{ color: 'var(--color-text-secondary)' }}>
+            Must be at least 8 characters.
+          </p>
+
           <div className="flex flex-col gap-4">
-            {!sessionReady && (
-              <Alert type="info" message="Verifying your reset link…" />
-            )}
+            {!sessionReady && <Alert type="info" message="Verifying your reset link…" />}
             {error && <Alert type="error" message={error} onClose={() => setError('')} />}
             <Input
               label="New password"
@@ -120,21 +203,30 @@ export function ResetPassword() {
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••"
               disabled={!sessionReady}
+              hint="Minimum 8 characters"
+              error={pwTooShort ? 'Password must be at least 8 characters' : undefined}
             />
-            <Input
-              label="Confirm password"
-              type="password"
-              value={confirm}
-              onChange={e => setConfirm(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handle()}
-              placeholder="••••••••"
-              disabled={!sessionReady}
-            />
-            <Button onClick={handle} loading={loading} disabled={!sessionReady || !password} className="w-full" size="lg">
+            <div className="flex flex-col gap-1">
+              <Input
+                id="reset-confirm-pw-page"
+                label="Confirm password"
+                type="password"
+                value={confirm}
+                onChange={e => setConfirm(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handle()}
+                placeholder="••••••••"
+                disabled={!sessionReady}
+                error={confirmMismatch ? 'Passwords do not match' : undefined}
+              />
+              {confirmMatch && (
+                <p className="text-xs" style={{ color: 'var(--color-accent)' }}>Passwords match</p>
+              )}
+            </div>
+            <Button onClick={handle} loading={loading} disabled={!canSubmit} className="w-full" size="lg">
               Update password
             </Button>
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   );

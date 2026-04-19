@@ -97,6 +97,24 @@ export async function notifyRaceCountdown(userId: string, raceName: string, days
   });
 }
 
+export async function notifyCoachReplied(userId: string, coachName: string) {
+  await sendToUser(userId, {
+    title: 'Your coach replied',
+    body: `${coachName} replied to your message.`,
+    url: '/athlete/chat',
+    tag: 'coach-reply'
+  });
+}
+
+export async function notifyAthleteLeft(coachUserId: string, athleteName: string) {
+  await sendToUser(coachUserId, {
+    title: 'Athlete left your team',
+    body: `${athleteName} has left your team.`,
+    url: '/coach/dashboard',
+    tag: `athlete-left-${athleteName}`
+  });
+}
+
 export async function notifyWorkoutReminder(userId: string, workoutTitle: string) {
   await sendToUser(userId, {
     title: 'Workout Today',

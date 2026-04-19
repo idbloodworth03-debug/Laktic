@@ -175,6 +175,10 @@ export function buildAthletePdf(res: Response, input: AthletePdfInput) {
   const pages = doc.bufferedPageRange();
   for (let i = 0; i < pages.count; i++) {
     doc.switchToPage(i);
+    // Temporarily remove bottom margin so PDFKit doesn't add a blank page
+    // when we write into the margin area
+    const savedBottom = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0;
     doc
       .fillColor(TEXT_LIGHT)
       .font('Helvetica')
@@ -183,6 +187,7 @@ export function buildAthletePdf(res: Response, input: AthletePdfInput) {
         `Laktic Season Report · ${input.athlete.name} · Page ${i + 1} of ${pages.count}`,
         40, doc.page.height - 30, { align: 'center', width: doc.page.width - 80 }
       );
+    doc.page.margins.bottom = savedBottom;
   }
 
   doc.end();
@@ -265,6 +270,8 @@ export function buildTeamPdf(res: Response, input: TeamPdfInput) {
   const pages = doc.bufferedPageRange();
   for (let i = 0; i < pages.count; i++) {
     doc.switchToPage(i);
+    const savedBottom = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0;
     doc
       .fillColor(TEXT_LIGHT)
       .font('Helvetica')
@@ -273,6 +280,7 @@ export function buildTeamPdf(res: Response, input: TeamPdfInput) {
         `Laktic Team Report · ${input.teamName} · Page ${i + 1} of ${pages.count}`,
         40, doc.page.height - 30, { align: 'center', width: doc.page.width - 80 }
       );
+    doc.page.margins.bottom = savedBottom;
   }
 
   doc.end();

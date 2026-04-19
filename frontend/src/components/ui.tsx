@@ -1,116 +1,83 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import {
+  LayoutDashboard, Users, FileText, MessageSquare, TrendingUp, User,
+  ChevronLeft, ChevronRight, Settings, LogOut, Activity,
+  Calendar, ShoppingBag, Award, BarChart2, BookOpen, Shield, RefreshCw,
+  Menu, X, Utensils, Globe, Store, Sun, Moon, Home, Footprints,
+} from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
+import { useThemeStore } from '../store/themeStore';
+import { InstallBanner } from './InstallPWA';
+import { apiFetch } from '../lib/api';
 
-// ── Button ────────────────────────────────────────────────────────────────────────────
+// ── Button ─────────────────────────────────────────────────────────────────────
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   loading?: boolean;
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }
-export function Button({
-  variant = 'primary', loading, size = 'md', children, disabled, className = '', ...rest
-}: ButtonProps) {
+export function Button({ variant = 'primary', loading, size = 'md', children, disabled, className = '', ...rest }: ButtonProps) {
   const base = [
-    'inline-flex items-center justify-center gap-2 font-medium rounded-lg',
-    'transition-all duration-150 select-none',
+    'inline-flex items-center justify-center gap-2 font-sans font-semibold rounded-btn',
+    'transition-all duration-150 select-none cursor-pointer',
     'disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none',
-    'active:scale-[0.97] active:translate-y-px',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
-    'focus-visible:ring-offset-[var(--bg)]',
-    'font-sans',
+    'active:scale-[0.97]',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--color-bg-primary)]',
   ].join(' ');
-  const sizes = {
-    sm: 'px-3 py-1.5 text-xs',
-    md: 'px-4 py-2 text-sm',
-    lg: 'px-6 py-2.5 text-sm',
-    xl: 'px-8 py-3.5 text-base',
-  };
+  const sizes = { sm: 'px-3 py-1.5 text-xs', md: 'px-4 py-2 text-sm', lg: 'px-5 py-2.5 text-sm', xl: 'px-6 py-3 text-base' };
   const variants = {
-    primary:   'bg-gradient-to-b from-brand-500 to-brand-600 hover:from-brand-400 hover:to-brand-500 hover:-translate-y-px hover:shadow-glow text-white shadow-btn-primary hover:shadow-btn-primary-hover focus-visible:ring-brand-500/50',
-    secondary: 'bg-[var(--surface2)] hover:bg-[var(--surface3)] text-[var(--text)] border border-[var(--border)] hover:border-[var(--border2)] focus-visible:ring-brand-500/30',
-    ghost:     'text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] focus-visible:ring-[var(--muted2)]',
-    danger:    'bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-900/40 hover:border-red-800/60 focus-visible:ring-red-500/30',
+    primary:   'bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] hover:-translate-y-px hover:shadow-glow text-black focus-visible:ring-[var(--color-accent)]/40',
+    secondary: 'bg-transparent border border-[var(--color-border-light)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] focus-visible:ring-[var(--color-border-light)]',
+    ghost:     'bg-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] focus-visible:ring-[var(--color-border)]',
+    danger:    'bg-[var(--color-danger)] hover:brightness-110 text-white focus-visible:ring-[var(--color-danger)]/40',
   };
   return (
-    <button
-      disabled={disabled || loading}
-      className={`${base} ${sizes[size]} ${variants[variant]} ${className}`}
-      {...rest}
-    >
+    <button disabled={disabled || loading} className={`${base} ${sizes[size]} ${variants[variant]} ${className}`} {...rest}>
       {loading && <Spinner size="sm" />}
       {children}
     </button>
   );
 }
 
-// ── Input ──────────────────────────────────────────────────────────────────────────
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
-  error?: string;
-}
-export function Input({ label, error, className = '', ...rest }: InputProps) {
+// ── Input ──────────────────────────────────────────────────────────────────────
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> { label?: string; error?: string; hint?: string; }
+export function Input({ label, error, hint, className = '', ...rest }: InputProps) {
   return (
     <div className="flex flex-col gap-1.5">
-      {label && (
-        <label className="text-xs font-medium text-[var(--text2)] uppercase tracking-wide">
-          {label}
-        </label>
-      )}
-      <input
-        className={[
-          'bg-[var(--surface2)] rounded-lg px-3 py-2 text-sm text-[var(--text)]',
-          'placeholder-[var(--muted2)] transition-all duration-150',
-          'focus:outline-none focus:ring-2 focus:ring-brand-500/15 focus:border-brand-500/50',
-          error ? 'border border-red-500/60' : 'border border-[var(--border)]',
-          className,
-        ].join(' ')}
-        {...rest}
-      />
-      {error && <span className="text-xs text-red-400">{error}</span>}
+      {label && <label className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">{label}</label>}
+      <input className={['bg-[var(--color-bg-tertiary)] border rounded-btn px-[14px] py-[10px] text-sm', 'font-sans text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)]', 'outline-none transition-all duration-150', error ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)] focus:border-[var(--color-accent)] focus:shadow-[0_0_0_3px_var(--color-accent-dim)]', className].join(' ')} {...rest} />
+      {error && <span className="text-xs text-[var(--color-danger)]">{error}</span>}
+      {!error && hint && <span className="text-xs text-[var(--color-text-tertiary)]">{hint}</span>}
     </div>
   );
 }
 
-// ── Textarea ─────────────────────────────────────────────────────────────────────────
-interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
-  label?: string;
-  error?: string;
-}
+// ── Textarea ───────────────────────────────────────────────────────────────────
+interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> { label?: string; error?: string; }
 export function Textarea({ label, error, className = '', ...rest }: TextareaProps) {
   return (
     <div className="flex flex-col gap-1.5">
-      {label && (
-        <label className="text-xs font-medium text-[var(--text2)] uppercase tracking-wide">
-          {label}
-        </label>
-      )}
-      <textarea
-        className={[
-          'bg-[var(--surface2)] rounded-lg px-3 py-2.5 text-sm text-[var(--text)]',
-          'placeholder-[var(--muted2)] transition-all duration-150 resize-vertical leading-relaxed',
-          'focus:outline-none focus:ring-2 focus:ring-brand-500/15 focus:border-brand-500/50',
-          error ? 'border border-red-500/60' : 'border border-[var(--border)]',
-          className,
-        ].join(' ')}
-        {...rest}
-      />
-      {error && <span className="text-xs text-red-400">{error}</span>}
+      {label && <label className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">{label}</label>}
+      <textarea className={['bg-[var(--color-bg-tertiary)] border rounded-btn px-[14px] py-[10px] text-sm', 'font-sans text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)]', 'outline-none transition-all duration-150 resize-vertical leading-relaxed', error ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)] focus:border-[var(--color-accent)] focus:shadow-[0_0_0_3px_var(--color-accent-dim)]', className].join(' ')} {...rest} />
+      {error && <span className="text-xs text-[var(--color-danger)]">{error}</span>}
     </div>
   );
 }
 
-// ── Card ───────────────────────────────────────────────────────────────────────────
-interface CardProps { title?: string; children: React.ReactNode; className?: string; }
-export function Card({ title, children, className = '' }: CardProps) {
+// ── Card ───────────────────────────────────────────────────────────────────────
+interface CardProps { title?: string; children: React.ReactNode; className?: string; action?: React.ReactNode; }
+export function Card({ title, children, className = '', action }: CardProps) {
   return (
     <div
-      className={`bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 shadow-card transition-all duration-200 hover:border-[var(--border2)] hover:-translate-y-px ${className}`}
+      className={`bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-5 shadow-card transition-all duration-200 hover:border-[var(--color-border-light)] hover:-translate-y-px ${className}`}
       style={{ backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}
     >
-      {title && (
-        <div className="pb-3 mb-4 border-b border-[var(--border)]/70">
-          <h3 className="font-display text-sm font-semibold text-[var(--text)] tracking-tight">
-            {title}
-          </h3>
+      {(title || action) && (
+        <div className="flex items-center justify-between mb-4">
+          {title && <p className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">{title}</p>}
+          {action}
         </div>
       )}
       {children}
@@ -118,309 +85,147 @@ export function Card({ title, children, className = '' }: CardProps) {
   );
 }
 
-// ── Badge ───────────────────────────────────────────────────────────────────────────
+// ── StatCard ───────────────────────────────────────────────────────────────────
+interface StatCardProps { label: string; value: string | number; sub?: string; accent?: boolean; }
+export function StatCard({ label, value, sub, accent }: StatCardProps) {
+  return (
+    <div
+      className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-5 shadow-card"
+      style={{ backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}
+    >
+      <p className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-2">{label}</p>
+      <p className={`font-mono text-3xl font-medium leading-none ${accent ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-primary)]'}`}>{value}</p>
+      {sub && <p className="text-xs text-[var(--color-text-tertiary)] mt-2">{sub}</p>}
+    </div>
+  );
+}
+
+// ── Badge ──────────────────────────────────────────────────────────────────────
 interface BadgeProps { label: string; color?: 'green' | 'blue' | 'amber' | 'purple' | 'gray' | 'red'; dot?: boolean; }
 export function Badge({ label, color = 'green', dot = false }: BadgeProps) {
   const colors = {
-    green:  'bg-brand-900/50 text-brand-400 border-brand-800/50',
-    blue:   'bg-blue-950/60 text-blue-400 border-blue-900/50',
-    amber:  'bg-amber-950/60 text-amber-400 border-amber-900/50',
-    purple: 'bg-purple-950/60 text-purple-400 border-purple-900/50',
-    gray:   'bg-[var(--surface2)] text-[var(--muted)] border-[var(--border)]',
-    red:    'bg-red-950/60 text-red-400 border-red-900/50',
+    green:  'bg-[var(--color-accent-dim)] text-[var(--color-accent)] border-[var(--color-accent)]/20',
+    blue:   'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    amber:  'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    purple: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+    gray:   'bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] border-[var(--color-border)]',
+    red:    'bg-red-500/10 text-red-400 border-red-500/20',
   };
-  const dotColors = {
-    green: 'bg-brand-400', blue: 'bg-blue-400', amber: 'bg-amber-400',
-    purple: 'bg-purple-400', gray: 'bg-[var(--muted)]', red: 'bg-red-400',
-  };
+  const dots = { green: 'bg-[var(--color-accent)]', blue: 'bg-blue-400', amber: 'bg-amber-400', purple: 'bg-purple-400', gray: 'bg-[var(--color-text-tertiary)]', red: 'bg-red-400' };
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${colors[color]}`}>
-      {dot && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColors[color]}`} />}
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-pill text-xs font-medium border ${colors[color]}`}>
+      {dot && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dots[color]}`} />}
       {label}
     </span>
   );
 }
 
-// ── Spinner ─────────────────────────────────────────────────────────────────────────────
+// ── Spinner ────────────────────────────────────────────────────────────────────
 export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
-  const s = { sm: 'w-3.5 h-3.5', md: 'w-5 h-5', lg: 'w-8 h-8' };
+  const s = { sm: 'w-3.5 h-3.5 border', md: 'w-5 h-5 border-2', lg: 'w-8 h-8 border-2' };
+  return <div className={`${s[size]} rounded-full border-[var(--color-border-light)] border-t-[var(--color-accent)] animate-spin`} />;
+}
+
+// ── Alert ──────────────────────────────────────────────────────────────────────
+interface AlertProps { type?: 'success' | 'error' | 'info'; message: string; onClose?: () => void; action?: React.ReactNode; }
+export function Alert({ type = 'info', message, onClose, action }: AlertProps) {
+  const styles = {
+    success: { wrap: 'bg-[var(--color-accent-dim)] border-[var(--color-accent)]/20', text: 'text-[var(--color-accent)]', bar: 'bg-[var(--color-accent)]' },
+    error:   { wrap: 'bg-red-500/10 border-red-500/20',   text: 'text-red-400',  bar: 'bg-[var(--color-danger)]' },
+    info:    { wrap: 'bg-blue-500/10 border-blue-500/20', text: 'text-blue-400', bar: 'bg-blue-500' },
+  };
+  const st = styles[type];
   return (
-    <div className={`${s[size]} rounded-full border-2 border-[var(--border2)] border-t-brand-500 animate-spin`} />
+    <div className={`relative flex items-center justify-between gap-3 border rounded-btn px-4 py-3 text-sm overflow-hidden ${st.wrap}`}>
+      <div className={`absolute left-0 top-0 bottom-0 w-[3px] rounded-r ${st.bar}`} />
+      <span className={`pl-3 leading-snug ${st.text}`}>{message}</span>
+      <div className="flex items-center gap-2 shrink-0">
+        {action}
+        {onClose && <button onClick={onClose} className={`opacity-50 hover:opacity-100 text-lg leading-none transition-opacity ${st.text}`}>×</button>}
+      </div>
+    </div>
   );
 }
 
-// ── Navbar ────────────────────────────────────────────────────────────────────────────
-interface NavbarProps { role?: string; name?: string; onLogout?: () => void; }
-export function Navbar({ role, name, onLogout }: NavbarProps) {
-  const [open, setOpen] = useState(false);
-
-  const athleteLinks = [
-    { label: 'Season Plan',    href: '/athlete/plan' },
-    { label: 'Race Calendar',  href: '/athlete/races' },
-    { label: 'Coach Bot',      href: '/athlete/chat' },
-    { label: 'Progress',       href: '/athlete/progress' },
-    { label: 'Activities',     href: '/athlete/activities' },
-    { label: 'Calendar',       href: '/athlete/calendar' },
-    { label: 'Nutrition',      href: '/athlete/nutrition' },
-    { label: 'Team Feed',      href: '/athlete/feed' },
-    { label: 'Leaderboard',    href: '/athlete/leaderboard' },
-    { label: 'Marketplace',    href: '/marketplace' },
-    { label: 'Browse Bots',    href: '/athlete/browse' },
-    { label: 'Settings',       href: '/athlete/settings' },
-  ];
-
-  const coachLinks = [
-    { label: 'Dashboard',      href: '/coach/dashboard' },
-    { label: 'Team Progress',  href: '/coach/progress' },
-    { label: 'Team Calendar',  href: '/coach/calendar' },
-    { label: 'Bot Setup',      href: '/coach/bot/edit' },
-    { label: 'Knowledge Docs', href: '/coach/knowledge' },
-    { label: 'Marketplace',    href: '/coach/marketplace/apply' },
-  ];
-
-  const links = role === 'athlete' ? athleteLinks : role === 'coach' ? coachLinks : [];
-  const homeHref = role === 'coach' ? '/coach/dashboard' : role === 'athlete' ? '/athlete/plan' : '/';
-  const current = typeof window !== 'undefined' ? window.location.pathname : '';
-
+// ── ProgressBar ────────────────────────────────────────────────────────────────
+export function ProgressBar({ value, max = 100, className = '' }: { value: number; max?: number; className?: string }) {
+  const pct = Math.min(100, Math.max(0, (value / max) * 100));
   return (
-    <>
-      <nav className="surface-glass border-b border-[var(--border)] px-5 py-4 flex items-center justify-between sticky top-0 z-40">
-        <a href={homeHref} className="font-display font-black text-xl tracking-tight text-gradient hover:opacity-80 transition-opacity">
-          LAKTIC
-        </a>
-        {name && (
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-[var(--surface2)] border border-[var(--border2)] flex items-center justify-center text-xs font-semibold text-brand-400 shrink-0">
-                {name.charAt(0).toUpperCase()}
-              </div>
-              <span className="text-sm text-[var(--text2)]">{name}</span>
-            </div>
-            <button
-              onClick={() => setOpen(true)}
-              aria-label="Open menu"
-              className="w-9 h-9 flex flex-col items-center justify-center gap-[5px] rounded-lg hover:bg-[var(--surface2)] transition-colors"
-            >
-              <span className="w-5 h-[2px] bg-[var(--text2)] rounded-full" />
-              <span className="w-5 h-[2px] bg-[var(--text2)] rounded-full" />
-              <span className="w-5 h-[2px] bg-[var(--text2)] rounded-full" />
-            </button>
-          </div>
-        )}
-      </nav>
+    <div className={`h-1 rounded-full bg-[var(--color-bg-tertiary)] overflow-hidden ${className}`}>
+      <div className="h-full rounded-full bg-[var(--color-accent)] transition-all duration-500" style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
 
-      {open && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" onClick={() => setOpen(false)} />}
-
-      <div className={`fixed top-0 right-0 h-full w-72 bg-[var(--surface)] border-l border-[var(--border)] z-50 flex flex-col transition-transform duration-300 ${open ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-[var(--surface2)] border border-[var(--border2)] flex items-center justify-center text-sm font-semibold text-brand-400">
-              {name?.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <div className="text-sm font-medium text-[var(--text)]">{name}</div>
-              {role && <div className="text-xs text-[var(--muted)] capitalize">{role}</div>}
-            </div>
-          </div>
-          <button onClick={() => setOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] transition-colors text-lg">×</button>
-        </div>
-
-        <nav className="flex-1 overflow-y-auto py-3">
-          {links.map(link => {
-            const active = current === link.href;
-            return (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className={`flex items-center px-5 py-3 text-sm font-medium transition-colors ${
-                  active
-                    ? 'text-brand-400 bg-brand-950/40 border-r-2 border-brand-500'
-                    : 'text-[var(--text2)] hover:text-[var(--text)] hover:bg-[var(--surface2)]'
-                }`}
-              >
-                {link.label}
-              </a>
-            );
-          })}
-        </nav>
-
-        <div className="px-5 py-4 border-t border-[var(--border)]">
-          <button
-            onClick={() => { setOpen(false); onLogout?.(); }}
-            className="w-full text-left text-sm text-[var(--muted)] hover:text-[var(--danger)] transition-colors py-2"
-          >
-            Sign out
-          </button>
+// ── ReadinessRing ──────────────────────────────────────────────────────────────
+export function ReadinessRing({ score, size = 120 }: { score: number; size?: number }) {
+  const r = (size - 20) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (Math.min(100, Math.max(0, score)) / 100) * circ;
+  const color = score >= 80 ? 'var(--color-accent)' : score >= 50 ? 'var(--color-warning)' : 'var(--color-danger)';
+  const label = score >= 80 ? 'Optimal' : score >= 50 ? 'Moderate' : 'Low';
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size}>
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--color-bg-tertiary)" strokeWidth={8} />
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={8}
+            strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
+            transform={`rotate(-90 ${size/2} ${size/2})`}
+            style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.16,1,0.3,1)' }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="font-mono font-medium leading-none" style={{ fontSize: size * 0.28, color }}>{score}</span>
         </div>
       </div>
-    </>
-  );
-}
-
-// ── EmptyState ──────────────────────────────────────────────────────────────────────────
-interface EmptyStateProps { title: string; message: string; action?: React.ReactNode; }
-export function EmptyState({ title, message, action }: EmptyStateProps) {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-      <div className="w-14 h-14 rounded-full bg-[var(--surface2)] border border-[var(--border2)] flex items-center justify-center text-2xl text-[var(--muted)]">◎</div>
-      <div>
-        <h3 className="font-display text-base font-semibold text-[var(--text)] mb-1">{title}</h3>
-        <p className="text-sm text-[var(--muted)] max-w-xs leading-relaxed">{message}</p>
-      </div>
-      {action}
+      <span className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">{label}</span>
     </div>
   );
 }
 
-// ── ChatBubble ──────────────────────────────────────────────────────────────────────────
-interface ChatBubbleProps { role: 'athlete' | 'bot'; content: string; planUpdated?: boolean; }
-export function ChatBubble({ role, content, planUpdated }: ChatBubbleProps) {
-  const isBot = role === 'bot';
+// ── Toggle ─────────────────────────────────────────────────────────────────────
+interface ToggleProps { checked: boolean; onChange: (v: boolean) => void; label?: string; }
+export function Toggle({ checked, onChange, label }: ToggleProps) {
   return (
-    <div className={`flex ${isBot ? 'justify-start' : 'justify-end'} mb-3`}>
-      <div className={`max-w-[78%] ${isBot ? '' : 'items-end flex flex-col'}`}>
-        {isBot && (
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <div className="w-4 h-4 rounded-full bg-brand-950 border border-brand-800/60 flex items-center justify-center shrink-0">
-              <span className="block w-1.5 h-1.5 rounded-full bg-brand-400" />
-            </div>
-            <span className="text-xs text-[var(--muted)] font-medium">Coach Bot</span>
-          </div>
-        )}
-        <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-          isBot
-            ? 'bg-[var(--surface2)] border border-[var(--border)] text-[var(--text)] rounded-tl-sm shadow-sm'
-            : 'bg-gradient-to-br from-brand-600 to-brand-700 text-white rounded-tr-sm shadow-glow-sm'
-        }`}>
-          {content}
-        </div>
-        {planUpdated && (
-          <span className="mt-1.5 inline-flex items-center gap-1 text-xs text-brand-400 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-brand-400 inline-block animate-pulse" />
-            Plan updated
-          </span>
-        )}
+    <label className="flex items-center gap-2.5 cursor-pointer select-none">
+      <div onClick={() => onChange(!checked)} className={`w-9 h-5 rounded-full transition-all duration-200 relative ${checked ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-bg-tertiary)] border border-[var(--color-border)]'}`}>
+        <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${checked ? 'translate-x-4' : ''}`} />
       </div>
-    </div>
+      {label && <span className="text-sm text-[var(--color-text-secondary)]">{label}</span>}
+    </label>
   );
 }
 
-// ── DocumentCard ──────────────────────────────────────────────────────────────────────────
-interface DocumentCardProps {
-  id: string; title: string; document_type: string; created_at: string;
-  onEdit: (id: string) => void; onDelete: (id: string) => void;
-  onHistory?: (id: string) => void;
-}
-const DOC_COLORS: Record<string, any> = {
-  philosophy: 'purple', sample_week: 'green', training_block: 'blue',
-  taper: 'amber', injury_rule: 'amber', faq: 'gray', notes: 'gray',
-};
-export function DocumentCard({ id, title, document_type, created_at, onEdit, onDelete, onHistory }: DocumentCardProps) {
-  const [confirming, setConfirming] = useState(false);
-  return (
-    <div className="flex items-center justify-between bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border2)] rounded-xl px-4 py-3 transition-colors group">
-      <div className="flex items-center gap-3 min-w-0">
-        <Badge label={document_type.replace('_', ' ')} color={DOC_COLORS[document_type] || 'gray'} />
-        <span className="text-sm font-medium text-[var(--text)] truncate">{title}</span>
-        <span className="text-xs text-[var(--muted)] shrink-0">{new Date(created_at).toLocaleDateString()}</span>
-      </div>
-      <div className="flex items-center gap-1.5 ml-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-        {onHistory && (
-          <Button variant="ghost" size="sm" onClick={() => onHistory(id)}>History</Button>
-        )}
-        <Button variant="ghost" size="sm" onClick={() => onEdit(id)}>Edit</Button>
-        {confirming
-          ? <Button variant="danger" size="sm" onClick={() => { onDelete(id); setConfirming(false); }}>Confirm</Button>
-          : <Button variant="ghost" size="sm" onClick={() => setConfirming(true)} className="!text-red-400 hover:!text-red-300">Delete</Button>
-        }
-      </div>
-    </div>
-  );
-}
-
-// ── TypingIndicator ───────────────────────────────────────────────────────────────────────────
-export function TypingIndicator() {
-  return (
-    <div className="flex justify-start mb-3">
-      <div className="bg-[var(--surface2)] border border-[var(--border)] rounded-2xl rounded-tl-sm px-4 py-3 flex gap-1.5 items-center shadow-sm">
-        {[0, 1, 2].map(i => (
-          <span key={i} className="w-1.5 h-1.5 rounded-full bg-[var(--muted)]"
-            style={{ animation: `pulse-dot 1.4s ${i * 0.2}s ease-in-out infinite` }} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── Select ────────────────────────────────────────────────────────────────────────────
-interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
-  label?: string; options: { value: string; label: string }[];
-}
+// ── Select ─────────────────────────────────────────────────────────────────────
+interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> { label?: string; options: { value: string; label: string }[]; }
 export function Select({ label, options, className = '', ...rest }: SelectProps) {
   return (
     <div className="flex flex-col gap-1.5">
-      {label && (
-        <label className="text-xs font-medium text-[var(--text2)] uppercase tracking-wide">
-          {label}
-        </label>
-      )}
-      <select
-        className={`bg-[var(--surface2)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text)] focus:outline-none focus:border-brand-500/50 focus:ring-2 focus:ring-brand-500/10 transition-all duration-150 cursor-pointer ${className}`}
-        {...rest}
-      >
+      {label && <label className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">{label}</label>}
+      <select className={`bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-btn px-[14px] py-[10px] text-sm text-[var(--color-text-primary)] outline-none transition-all duration-150 focus:border-[var(--color-accent)] focus:shadow-[0_0_0_3px_var(--color-accent-dim)] cursor-pointer ${className}`} {...rest}>
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </div>
   );
 }
 
-// ── Toggle ────────────────────────────────────────────────────────────────────────────
-interface ToggleProps { checked: boolean; onChange: (v: boolean) => void; label?: string; }
-export function Toggle({ checked, onChange, label }: ToggleProps) {
-  return (
-    <label className="flex items-center gap-2.5 cursor-pointer select-none">
-      <div
-        onClick={() => onChange(!checked)}
-        className={`w-9 h-5 rounded-full transition-all duration-200 relative ${
-          checked
-            ? 'bg-gradient-to-r from-brand-500 to-brand-600 shadow-glow-sm'
-            : 'bg-[var(--surface2)] border border-[var(--border)]'
-        }`}
-      >
-        <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${checked ? 'translate-x-4' : ''}`} />
-      </div>
-      {label && <span className="text-sm text-[var(--text2)]">{label}</span>}
-    </label>
-  );
-}
-
-// ── StepIndicator ────────────────────────────────────────────────────────────────────────
+// ── StepIndicator ──────────────────────────────────────────────────────────────
 interface StepIndicatorProps { steps: string[]; current: number; }
 export function StepIndicator({ steps, current }: StepIndicatorProps) {
   return (
     <div className="flex items-center gap-0 w-full mb-8">
       {steps.map((label, i) => {
-        const done = i < current;
-        const active = i === current;
+        const done = i < current; const active = i === current;
         return (
           <div key={i} className="flex items-center flex-1 last:flex-none">
             <div className="flex flex-col items-center gap-1.5 shrink-0">
-              <div className={[
-                'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-200',
-                done  ? 'bg-brand-500 border-brand-500 text-white' : '',
-                active ? 'bg-[var(--surface)] border-brand-500 text-brand-400' : '',
-                !done && !active ? 'bg-[var(--surface)] border-[var(--border)] text-[var(--muted)]' : '',
-              ].join(' ')}>
+              <div className={['w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold border-2 transition-all duration-200', done ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-black' : active ? 'bg-transparent border-[var(--color-accent)] text-[var(--color-accent)]' : 'bg-transparent border-[var(--color-border)] text-[var(--color-text-tertiary)]'].join(' ')}>
                 {done ? '✓' : i + 1}
               </div>
-              <span className={`text-[10px] font-medium whitespace-nowrap ${active ? 'text-[var(--text)]' : 'text-[var(--muted)]'}`}>
-                {label}
-              </span>
+              <span className={`text-[10px] font-medium whitespace-nowrap ${active ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-tertiary)]'}`}>{label}</span>
             </div>
-            {i < steps.length - 1 && (
-              <div className={`h-px flex-1 mx-2 mb-4 transition-colors duration-200 ${done ? 'bg-brand-500' : 'bg-[var(--border)]'}`} />
-            )}
+            {i < steps.length - 1 && <div className={`h-px flex-1 mx-2 mb-4 ${done ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-border)]'}`} />}
           </div>
         );
       })}
@@ -428,29 +233,644 @@ export function StepIndicator({ steps, current }: StepIndicatorProps) {
   );
 }
 
-// ── Alert / Banner ────────────────────────────────────────────────────────────────────────
-interface AlertProps { type?: 'success' | 'error' | 'info'; message: string; onClose?: () => void; action?: React.ReactNode; }
-export function Alert({ type = 'info', message, onClose, action }: AlertProps) {
-  const styles = {
-    success: { wrap: 'bg-brand-950/50 border-brand-800/40', text: 'text-brand-300', accent: 'bg-brand-500' },
-    error:   { wrap: 'bg-red-950/40 border-red-900/40',     text: 'text-red-300',   accent: 'bg-red-500'   },
-    info:    { wrap: 'bg-blue-950/40 border-blue-900/40',   text: 'text-blue-300',  accent: 'bg-blue-500'  },
-  };
-  const icons = { success: '✓', error: '✕', info: 'ℹ' };
-  const st = styles[type];
+// ── EmptyState ─────────────────────────────────────────────────────────────────
+interface EmptyStateProps { title: string; message: string; action?: React.ReactNode; }
+export function EmptyState({ title, message, action }: EmptyStateProps) {
   return (
-    <div className={`relative flex items-center justify-between gap-3 border rounded-lg px-4 py-3 text-sm overflow-hidden ${st.wrap}`}>
-      <div className={`absolute left-0 top-0 bottom-0 w-0.5 ${st.accent}`} />
-      <div className={`flex items-center gap-2.5 pl-2 ${st.text}`}>
-        <span className="shrink-0 text-xs font-bold opacity-70">{icons[type]}</span>
-        <span className="leading-snug">{message}</span>
+    <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
+      <div className="w-12 h-12 rounded-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] flex items-center justify-center">
+        <Activity size={20} className="text-[var(--color-text-tertiary)]" />
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {action}
-        {onClose && (
-          <button onClick={onClose} className={`opacity-50 hover:opacity-100 text-lg leading-none transition-opacity ${st.text}`}>×</button>
+      <div>
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">{title}</h3>
+        <p className="text-sm text-[var(--color-text-tertiary)] max-w-xs leading-relaxed">{message}</p>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+// ── ChatBubble ─────────────────────────────────────────────────────────────────
+interface ChatBubbleProps {
+  role: 'athlete' | 'bot' | 'coach';
+  content: string;
+  planUpdated?: boolean;
+  label?: string;
+  avatarUrl?: string | null;
+  avatarName?: string;
+}
+export function ChatBubble({ role, content, planUpdated, label, avatarUrl, avatarName }: ChatBubbleProps) {
+  const [imgErr, setImgErr] = React.useState(false);
+  const isRight   = role === 'athlete';
+  const leftLabel = label ?? (role === 'coach' ? 'Your Coach' : 'Pace');
+  const initial   = ((avatarName || leftLabel || 'A').charAt(0)).toUpperCase();
+
+  const AvatarCircle = (
+    <div className="shrink-0 mt-0.5">
+      {avatarUrl && !imgErr ? (
+        <img src={avatarUrl} alt={avatarName || ''} onError={() => setImgErr(true)}
+          className="rounded-full object-cover"
+          style={{ width: 28, height: 28, border: '1.5px solid rgba(0,229,160,0.30)' }}
+        />
+      ) : (
+        <div className="rounded-full flex items-center justify-center text-[10px] font-bold select-none"
+          style={{ width: 28, height: 28, background: 'rgba(0,229,160,0.15)', border: '1.5px solid rgba(0,229,160,0.25)', color: '#00E5A0' }}>
+          {initial}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className={`flex items-start gap-2 ${isRight ? 'justify-end' : 'justify-start'} mb-3`}>
+      {!isRight && AvatarCircle}
+      <div className={`max-w-[78%] ${isRight ? 'items-end flex flex-col' : ''}`}>
+        {!isRight && (
+          <span className="text-xs text-[var(--color-text-tertiary)] font-medium mb-1.5 block">{leftLabel}</span>
+        )}
+        <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${isRight ? 'bg-[var(--color-accent)] text-black font-medium rounded-tr-sm' : 'bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded-tl-sm'}`}>
+          {isRight ? content : (
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => <p style={{ margin: '0 0 8px', lineHeight: 1.55 }} className="last:mb-0">{children}</p>,
+                ul: ({ children }) => <ul style={{ paddingLeft: 16, margin: '4px 0 8px' }}>{children}</ul>,
+                ol: ({ children }) => <ol style={{ paddingLeft: 16, margin: '4px 0 8px' }}>{children}</ol>,
+                li: ({ children }) => <li style={{ marginBottom: 4, lineHeight: 1.5 }}>{children}</li>,
+                strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
+                em: ({ children }) => <em>{children}</em>,
+              }}
+            >{content}</ReactMarkdown>
+          )}
+        </div>
+        {planUpdated && (
+          <span className="mt-1.5 inline-flex items-center gap-1 text-xs text-[var(--color-accent)] font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] inline-block animate-pulse" />
+            Plan updated
+          </span>
         )}
       </div>
+      {isRight && AvatarCircle}
     </div>
+  );
+}
+
+// ── TypingIndicator ────────────────────────────────────────────────────────────
+export function TypingIndicator() {
+  return (
+    <div className="flex justify-start mb-3">
+      <div className="bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-2xl rounded-tl-sm px-4 py-3 flex gap-1.5 items-center">
+        {[0, 1, 2].map(i => (
+          <span key={i} className="w-1.5 h-1.5 rounded-full bg-[var(--color-text-tertiary)]" style={{ animation: `pulse-dot 1.4s ${i * 0.2}s ease-in-out infinite` }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── DocumentCard ───────────────────────────────────────────────────────────────
+interface DocumentCardProps { id: string; title: string; document_type: string; created_at: string; onEdit: (id: string) => void; onDelete: (id: string) => void; onHistory?: (id: string) => void; }
+const DOC_COLORS: Record<string, any> = { philosophy: 'purple', sample_week: 'green', training_block: 'blue', taper: 'amber', injury_rule: 'amber', faq: 'gray', notes: 'gray' };
+export function DocumentCard({ id, title, document_type, created_at, onEdit, onDelete, onHistory }: DocumentCardProps) {
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <div className="flex items-center justify-between bg-[var(--color-bg-secondary)] border border-[var(--color-border)] hover:border-[var(--color-border-light)] rounded-card px-4 py-3 transition-all duration-150 group">
+      <div className="flex items-center gap-3 min-w-0">
+        <Badge label={document_type.replace('_', ' ')} color={DOC_COLORS[document_type] || 'gray'} />
+        <span className="text-sm font-medium text-[var(--color-text-primary)] truncate">{title}</span>
+        <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">{new Date(created_at).toLocaleDateString()}</span>
+      </div>
+      <div className="flex items-center gap-1.5 ml-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        {onHistory && <Button variant="ghost" size="sm" onClick={() => onHistory(id)}>History</Button>}
+        <Button variant="ghost" size="sm" onClick={() => onEdit(id)}>Edit</Button>
+        {confirming ? <Button variant="danger" size="sm" onClick={() => { onDelete(id); setConfirming(false); }}>Confirm</Button> : <Button variant="ghost" size="sm" onClick={() => setConfirming(true)} className="!text-red-400">Delete</Button>}
+      </div>
+    </div>
+  );
+}
+
+// ── Navigation definitions ─────────────────────────────────────────────────────
+type NavItem = { label: string; href: string; icon: React.ElementType };
+
+// Primary: shown in mobile bottom bar + top of sidebar
+const ATHLETE_PRIMARY: NavItem[] = [
+  { label: 'Home',      href: '/athlete/dashboard', icon: Home          },
+  { label: 'Pace',      href: '/athlete/chat',      icon: MessageSquare },
+  { label: 'My Plan',   href: '/athlete/plan',      icon: FileText      },
+  { label: 'Progress',  href: '/athlete/progress',  icon: TrendingUp    },
+  { label: 'Community', href: '/community',         icon: Globe         },
+];
+
+// More: shown below a divider in sidebar + in mobile "More" drawer
+const ATHLETE_MORE: NavItem[] = [
+  { label: 'Activities', href: '/athlete/activities', icon: Activity    },
+  { label: 'Calendar',   href: '/athlete/calendar',   icon: Calendar    },
+  { label: 'Analytics',  href: '/athlete/analytics',  icon: BarChart2   },
+  { label: 'Races',      href: '/athlete/races',      icon: Award       },
+  { label: 'Settings',   href: '/athlete/settings',   icon: Settings    },
+];
+
+const COACH_PRIMARY: NavItem[] = [
+  { label: 'Home',  href: '/coach/dashboard',  icon: Home },
+  { label: 'My Team',    href: '/coach/progress',   icon: Users },
+  { label: 'Community',  href: '/community',        icon: Globe },
+  { label: 'Calendar',   href: '/coach/calendar',   icon: Calendar },
+  { label: 'Recovery',   href: '/coach/recovery',   icon: RefreshCw },
+];
+
+const COACH_MORE: NavItem[] = [
+  { label: 'Analytics',     href: '/coach/readiness',     icon: TrendingUp },
+  { label: 'Plans',         href: '/coach/plans',         icon: ShoppingBag },
+  { label: 'Marketplace',   href: '/marketplace/plans',   icon: Store },
+  { label: 'Bot Setup',     href: '/coach/bot/edit',      icon: Settings },
+  { label: 'Certification', href: '/coach/certification', icon: Award },
+  { label: 'Referrals',     href: '/referrals',           icon: User },
+];
+
+// Flat combined arrays for mobile bottom bar "More" drawer
+const ATHLETE_NAV: NavItem[] = [...ATHLETE_PRIMARY, ...ATHLETE_MORE];
+const COACH_NAV: NavItem[]   = [...COACH_PRIMARY, ...COACH_MORE];
+const PRIMARY_ATHLETE = ATHLETE_PRIMARY;
+const PRIMARY_COACH   = COACH_PRIMARY;
+
+// ── SidebarAvatar ──────────────────────────────────────────────────────────────
+function SidebarAvatar({ name }: { name: string }) {
+  const { profile } = useAuthStore();
+  const avatarUrl = (profile as any)?.avatar_url ?? null;
+  const [imgErr, setImgErr] = React.useState(false);
+  const initial = (name || 'A').charAt(0).toUpperCase();
+  if (avatarUrl && !imgErr) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        onError={() => setImgErr(true)}
+        className="w-5 h-5 rounded-full object-cover shrink-0"
+        style={{ border: '1px solid rgba(0,229,160,0.30)' }}
+      />
+    );
+  }
+  return (
+    <div className="w-5 h-5 rounded-full bg-[var(--color-accent-dim)] border border-[var(--color-accent)]/20 flex items-center justify-center shrink-0">
+      <span className="text-[9px] font-semibold text-[var(--color-accent)]">{initial}</span>
+    </div>
+  );
+}
+
+// ── ThemeToggle ────────────────────────────────────────────────────────────────
+function ThemeToggle({ collapsed }: { collapsed: boolean }) {
+  const { theme, setTheme } = useThemeStore();
+  const isDark = theme === 'dark';
+  return (
+    <button
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+      title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      className="flex items-center gap-3 px-3 py-2.5 rounded-btn text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-all duration-150 w-full text-left mb-0.5"
+    >
+      {isDark ? <Sun size={15} className="shrink-0" /> : <Moon size={15} className="shrink-0" />}
+      {!collapsed && <span className="text-[13px] font-medium">{isDark ? 'Light mode' : 'Dark mode'}</span>}
+    </button>
+  );
+}
+
+// ── SidebarContent (shared rendering) ─────────────────────────────────────────
+interface SidebarContentProps { role?: string; name?: string; onLogout?: () => void; collapsed: boolean; onToggle: () => void; }
+function SidebarContent({ role, name, onLogout, collapsed, onToggle }: SidebarContentProps) {
+  const current = typeof window !== 'undefined' ? window.location.pathname : '';
+  const primary = role === 'athlete' ? ATHLETE_PRIMARY : role === 'coach' ? COACH_PRIMARY : [];
+  const more    = role === 'athlete' ? ATHLETE_MORE    : role === 'coach' ? COACH_MORE    : [];
+  const settingsHref = role === 'coach' ? '/coach/settings' : '/athlete/settings';
+
+  const renderItem = ({ label, href, icon: Icon }: NavItem) => {
+    const active = current === href || (href !== '/' && current.startsWith(href));
+    return (
+      <a key={href} href={href} title={collapsed ? label : undefined}
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-btn mb-0.5 transition-all duration-150 ${active ? 'bg-[var(--color-accent-dim)] text-[var(--color-accent)]' : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'}`}
+      >
+        <Icon size={15} className="shrink-0" />
+        {!collapsed && <span className="text-[13px] font-medium truncate">{label}</span>}
+      </a>
+    );
+  };
+
+  return (
+    <>
+      {/* Wordmark + collapse */}
+      <div className={`flex items-center border-b border-[var(--color-border)] py-5 ${collapsed ? 'px-4 justify-center' : 'px-5 justify-between'}`}>
+        {!collapsed && (
+          <span
+            onClick={() => { window.location.href = role === 'coach' ? '/coach/dashboard' : '/athlete/dashboard'; }}
+            style={{ cursor: 'pointer' }}
+            className="font-sans font-semibold text-[15px] tracking-tight text-gradient"
+          >
+            LAKTIC
+          </span>
+        )}
+        <button onClick={onToggle} className="w-7 h-7 flex items-center justify-center rounded-btn text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-all duration-150">
+          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 overflow-y-auto py-3 px-2">
+        {primary.map(renderItem)}
+        {more.length > 0 && (
+          <>
+            {!collapsed
+              ? <p className="text-[10px] font-semibold uppercase tracking-wider px-3 mt-3 mb-1" style={{ color: 'var(--color-text-tertiary)', opacity: 0.45 }}>More</p>
+              : <div className="h-px mx-3 my-2" style={{ background: 'var(--color-border)' }} />
+            }
+            {more.map(renderItem)}
+          </>
+        )}
+      </nav>
+
+      {/* Profile + logout */}
+      <div className="border-t border-[var(--color-border)] p-2">
+        <a href={settingsHref} title={collapsed ? name : undefined}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-btn text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-all duration-150 mb-0.5"
+        >
+          <SidebarAvatar name={name || ''} />
+          {!collapsed && <span className="text-[13px] font-medium truncate flex-1">{name}</span>}
+          {!collapsed && <Settings size={12} className="shrink-0 opacity-50" />}
+        </a>
+        <ThemeToggle collapsed={collapsed} />
+        <button onClick={onLogout} title={collapsed ? 'Sign out' : undefined}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-btn text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] hover:bg-red-500/5 transition-all duration-150 w-full text-left"
+        >
+          <LogOut size={15} className="shrink-0" />
+          {!collapsed && <span className="text-[13px] font-medium">Sign out</span>}
+        </button>
+        {!collapsed && (
+          <a
+            href="/privacy"
+            className="block text-center text-[11px] mt-1 hover:underline"
+            style={{ color: 'var(--color-text-tertiary)', opacity: 0.5 }}
+          >
+            Privacy Policy
+          </a>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ── BottomTabBar ───────────────────────────────────────────────────────────────
+interface BottomTabBarProps { role?: string; onLogout?: () => void; }
+function BottomTabBar({ role, onLogout }: BottomTabBarProps) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const current = typeof window !== 'undefined' ? window.location.pathname : '';
+  const nav = role === 'athlete' ? ATHLETE_NAV : role === 'coach' ? COACH_NAV : [];
+  const primary = role === 'athlete' ? PRIMARY_ATHLETE : PRIMARY_COACH;
+
+  return (
+    <>
+      <nav className="bottom-tab-bar">
+        {primary.map(({ label, href, icon: Icon }) => {
+          const active = current === href || (href !== '/' && current.startsWith(href));
+          return (
+            <a key={href} href={href} className={`flex flex-col items-center justify-center flex-1 gap-1 transition-all duration-150 ${active ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-tertiary)]'}`}>
+              <Icon size={18} />
+              <span className="text-[9px] font-semibold uppercase tracking-wide">{label}</span>
+            </a>
+          );
+        })}
+        <button onClick={() => setMoreOpen(o => !o)} className="flex flex-col items-center justify-center flex-1 gap-1 text-[var(--color-text-tertiary)]">
+          <Menu size={18} />
+          <span className="text-[9px] font-semibold uppercase tracking-wide">More</span>
+        </button>
+      </nav>
+
+      {moreOpen && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/60 md:hidden" onClick={() => setMoreOpen(false)} />
+          <div className="fixed bottom-16 left-0 right-0 z-50 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] max-h-72 overflow-y-auto md:hidden">
+            {nav.slice(primary.length).map(({ label, href, icon: Icon }) => (
+              <a key={href} href={href} onClick={() => setMoreOpen(false)}
+                className="flex items-center gap-3 px-5 py-3.5 text-[13px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors border-b border-[var(--color-border)] last:border-0"
+              >
+                <Icon size={15} /> {label}
+              </a>
+            ))}
+            <button onClick={() => { setMoreOpen(false); onLogout?.(); }}
+              className="flex items-center gap-3 px-5 py-3.5 text-[13px] text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] w-full border-b border-[var(--color-border)]"
+            >
+              <LogOut size={15} /> Sign out
+            </button>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+// ── UsernameGate ───────────────────────────────────────────────────────────────
+function UsernameGate() {
+  const { role, profile, setAuth, session } = useAuthStore();
+  const needsUsername = role === 'athlete' && profile && !profile.username;
+  const [value, setValue] = useState('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  if (!needsUsername) return null;
+
+  const save = async () => {
+    const clean = value.trim().toLowerCase();
+    if (!clean) { setError('Username is required.'); return; }
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(clean)) {
+      setError('3–20 chars: letters, numbers, underscores only.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const updated = await apiFetch('/api/athlete/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ username: clean }),
+      });
+      setAuth(session, 'athlete', { ...profile, username: clean, ...updated });
+    } catch (e: any) {
+      setError(e.message?.includes('unique') ? 'That username is already taken.' : (e.message || 'Failed to save.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '24px',
+    }}>
+      <div style={{
+        background: '#111', border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: 20, padding: '36px 32px', maxWidth: 420, width: '100%',
+        fontFamily: "'DM Sans', sans-serif",
+      }}>
+        <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(0,229,160,0.1)', border: '1px solid rgba(0,229,160,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+          <span style={{ fontSize: 22 }}>@</span>
+        </div>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#fff', marginBottom: 8 }}>Choose your username</h2>
+        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 24, lineHeight: 1.6 }}>
+          Your username lets friends find and follow you. You can't skip this step.
+        </p>
+        {error && (
+          <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, marginBottom: 16, fontSize: 13, color: '#f87171' }}>
+            {error}
+          </div>
+        )}
+        <div style={{ position: 'relative', marginBottom: 8 }}>
+          <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.35)', fontSize: 15, pointerEvents: 'none' }}>@</span>
+          <input
+            type="text"
+            autoFocus
+            value={value}
+            onChange={e => { setValue(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20)); setError(''); }}
+            onKeyDown={e => { if (e.key === 'Enter') save(); }}
+            placeholder="yourhandle"
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              padding: '13px 14px 13px 30px',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 10, color: '#fff', fontSize: 15, outline: 'none',
+            }}
+          />
+        </div>
+        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginBottom: 24 }}>
+          3–20 characters · letters, numbers, underscores
+        </p>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving || !value.trim()}
+          style={{
+            width: '100%', padding: '14px', borderRadius: 10,
+            background: saving || !value.trim() ? 'rgba(0,229,160,0.4)' : '#00E5A0',
+            color: '#000', fontSize: 15, fontWeight: 700, border: 'none',
+            cursor: saving || !value.trim() ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {saving ? 'Saving…' : 'Set Username'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── NotificationBell ───────────────────────────────────────────────────────────
+function timeAgoShort(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function NotificationBell() {
+  const { role } = useAuthStore();
+  const [notifs, setNotifs] = React.useState<any[]>([]);
+  const [open, setOpen] = React.useState(false);
+  const [lastSeen, setLastSeen] = React.useState<string>(
+    () => localStorage.getItem('notif_last_seen') ?? new Date(0).toISOString()
+  );
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  const current = typeof window !== 'undefined' ? window.location.pathname : '';
+  const visible = !!role && current.includes('/community');
+
+  useEffect(() => {
+    if (!visible) return;
+    apiFetch('/api/social/follow-notifications').then(setNotifs).catch(() => {});
+  }, [visible]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  if (!visible) return null;
+
+  const unread = notifs.filter(n => n.followed_at > lastSeen).length;
+
+  const handleOpen = () => {
+    const nowOpen = !open;
+    setOpen(nowOpen);
+    if (nowOpen) {
+      const now = new Date().toISOString();
+      setLastSeen(now);
+      localStorage.setItem('notif_last_seen', now);
+    }
+  };
+
+  return (
+    <div ref={dropdownRef} style={{ position: 'fixed', top: 14, right: 60, zIndex: 300 }}>
+      <button
+        onClick={handleOpen}
+        title="Notifications"
+        style={{
+          width: 36, height: 36, borderRadius: '50%',
+          border: '2px solid rgba(0,229,160,0.4)',
+          background: '#111',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+          position: 'relative',
+          padding: 0,
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00E5A0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
+        {unread > 0 && (
+          <span style={{
+            position: 'absolute', top: -4, right: -4,
+            background: '#00E5A0', color: '#000',
+            borderRadius: '50%', width: 16, height: 16,
+            fontSize: 10, fontWeight: 700,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            lineHeight: 1,
+          }}>
+            {unread > 9 ? '9+' : unread}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 44, right: 0,
+          background: '#111', border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 14, width: 280, maxHeight: 360, overflowY: 'auto',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+        }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>
+              Notifications
+            </p>
+          </div>
+          {notifs.length === 0 ? (
+            <div style={{ padding: '28px 16px', textAlign: 'center' }}>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', margin: 0 }}>No notifications yet</p>
+            </div>
+          ) : notifs.map((n, i) => (
+            <div key={n.id ?? i} style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 14px',
+              borderBottom: '1px solid rgba(255,255,255,0.05)',
+              background: n.followed_at > lastSeen ? 'rgba(0,229,160,0.06)' : 'transparent',
+            }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: '50%',
+                background: '#1a1a1a', overflow: 'hidden', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}>
+                {n.avatar_url
+                  ? <img src={n.avatar_url} alt={n.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <span style={{ fontSize: 12, fontWeight: 700, color: '#00E5A0' }}>{(n.name ?? '?').charAt(0).toUpperCase()}</span>
+                }
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#fff', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.name}</p>
+                <p style={{ fontSize: 11, color: 'rgba(0,229,160,0.8)', margin: 0 }}>
+                  followed you · {timeAgoShort(n.followed_at)}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── AppLayout ──────────────────────────────────────────────────────────────────
+// Use this for all authenticated pages. Sticky sidebar + flex layout.
+interface AppLayoutProps { role?: string; name?: string; onLogout?: () => void; children: React.ReactNode; }
+function FloatingProfileButton() {
+  const { profile, role } = useAuthStore();
+  const current = typeof window !== 'undefined' ? window.location.pathname : '';
+  if (!role) return null;
+  if (!current.includes('/community')) return null;
+  const href = role === 'athlete' ? '/athlete/profile' : '/coach/settings';
+  const avatarUrl = (profile as any)?.avatar_url ?? null;
+  const name = (profile as any)?.name ?? 'U';
+  const initial = name.charAt(0).toUpperCase();
+  const [imgErr, setImgErr] = React.useState(false);
+
+  return (
+    <Link
+      to={href}
+      title="My Profile"
+      style={{
+        position: 'fixed', top: 14, right: 16, zIndex: 300,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: 36, height: 36, borderRadius: '50%',
+        border: '2px solid rgba(0,229,160,0.4)',
+        background: '#111',
+        textDecoration: 'none',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+        overflow: 'hidden',
+        flexShrink: 0,
+      }}
+    >
+      {avatarUrl && !imgErr ? (
+        <img
+          src={avatarUrl}
+          alt={name}
+          onError={() => setImgErr(true)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      ) : (
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#00E5A0' }}>{initial}</span>
+      )}
+    </Link>
+  );
+}
+
+export function AppLayout({ role, name, onLogout, children }: AppLayoutProps) {
+  const [collapsed, setCollapsed] = useState(false);
+  return (
+    <div className="app-layout-wrap bg-[var(--color-bg-primary)]">
+      <UsernameGate />
+      <NotificationBell />
+      <FloatingProfileButton />
+      <div className={`app-sidebar-sticky ${collapsed ? 'collapsed' : ''}`}>
+        <SidebarContent role={role} name={name} onLogout={onLogout} collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} />
+      </div>
+      <main className="app-layout-main">
+        <InstallBanner />
+        {children}
+      </main>
+      <BottomTabBar role={role} onLogout={onLogout} />
+    </div>
+  );
+}
+
+// ── Navbar (backward compat — renders fixed sidebar + body offset class) ───────
+// Legacy pages that use <Navbar> still work visually via CSS body class.
+interface NavbarProps { role?: string; name?: string; onLogout?: () => void; }
+export function Navbar({ role, name, onLogout }: NavbarProps) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    document.body.classList.add('with-sidebar');
+    return () => { document.body.classList.remove('with-sidebar'); };
+  }, []);
+
+  return (
+    <>
+      <div className={`app-sidebar-fixed ${collapsed ? '' : ''}`} style={{ width: collapsed ? 64 : 220 }}>
+        <SidebarContent role={role} name={name} onLogout={onLogout} collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} />
+      </div>
+      <BottomTabBar role={role} onLogout={onLogout} />
+    </>
   );
 }

@@ -42,15 +42,17 @@ interface StravaConnection {
   token_expires_at: string;
 }
 
-/** Build OAuth URL that redirects athlete to Strava consent screen */
-export function getAuthUrl(athleteId: string): string {
+/** Build OAuth URL that redirects athlete to Strava consent screen.
+ *  State encodes athleteId and optional returnTo as "${athleteId}|${returnTo}". */
+export function getAuthUrl(athleteId: string, returnTo?: string): string {
+  const state = returnTo ? `${athleteId}|${returnTo}` : athleteId;
   const params = new URLSearchParams({
     client_id: env.STRAVA_CLIENT_ID!,
     redirect_uri: env.STRAVA_REDIRECT_URI!,
     response_type: 'code',
-    scope: 'read,activity:read',
-    state: athleteId,
-    approval_prompt: 'auto'
+    scope: 'read,activity:read_all',
+    state,
+    approval_prompt: 'force'
   });
   return `${STRAVA_AUTH}?${params.toString()}`;
 }

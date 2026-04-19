@@ -9,17 +9,31 @@ import * as strava from '../services/stravaService';
 
 const router = Router();
 
-// GET /api/strava/auth — Generate Strava OAuth URL (redirect to Strava)
+// GET /api/strava/auth — Redirect browser directly to Strava's OAuth consent page
+// Called via full browser navigation (window.location.href), not fetch — no auth header available.
+// athleteId (athlete_profiles.id) is passed as query param and forwarded as OAuth state.
 router.get(
   '/auth',
-  auth,
-  requireAthlete,
-  asyncHandler(async (req: AuthRequest, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     if (!env.STRAVA_CLIENT_ID || !env.STRAVA_REDIRECT_URI) {
-      return res.status(500).json({ error: 'Strava integration is not configured' });
+      return res.redirect(`${env.FRONTEND_URL}/signup/strava?strava_error=1`);
     }
-    const url = strava.getAuthUrl(req.athlete.id);
-    res.json({ url });
+    const athleteId = req.query.athleteId as string | undefined;
+    const returnTo = req.query.return_to as string | undefined;
+    if (!athleteId) {
+      return res.redirect(`${env.FRONTEND_URL}/signup/strava?strava_error=1`);
+    }
+    // Verify the athleteId exists to prevent state spoofing
+    const { data: athlete } = await supabase
+      .from('athlete_profiles')
+      .select('id')
+      .eq('id', athleteId)
+      .single();
+    if (!athlete) {
+      return res.redirect(`${env.FRONTEND_URL}/signup/strava?strava_error=1`);
+    }
+    const url = strava.getAuthUrl(athleteId, returnTo);
+    res.redirect(url);
   })
 );
 
@@ -31,11 +45,19 @@ router.get(
     if (!parsed.success) {
       return res.status(400).json({ error: 'Missing code or state parameter' });
     }
-    const { code, state: athleteId } = parsed.data;
+    const { code } = parsed.data;
+    // State is either plain athleteId UUID or "${athleteId}|${returnTo}"
+    const rawState = parsed.data.state;
+    const pipeIdx = rawState.indexOf('|');
+    const athleteId = pipeIdx >= 0 ? rawState.slice(0, pipeIdx) : rawState;
+    const returnTo = pipeIdx >= 0 ? rawState.slice(pipeIdx + 1) : null;
+
+    console.log('[strava/callback] received code:', code?.slice(0, 8), 'state:', athleteId, 'returnTo:', returnTo);
 
     const tokenData = await strava.exchangeCode(code);
 
-    // Upsert the connection (one per athlete)
+    // Upsert on strava_athlete_id — if this Strava account was previously linked to
+    // a different athlete_id (e.g. test account reuse), overwrite with the current athlete.
     const { error } = await supabase
       .from('strava_connections')
       .upsert(
@@ -45,18 +67,23 @@ router.get(
           access_token: tokenData.access_token,
           refresh_token: tokenData.refresh_token,
           token_expires_at: new Date(tokenData.expires_at * 1000).toISOString(),
-          scope: 'read,activity:read',
+          scope: 'read,activity:read_all',
           is_active: true
         },
-        { onConflict: 'athlete_id' }
+        { onConflict: 'strava_athlete_id' }
       );
 
     if (error) {
-      return res.status(400).json({ error: error.message });
+      // Redirect back to Strava connect step with error flag rather than showing raw JSON
+      return res.redirect(`${env.FRONTEND_URL}/signup/strava?strava_error=1`);
     }
 
-    // Redirect back to frontend settings page
-    const redirectUrl = `${env.FRONTEND_URL}/athlete/settings?strava=connected`;
+    // Determine redirect: settings return goes back to settings; onboarding always
+    // goes to Meet Pace (never dashboard — laktic_awaiting_confirmation blocks it until
+    // MeetPaceSplash clears it and marks onboarding_completed).
+    const redirectUrl = returnTo === 'settings'
+      ? `${env.FRONTEND_URL}/athlete/settings?strava=connected`
+      : `${env.FRONTEND_URL}/athlete/signup?step=meetpace`;
     res.redirect(redirectUrl);
   })
 );
@@ -100,12 +127,19 @@ router.post(
   })
 );
 
-// DELETE /api/athlete/strava — Disconnect Strava
+// DELETE /api/athlete/strava — Disconnect Strava and delete all synced activity data
 router.delete(
   '/strava',
   auth,
   requireAthlete,
   asyncHandler(async (req: AuthRequest, res) => {
+    // Delete all synced Strava activities (Strava API compliance — data must be deleted on disconnect)
+    await supabase
+      .from('athlete_activities')
+      .delete()
+      .eq('athlete_id', req.athlete.id)
+      .eq('source', 'strava');
+
     const { error } = await supabase
       .from('strava_connections')
       .update({ is_active: false })
@@ -119,20 +153,24 @@ router.delete(
 // POST /api/strava/webhook — Strava webhook receiver (new activity push)
 router.post(
   '/webhook',
-  asyncHandler(async (req: Request, res: Response) => {
+  (req: Request, res: Response) => {
+    // Respond 200 immediately — Strava requires this within 2 seconds
+    res.status(200).json({ ok: true });
+
     const { object_type, aspect_type, object_id, owner_id } = req.body;
 
-    // Strava sends events for activities and athletes
+    // Process in background — Strava sends events for activities and athletes
     if (object_type === 'activity' && aspect_type === 'create') {
-      // Find the connection by strava_athlete_id
-      const { data: connection } = await supabase
-        .from('strava_connections')
-        .select('*')
-        .eq('strava_athlete_id', owner_id)
-        .eq('is_active', true)
-        .single();
+      (async () => {
+        const { data: connection } = await supabase
+          .from('strava_connections')
+          .select('*')
+          .eq('strava_athlete_id', owner_id)
+          .eq('is_active', true)
+          .single();
 
-      if (connection) {
+        if (!connection) return;
+
         try {
           const accessToken = await strava.refreshToken(connection);
           const activity = await strava.getActivity(accessToken, object_id);
@@ -162,16 +200,12 @@ router.post(
             { onConflict: 'strava_activity_id' }
           );
         } catch (err) {
-          // Log but don't fail — Strava expects 200
           // eslint-disable-next-line no-console
           console.error('[Strava webhook] Error syncing activity:', err);
         }
-      }
+      })();
     }
-
-    // Strava requires a 200 response within 2 seconds
-    res.status(200).json({ ok: true });
-  })
+  }
 );
 
 // GET /api/strava/webhook — Strava webhook verification (GET challenge)
@@ -188,6 +222,24 @@ router.get(
       res.status(403).json({ error: 'Verification failed' });
     }
   }
+);
+
+// GET /api/athlete/activities/:id — Single activity
+router.get(
+  '/activities/:id',
+  auth,
+  requireAthlete,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { id } = req.params;
+    const { data, error } = await supabase
+      .from('athlete_activities')
+      .select('*')
+      .eq('id', id)
+      .eq('athlete_id', req.athlete.id)
+      .single();
+    if (error || !data) return res.status(404).json({ error: 'Activity not found' });
+    res.json({ activity: data });
+  })
 );
 
 // GET /api/athlete/activities — List activities (paginated, date range filter)

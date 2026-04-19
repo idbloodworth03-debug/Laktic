@@ -3,9 +3,17 @@ import { Link, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { Navbar, Button, Card, Badge, Alert } from '../components/ui';
+import { AppLayout, Button, Card, Badge, Alert } from '../components/ui';
 
 type EventType = 'practice' | 'race' | 'off_day' | 'travel' | 'meeting' | 'other';
+
+type PlanWorkout = {
+  date: string;
+  title: string;
+  distance_miles?: number;
+  day_of_week: number;
+  week_number: number;
+};
 
 type TeamEvent = {
   id: string;
@@ -51,7 +59,7 @@ const STATUS_BADGE: Record<string, 'green' | 'amber' | 'gray' | 'red'> = {
   absent:  'red'
 };
 
-function MonthCalView({ events }: { events: TeamEvent[] }) {
+function MonthCalView({ events, planWorkouts = [] }: { events: TeamEvent[]; planWorkouts?: PlanWorkout[] }) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -67,6 +75,12 @@ function MonthCalView({ events }: { events: TeamEvent[] }) {
   events.forEach(ev => {
     if (!eventsByDate[ev.event_date]) eventsByDate[ev.event_date] = [];
     eventsByDate[ev.event_date].push(ev);
+  });
+
+  const planByDate: Record<string, PlanWorkout[]> = {};
+  planWorkouts.forEach(wo => {
+    if (!planByDate[wo.date]) planByDate[wo.date] = [];
+    planByDate[wo.date].push(wo);
   });
 
   const cells: (number | null)[] = [
@@ -95,6 +109,7 @@ function MonthCalView({ events }: { events: TeamEvent[] }) {
             ? `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
             : '';
           const dayEvents = dateKey ? (eventsByDate[dateKey] || []) : [];
+          const hasRace = dayEvents.some(ev => ev.event_type === 'race');
           const isToday = day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
           return (
             <div key={i} className={`bg-[var(--surface2)] min-h-[72px] p-1.5 ${!day ? 'opacity-20' : ''}`}>
@@ -113,6 +128,17 @@ function MonthCalView({ events }: { events: TeamEvent[] }) {
                         {ev.my_attendance?.status === 'present' && '✓ '}
                         {ev.title}
                       </div>
+                    ))}
+                    {!hasRace && (planByDate[dateKey] || []).map((wo, wi) => (
+                      <a
+                        key={`plan-${wi}`}
+                        href="/athlete/plan"
+                        className="block text-[10px] leading-tight px-1.5 py-0.5 rounded-md truncate font-medium border"
+                        style={{ background: 'rgba(0,229,160,0.08)', color: '#00E5A0', borderColor: 'rgba(0,229,160,0.25)' }}
+                        title={`${wo.title}${wo.distance_miles ? ` · ${wo.distance_miles}mi` : ''}`}
+                      >
+                        {wo.title}{wo.distance_miles ? ` · ${wo.distance_miles}mi` : ''}
+                      </a>
                     ))}
                   </div>
                 </>
@@ -133,6 +159,7 @@ export function AthleteCalendar() {
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
   const [events, setEvents] = useState<TeamEvent[]>([]);
+  const [planWorkouts, setPlanWorkouts] = useState<PlanWorkout[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [view, setView] = useState<'list' | 'month'>('list');
@@ -140,8 +167,45 @@ export function AthleteCalendar() {
   const [checkInMsg, setCheckInMsg] = useState<{ eventId: string; msg: string; ok: boolean } | null>(null);
 
   useEffect(() => {
-    apiFetch('/api/athlete/calendar/team')
-      .then(setEvents)
+    Promise.all([
+      apiFetch('/api/athlete/calendar/team'),
+      apiFetch('/api/athlete/season').catch(() => ({ season: null }))
+    ])
+      .then(([eventsData, seasonData]) => {
+        // Convert personal races from race_calendar into TeamEvent shape
+        const personalRaces: TeamEvent[] = (seasonData?.season?.race_calendar ?? []).map(
+          (race: { name: string; date: string; is_goal_race?: boolean; notes?: string; distance?: string }, idx: number) => ({
+            id: `personal-race-${idx}`,
+            title: race.name,
+            event_type: 'race' as EventType,
+            event_date: race.date,
+            start_time: null,
+            end_time: null,
+            location_name: race.distance ?? null,
+            location_lat: null,
+            location_lng: null,
+            notes: [race.is_goal_race ? 'Goal Race' : null, race.notes ?? null].filter(Boolean).join(' · ') || null,
+            my_attendance: null,
+          })
+        );
+
+        // Merge team events + personal races, sorted by date
+        const allEvents: TeamEvent[] = [...(eventsData ?? []), ...personalRaces]
+          .sort((a, b) => a.event_date.localeCompare(b.event_date));
+        setEvents(allEvents);
+
+        if (seasonData?.season?.season_plan) {
+          const workouts: PlanWorkout[] = [];
+          for (const week of seasonData.season.season_plan) {
+            for (const wo of (week.workouts || [])) {
+              if (wo.date && (wo.distance_miles > 0 || wo.title)) {
+                workouts.push({ ...wo, week_number: week.week_number });
+              }
+            }
+          }
+          setPlanWorkouts(workouts);
+        }
+      })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
@@ -194,7 +258,7 @@ export function AthleteCalendar() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
-      const BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3001';
+      const BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001';
       const res = await fetch(`${BASE}/api/athlete/calendar/export.ics`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -218,8 +282,8 @@ export function AthleteCalendar() {
   const pastEvents = events.filter(e => !isFutureOrToday(e.event_date));
 
   return (
-    <div className="min-h-screen">
-      <Navbar role="athlete" name={profile?.name} onLogout={logout} />
+    <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
+    <div className="min-h-screen bg-[var(--color-bg-primary)]">
       <div className="max-w-3xl mx-auto px-6 py-10">
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 fade-up gap-3">
@@ -251,13 +315,13 @@ export function AthleteCalendar() {
         ) : events.length === 0 ? (
           <Card>
             <div className="text-center py-10">
-              <p className="text-sm text-[var(--muted)] mb-2">No team events scheduled yet.</p>
-              <p className="text-xs text-[var(--muted)]">Your coach will post practices and races here.</p>
+              <p className="text-sm text-[var(--muted)] mb-2">No events scheduled yet.</p>
+              <p className="text-xs text-[var(--muted)]">Team practices and your races will appear here.</p>
             </div>
           </Card>
         ) : view === 'month' ? (
           <Card>
-            <MonthCalView events={events} />
+            <MonthCalView events={events} planWorkouts={planWorkouts} />
             <div className="flex flex-wrap gap-3 mt-4 pt-3 border-t border-[var(--border)]/60">
               {(Object.entries(EVENT_LABELS) as [EventType, string][]).map(([type, label]) => (
                 <span key={type} className="flex items-center gap-1.5 text-[10px] text-[var(--muted)]">
@@ -307,19 +371,39 @@ export function AthleteCalendar() {
                           </Button>
                         )}
                         {ev.my_attendance?.status === 'present' && (
-                          <span className="text-xs text-green-400 font-medium shrink-0">✓ Present</span>
+                          <span className="text-xs text-[#00E5A0] font-medium shrink-0">✓ Present</span>
                         )}
                       </div>
                       {checkInMsg?.eventId === ev.id && (
                         <div className={`mt-2 text-xs px-3 py-1.5 rounded-lg ${
                           checkInMsg.ok
-                            ? 'bg-green-900/30 text-green-300 border border-green-800/40'
+                            ? 'bg-[rgba(0,229,160,0.07)] text-[#00E5A0] border border-[rgba(0,229,160,0.22)]'
                             : 'bg-red-900/30 text-red-300 border border-red-800/40'
                         }`}>
                           {checkInMsg.msg}
                         </div>
                       )}
                     </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {planWorkouts.filter(wo => isFutureOrToday(wo.date)).length > 0 && (
+              <Card title="Upcoming Workouts" className="mb-4">
+                <div className="flex flex-col gap-2">
+                  {planWorkouts.filter(wo => isFutureOrToday(wo.date)).slice(0, 14).map((wo, i) => (
+                    <a key={i} href="/athlete/plan" className="flex items-center justify-between gap-3 p-3 rounded-xl border border-[var(--border)] bg-[var(--surface2)] hover:border-[var(--border2)] transition-colors no-underline">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border" style={{ background: 'rgba(0,229,160,0.08)', color: '#00E5A0', borderColor: 'rgba(0,229,160,0.25)' }}>
+                          Plan
+                        </span>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-[var(--text)] truncate">{wo.title}</div>
+                          <div className="text-xs text-[var(--muted)]">{formatDate(wo.date)}{wo.distance_miles ? ` · ${wo.distance_miles}mi` : ''}</div>
+                        </div>
+                      </div>
+                    </a>
                   ))}
                 </div>
               </Card>
@@ -353,5 +437,6 @@ export function AthleteCalendar() {
         )}
       </div>
     </div>
+    </AppLayout>
   );
 }

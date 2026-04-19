@@ -20,7 +20,7 @@ router.post(
   requireCoach,
   validate(teamCreateSchema),
   asyncHandler(async (req: AuthRequest, res) => {
-    const { name, default_bot_id } = req.body;
+    const { name, default_bot_id, max_uses, invite_code_expires_at } = req.body;
 
     // Check coach doesn't already have a team
     const { data: existing } = await supabase
@@ -33,20 +33,17 @@ router.post(
       return res.status(400).json({ error: 'You already have a team. Only one team per coach is allowed.' });
     }
 
-    // Validate default_bot_id if provided
+    // Validate default_bot_id if provided — only check ownership, not published status
     if (default_bot_id) {
       const { data: bot } = await supabase
         .from('coach_bots')
-        .select('id, is_published')
+        .select('id')
         .eq('id', default_bot_id)
         .eq('coach_id', req.coach.id)
         .single();
 
       if (!bot) {
         return res.status(400).json({ error: 'Bot not found or not owned by you.' });
-      }
-      if (!bot.is_published) {
-        return res.status(400).json({ error: 'Default bot must be published before assigning to a team.' });
       }
     }
 
@@ -58,7 +55,9 @@ router.post(
         coach_id: req.coach.id,
         name,
         default_bot_id: default_bot_id || null,
-        invite_code
+        invite_code,
+        ...(max_uses !== undefined && { max_uses }),
+        ...(invite_code_expires_at !== undefined && { invite_code_expires_at })
       })
       .select()
       .single();
@@ -98,6 +97,7 @@ router.get(
         athlete_profiles!athlete_id (id, name, weekly_volume_miles, primary_events)
       `)
       .eq('team_id', team.id)
+      .is('left_at', null)
       .order('joined_at', { ascending: true });
 
     res.json({ team, members: members || [] });
@@ -129,6 +129,7 @@ router.get(
       `)
       .eq('team_id', team.id)
       .eq('status', 'active')
+      .is('left_at', null)
       .order('joined_at', { ascending: true });
 
     res.json(members || []);
@@ -154,39 +155,54 @@ router.post(
 
     // Check expiry
     if (team.invite_code_expires_at && new Date(team.invite_code_expires_at) < new Date()) {
-      return res.status(400).json({ error: 'This invite code has expired.' });
+      return res.status(400).json({ error: 'This invite link has expired.' });
     }
 
     // Check max uses
-    if (team.uses_count >= team.max_uses) {
-      return res.status(400).json({ error: 'This invite code has reached its maximum number of uses.' });
+    if (team.max_uses !== null && team.max_uses !== undefined && team.uses_count >= team.max_uses) {
+      return res.status(400).json({ error: 'This invite link has reached its limit.' });
     }
 
-    // Check already a member
+    // Check existing membership (active or previously left)
     const { data: existingMember } = await supabase
       .from('team_members')
-      .select('id')
+      .select('id, left_at')
       .eq('team_id', team.id)
       .eq('athlete_id', req.athlete.id)
       .single();
 
     if (existingMember) {
-      return res.status(400).json({ error: 'You are already a member of this team.' });
+      if (!existingMember.left_at) {
+        return res.status(400).json({ error: 'You are already a member of this team.' });
+      }
+      // Re-join: clear left_at
+      const { error: rejoinError } = await supabase
+        .from('team_members')
+        .update({ left_at: null, status: 'active' })
+        .eq('id', existingMember.id);
+      if (rejoinError) return res.status(400).json({ error: rejoinError.message });
+    } else {
+      // New member
+      const { error: memberError } = await supabase.from('team_members').insert({
+        team_id: team.id,
+        athlete_id: req.athlete.id
+      });
+      if (memberError) return res.status(400).json({ error: memberError.message });
     }
-
-    // Add member
-    const { error: memberError } = await supabase.from('team_members').insert({
-      team_id: team.id,
-      athlete_id: req.athlete.id
-    });
-
-    if (memberError) return res.status(400).json({ error: memberError.message });
 
     // Increment uses_count
     await supabase
       .from('teams')
-      .update({ uses_count: team.uses_count + 1, updated_at: new Date().toISOString() })
+      .update({ uses_count: (team.uses_count ?? 0) + 1, updated_at: new Date().toISOString() })
       .eq('id', team.id);
+
+    // Set active_team_id if the athlete doesn't have one yet
+    if (!req.athlete.active_team_id) {
+      await supabase
+        .from('athlete_profiles')
+        .update({ active_team_id: team.id })
+        .eq('id', req.athlete.id);
+    }
 
     // Log event
     await supabase.from('team_events').insert({

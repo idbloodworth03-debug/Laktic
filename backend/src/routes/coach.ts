@@ -4,6 +4,7 @@ import { auth, requireCoach, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
 import { validate } from '../middleware/validate';
 import { sendCoachWelcomeEmail } from '../services/emailService';
+import { notifyCoachReplied } from '../services/notificationService';
 import {
   coachProfileSchema,
   botCreateSchema,
@@ -24,13 +25,17 @@ router.post(
     const { name, school_or_org } = req.body;
 
     const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+    console.log('[POST /coach/profile] user_id:', req.user!.id, 'name:', name);
     const { data, error } = await supabase
       .from('coach_profiles')
       .insert({ user_id: req.user!.id, name, school_or_org, trial_ends_at: trialEndsAt })
       .select()
       .single();
 
-    if (error) return res.status(400).json({ error: error.message });
+    if (error) {
+      console.error('[POST /coach/profile] insert error:', error.message, '| code:', error.code);
+      return res.status(400).json({ error: error.message });
+    }
 
     // Fire-and-forget welcome email (non-blocking)
     const userEmail = req.user!.email;
@@ -40,14 +45,46 @@ router.post(
   })
 );
 
+// PATCH /api/coach/profile
+router.patch(
+  '/profile',
+  auth,
+  requireCoach,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const allowedFields = ['name', 'school_or_org', 'username', 'license_type', 'avatar_url'];
+    const update: Record<string, unknown> = {};
+    for (const f of allowedFields) {
+      if (req.body[f] !== undefined) update[f] = req.body[f];
+    }
+    if (Object.keys(update).length === 0) return res.json(req.coach);
+
+    const { data, error } = await supabase
+      .from('coach_profiles')
+      .update(update)
+      .eq('id', req.coach.id)
+      .select()
+      .single();
+
+    if (error) return res.status(400).json({ error: error.message });
+    return res.json(data);
+  })
+);
+
 // GET /api/coach/bot
 router.get(
   '/bot',
   auth,
   requireCoach,
   asyncHandler(async (req: AuthRequest, res) => {
-    const { data: bot } = await supabase.from('coach_bots').select('*').eq('coach_id', req.coach.id).single();
+    // maybeSingle() returns null (no error) when 0 rows found, unlike single() which throws PGRST116
+    const { data: bot, error: botErr } = await supabase
+      .from('coach_bots')
+      .select('*')
+      .eq('coach_id', req.coach.id)
+      .maybeSingle();
 
+    if (botErr) { console.error('[GET /bot] Supabase error:', botErr.message, 'coach_id:', req.coach.id); return res.status(500).json({ error: botErr.message }); }
+    console.log('[GET /bot] coach_id:', req.coach.id, '→ bot:', bot ? bot.id : 'null');
     if (!bot) return res.json({ bot: null });
 
     const { data: workouts } = await supabase
@@ -74,13 +111,15 @@ router.post(
   requireCoach,
   validate(botCreateSchema),
   asyncHandler(async (req: AuthRequest, res) => {
-    const { name, philosophy, event_focus, level_focus } = req.body;
-    const existing = await supabase.from('coach_bots').select('id').eq('coach_id', req.coach.id).single();
-    if (existing.data) return res.status(400).json({ error: 'Bot already exists' });
+    console.log('[POST /bot] coach_id:', req.coach.id, 'body:', JSON.stringify(req.body));
+    const { name, philosophy, event_focus, level_focus, personality, personality_prompt } = req.body;
+    const { data: existingBot, error: existingErr } = await supabase.from('coach_bots').select('id').eq('coach_id', req.coach.id).single();
+    if (existingErr && existingErr.code !== 'PGRST116') return res.status(500).json({ error: existingErr.message });
+    if (existingBot) { console.log('[POST /bot] Bot already exists for coach:', req.coach.id); return res.status(400).json({ error: 'Bot already exists' }); }
 
     const { data, error } = await supabase
       .from('coach_bots')
-      .insert({ coach_id: req.coach.id, name, philosophy, event_focus, level_focus })
+      .insert({ coach_id: req.coach.id, name, philosophy, event_focus, level_focus, personality: personality ?? 'custom', personality_prompt: personality_prompt ?? null })
       .select()
       .single();
 
@@ -387,6 +426,155 @@ router.delete(
   asyncHandler(async (req: AuthRequest, res) => {
     await supabase.from('coach_knowledge_documents').delete().eq('id', req.params.id);
     res.json({ ok: true });
+  })
+);
+
+// ── Direct message inbox ───────────────────────────────────────────────────────
+
+// GET /api/coach/messages — all conversations grouped by athlete, sorted by most recent
+router.get(
+  '/messages',
+  auth,
+  requireCoach,
+  asyncHandler(async (req: AuthRequest, res) => {
+    // Two-step: fetch messages first, then batch-fetch athlete profiles.
+    // This avoids PostgREST FK-join cache issues that can occur after migrations.
+    const { data: messages, error } = await supabase
+      .from('direct_messages')
+      .select('id, athlete_id, sender_role, content, read_at, created_at')
+      .eq('coach_id', req.coach.id)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('[coach/messages] direct_messages query failed:', error.code, error.message);
+      return res.status(500).json({ error: error.message });
+    }
+
+    if (!messages || messages.length === 0) return res.json([]);
+
+    // Batch-fetch athlete names for all unique athlete IDs in one query
+    const athleteIds = [...new Set(messages.map(m => m.athlete_id))];
+    const { data: athletes } = await supabase
+      .from('athlete_profiles')
+      .select('id, name')
+      .in('id', athleteIds);
+
+    const athleteMap = new Map<string, { id: string; name: string }>(
+      (athletes || []).map(a => [a.id, a])
+    );
+
+    // Group by athlete in application code
+    const byAthlete = new Map<string, { athlete: any; msgs: any[]; unreadCount: number }>();
+    for (const msg of messages) {
+      const athlete = athleteMap.get(msg.athlete_id) ?? { id: msg.athlete_id, name: 'Unknown Athlete' };
+      if (!byAthlete.has(msg.athlete_id)) {
+        byAthlete.set(msg.athlete_id, { athlete, msgs: [], unreadCount: 0 });
+      }
+      const conv = byAthlete.get(msg.athlete_id)!;
+      conv.msgs.push(msg);
+      if (msg.sender_role === 'athlete' && !msg.read_at) conv.unreadCount++;
+    }
+
+    const conversations = Array.from(byAthlete.values())
+      .map(conv => ({
+        athlete: conv.athlete,
+        lastMessage: conv.msgs[conv.msgs.length - 1],
+        unreadCount: conv.unreadCount,
+      }))
+      .sort((a, b) =>
+        new Date(b.lastMessage.created_at).getTime() - new Date(a.lastMessage.created_at).getTime()
+      );
+
+    res.json(conversations);
+  })
+);
+
+// GET /api/coach/messages/:athleteId — full thread, marks athlete messages as read
+router.get(
+  '/messages/:athleteId',
+  auth,
+  requireCoach,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { athleteId } = req.params;
+
+    const { data: messages, error } = await supabase
+      .from('direct_messages')
+      .select('id, sender_role, content, read_at, created_at')
+      .eq('coach_id', req.coach.id)
+      .eq('athlete_id', athleteId)
+      .order('created_at', { ascending: true });
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    // Mark unread athlete messages as read
+    const unreadIds = (messages || [])
+      .filter(m => m.sender_role === 'athlete' && !m.read_at)
+      .map(m => m.id);
+
+    if (unreadIds.length > 0) {
+      await supabase
+        .from('direct_messages')
+        .update({ read_at: new Date().toISOString() })
+        .in('id', unreadIds);
+    }
+
+    res.json(messages || []);
+  })
+);
+
+// POST /api/coach/messages/:athleteId/reply — coach sends a reply
+router.post(
+  '/messages/:athleteId/reply',
+  auth,
+  requireCoach,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const { athleteId } = req.params;
+    const { message } = req.body;
+    if (!message?.trim()) return res.status(400).json({ error: 'Message is required' });
+
+    // Verify athlete is on this coach's team
+    const { data: team } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('coach_id', req.coach.id)
+      .single();
+
+    if (!team) return res.status(404).json({ error: 'No team found' });
+
+    const { data: member } = await supabase
+      .from('team_members')
+      .select('athlete_id')
+      .eq('team_id', team.id)
+      .eq('athlete_id', athleteId)
+      .single();
+
+    if (!member) return res.status(403).json({ error: 'Athlete is not on your team' });
+
+    const { data: dm, error } = await supabase
+      .from('direct_messages')
+      .insert({
+        athlete_id: athleteId,
+        coach_id: req.coach.id,
+        sender_role: 'coach',
+        content: message.trim(),
+      })
+      .select()
+      .single();
+
+    if (error) return res.status(400).json({ error: error.message });
+
+    // Push notification to athlete (fire-and-forget)
+    const { data: athlete } = await supabase
+      .from('athlete_profiles')
+      .select('user_id')
+      .eq('id', athleteId)
+      .single();
+
+    if (athlete?.user_id) {
+      notifyCoachReplied(athlete.user_id, req.coach.name).catch(() => {});
+    }
+
+    res.json(dm);
   })
 );
 

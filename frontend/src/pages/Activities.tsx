@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { apiFetch } from '../lib/api';
-import { Navbar, Card, Badge, Spinner, Button, EmptyState } from '../components/ui';
+import { AppLayout, Card, Badge, Spinner, Button, EmptyState } from '../components/ui';
 
 interface Activity {
   id: string;
+  strava_activity_id: number | null;
   activity_type: string;
   name: string;
   start_date: string;
@@ -58,11 +59,11 @@ function activityColor(type: string): 'green' | 'blue' | 'amber' | 'purple' | 'g
 }
 
 const ACCENT_BORDER: Record<string, string> = {
-  green: 'border-l-brand-500',
+  green: 'border-l-[var(--color-accent)]',
   blue: 'border-l-blue-500',
   amber: 'border-l-amber-500',
   purple: 'border-l-purple-500',
-  gray: 'border-l-[var(--border2)]',
+  gray: 'border-l-[var(--color-border)]',
 };
 
 export function Activities() {
@@ -88,12 +89,24 @@ export function Activities() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg)]">
-      <Navbar role={role || undefined} name={profile?.name} onLogout={clearAuth} />
+    <AppLayout role={role || undefined} name={profile?.name} onLogout={clearAuth}>
       <div className="max-w-5xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-6 fade-up">
-          <h1 className="font-display text-2xl font-bold text-[var(--text)]">Activities</h1>
+          <h1 className="font-display text-2xl font-bold text-[var(--color-text-primary)]">Activities</h1>
         </div>
+
+        {/* Powered by Strava attribution — required by Strava API guidelines */}
+        <a
+          href="https://www.strava.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 mb-5 text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
+        >
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M12 3l-4 7h3L7 17l8-9h-4L12 3z" fill="#FC5200" />
+          </svg>
+          Powered by Strava
+        </a>
 
         {loading ? (
           <div className="flex justify-center py-20">
@@ -115,18 +128,18 @@ export function Activities() {
               {data.activities.map((a) => {
                 const color = activityColor(a.activity_type);
                 return (
-                  <div key={a.id} className={`bg-[var(--surface)] border border-[var(--border)] border-l-2 ${ACCENT_BORDER[color]} rounded-xl p-4 shadow-card hover:border-[var(--border2)] transition-colors`}>
+                  <div key={a.id} className={`bg-[var(--color-bg-secondary)] border border-[var(--color-border)] border-l-2 ${ACCENT_BORDER[color]} rounded-xl p-4 shadow-card hover:border-[var(--color-border-light)] transition-colors`}>
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 mb-1.5">
                           <Badge label={a.activity_type} color={color} />
-                          <span className="text-xs text-[var(--muted)]">
+                          <span className="text-xs text-[var(--color-text-tertiary)]">
                             {new Date(a.start_date).toLocaleDateString(undefined, {
                               weekday: 'short', month: 'short', day: 'numeric'
                             })}
                           </span>
                         </div>
-                        <h3 className="font-medium text-sm text-[var(--text)] truncate">
+                        <h3 className="font-medium text-sm text-[var(--color-text-primary)] truncate">
                           {a.name || 'Untitled Activity'}
                         </h3>
                       </div>
@@ -140,11 +153,24 @@ export function Activities() {
                       <StatCell label="Avg HR" value={a.average_heartrate ? `${Math.round(a.average_heartrate)} bpm` : '--'} />
                     </div>
 
-                    {a.total_elevation_gain > 0 && (
-                      <div className="mt-2 text-xs text-[var(--muted)]">
-                        ↑ {Math.round(a.total_elevation_gain * 3.28084)} ft elevation
-                      </div>
-                    )}
+                    <div className="flex items-center justify-between mt-2">
+                      {a.total_elevation_gain > 0 && (
+                        <span className="text-xs text-[var(--color-text-tertiary)]">
+                          ↑ {Math.round(a.total_elevation_gain * 3.28084)} ft elevation
+                        </span>
+                      )}
+                      {a.source === 'strava' && a.strava_activity_id && (
+                        <a
+                          href={`https://www.strava.com/activities/${a.strava_activity_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-auto text-xs font-bold underline"
+                          style={{ color: '#FC5200' }}
+                        >
+                          View on Strava
+                        </a>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -160,7 +186,7 @@ export function Activities() {
                 >
                   Previous
                 </Button>
-                <span className="text-sm text-[var(--muted)]">
+                <span className="text-sm text-[var(--color-text-tertiary)]">
                   Page {data.page} of {data.total_pages}
                 </span>
                 <Button
@@ -176,15 +202,15 @@ export function Activities() {
           </>
         )}
       </div>
-    </div>
+    </AppLayout>
   );
 }
 
 function StatCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="text-center">
-      <span className="block text-[10px] text-[var(--muted)] uppercase tracking-wide mb-0.5">{label}</span>
-      <span className="text-sm font-semibold text-[var(--text)]">{value}</span>
+      <span className="block text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide mb-0.5">{label}</span>
+      <span className="text-sm font-semibold font-mono text-[var(--color-text-primary)]">{value}</span>
     </div>
   );
 }

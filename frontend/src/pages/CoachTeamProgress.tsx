@@ -3,9 +3,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { Navbar, Button, Card, Badge, Spinner, Alert, ChatBubble, TypingIndicator } from '../components/ui';
+import { AppLayout, Button, Card, Badge, Spinner, Alert, ChatBubble, TypingIndicator } from '../components/ui';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL as string || 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL as string || 'http://localhost:3001';
 
 type AthleteProfile = {
   id: string;
@@ -39,7 +39,7 @@ type AthleteDetail = {
 };
 
 function ComplianceBadge({ pct }: { pct: number | null }) {
-  if (pct === null) return <span className="text-xs text-[var(--muted)]">--</span>;
+  if (pct === null) return <span className="text-xs text-[var(--color-text-tertiary)]">--</span>;
   const color = pct >= 80 ? 'green' : pct >= 50 ? 'amber' : 'gray';
   return <Badge label={`${pct}%`} color={color} />;
 }
@@ -66,7 +66,7 @@ function BotChatViewer({ athleteId }: { athleteId: string }) {
   return (
     <div className="max-h-[500px] overflow-y-auto px-2 py-4">
       {messages.length === 0 ? (
-        <p className="text-sm text-[var(--muted)] text-center py-10">No bot conversations yet.</p>
+        <p className="text-sm text-[var(--color-text-tertiary)] text-center py-10">No bot conversations yet.</p>
       ) : (
         messages.map((m, i) => (
           <ChatBubble key={m.id || i} role={m.role} content={m.content} planUpdated={m.plan_was_updated} />
@@ -125,7 +125,7 @@ function DirectMessages({ athleteId, athleteName }: { athleteId: string; athlete
 
       <div className="max-h-[400px] overflow-y-auto px-2 py-4">
         {messages.length === 0 ? (
-          <p className="text-sm text-[var(--muted)] text-center py-10">
+          <p className="text-sm text-[var(--color-text-tertiary)] text-center py-10">
             No messages yet. Send the first message to {athleteName}.
           </p>
         ) : (
@@ -141,14 +141,14 @@ function DirectMessages({ athleteId, athleteName }: { athleteId: string; athlete
         <div ref={bottomRef} />
       </div>
 
-      <div className="border-t border-[var(--border)] pt-4 flex gap-3 items-end">
+      <div className="border-t border-[var(--color-border)] pt-4 flex gap-3 items-end">
         <textarea
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
           rows={1}
           placeholder={`Message ${athleteName}…`}
-          className="flex-1 bg-dark-700 border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:border-brand-500 transition-colors resize-none min-h-[44px] max-h-32"
+          className="flex-1 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent)] transition-colors resize-none min-h-[44px] max-h-32"
           style={{ height: 'auto' }}
           onInput={e => { const t = e.target as HTMLTextAreaElement; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }}
         />
@@ -219,18 +219,17 @@ export function CoachTeamProgress() {
   const tabCls = (active: boolean) =>
     `px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
       active
-        ? 'bg-[var(--surface3)] text-[var(--text)] shadow-sm border border-[var(--border2)]'
-        : 'text-[var(--muted)] hover:text-[var(--text)]'
+        ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] shadow-sm border border-[var(--color-border)]'
+        : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]'
     }`;
 
   return (
-    <div className="min-h-screen">
-      <Navbar role="coach" name={profile?.name} onLogout={logout} />
+    <AppLayout role="coach" name={profile?.name} onLogout={logout}>
       <div className="max-w-5xl mx-auto px-6 py-10">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="font-display text-2xl sm:text-3xl font-bold">Team Progress</h1>
-            <p className="text-sm text-[var(--muted)] mt-1">Overview of your athletes' training progress</p>
+            <h1 className="font-display text-3xl font-bold">Team Progress</h1>
+            <p className="text-sm text-[var(--color-text-tertiary)] mt-1">Overview of your athletes' training progress</p>
           </div>
           <div className="flex gap-2">
             <Button variant="secondary" size="sm" onClick={downloadTeamReport}>Download Report</Button>
@@ -253,14 +252,14 @@ export function CoachTeamProgress() {
               <div className="flex flex-col gap-4">
                 {/* Profile header */}
                 <Card title={athleteDetail.profile.name}>
-                  <div className="text-sm text-[var(--muted)]">
+                  <div className="text-sm text-[var(--color-text-tertiary)]">
                     {athleteDetail.profile.primary_events && <span>{athleteDetail.profile.primary_events}</span>}
                     {athleteDetail.profile.weekly_volume_miles && <span> · Target {athleteDetail.profile.weekly_volume_miles} mi/wk</span>}
                   </div>
                 </Card>
 
                 {/* Tab selector */}
-                <div className="flex items-center bg-[var(--surface2)] border border-[var(--border)] rounded-lg p-0.5 gap-0.5 self-start">
+                <div className="flex items-center bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg p-0.5 gap-0.5 self-start">
                   <button className={tabCls(detailTab === 'progress')} onClick={() => setDetailTab('progress')}>Progress</button>
                   <button className={tabCls(detailTab === 'botchat')}  onClick={() => setDetailTab('botchat')}>Bot Chat</button>
                   <button className={tabCls(detailTab === 'messages')} onClick={() => setDetailTab('messages')}>Messages</button>
@@ -274,7 +273,7 @@ export function CoachTeamProgress() {
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
                             <thead>
-                              <tr className="text-left text-xs text-[var(--muted)] border-b border-[var(--border)]">
+                              <tr className="text-left text-xs text-[var(--color-text-tertiary)] border-b border-[var(--color-border)]">
                                 <th className="pb-2 pr-4">Week</th>
                                 <th className="pb-2 pr-4">Miles</th>
                                 <th className="pb-2 pr-4">Runs</th>
@@ -286,13 +285,13 @@ export function CoachTeamProgress() {
                             </thead>
                             <tbody>
                               {athleteDetail.summaries.map(s => (
-                                <tr key={s.id || s.week_start} className="border-b border-[var(--border)] last:border-0">
-                                  <td className="py-2 pr-4 text-[var(--muted)]">{new Date(s.week_start + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
-                                  <td className="py-2 pr-4 font-medium">{s.total_distance_miles.toFixed(1)}</td>
+                                <tr key={s.id || s.week_start} className="border-b border-[var(--color-border)] last:border-0">
+                                  <td className="py-2 pr-4 text-[var(--color-text-tertiary)]">{new Date(s.week_start + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
+                                  <td className="py-2 pr-4 font-medium font-mono">{s.total_distance_miles.toFixed(1)}</td>
                                   <td className="py-2 pr-4">{s.run_count}</td>
                                   <td className="py-2 pr-4">{s.avg_pace_per_mile || '--'}</td>
                                   <td className="py-2 pr-4">{s.avg_heartrate || '--'}</td>
-                                  <td className="py-2 pr-4">{s.longest_run_miles.toFixed(1)}</td>
+                                  <td className="py-2 pr-4 font-mono">{s.longest_run_miles.toFixed(1)}</td>
                                   <td className="py-2"><ComplianceBadge pct={s.compliance_pct} /></td>
                                 </tr>
                               ))}
@@ -306,15 +305,15 @@ export function CoachTeamProgress() {
                       <Card title="Race Results">
                         <div className="flex flex-col gap-2">
                           {athleteDetail.races.map((r: any) => (
-                            <div key={r.id} className="flex items-center justify-between p-3 bg-dark-700 rounded-lg border border-[var(--border)]">
+                            <div key={r.id} className="flex items-center justify-between p-3 bg-[var(--color-bg-tertiary)] rounded-lg border border-[var(--color-border)]">
                               <div className="flex items-center gap-3">
                                 {r.is_pr && <Badge label="PR" color="amber" />}
                                 <div>
                                   <div className="text-sm font-medium">{r.race_name}</div>
-                                  <div className="text-xs text-[var(--muted)]">{r.distance} · {new Date(r.race_date + 'T00:00:00').toLocaleDateString()}</div>
+                                  <div className="text-xs text-[var(--color-text-tertiary)]">{r.distance} · {new Date(r.race_date + 'T00:00:00').toLocaleDateString()}</div>
                                 </div>
                               </div>
-                              <div className="text-sm font-semibold">{r.finish_time}</div>
+                              <div className="text-sm font-semibold font-mono">{r.finish_time}</div>
                             </div>
                           ))}
                         </div>
@@ -323,7 +322,7 @@ export function CoachTeamProgress() {
 
                     {athleteDetail.summaries.length === 0 && athleteDetail.races.length === 0 && (
                       <Card>
-                        <p className="text-sm text-[var(--muted)] text-center py-6">No progress data yet. Athlete needs to sync activities.</p>
+                        <p className="text-sm text-[var(--color-text-tertiary)] text-center py-6">No progress data yet. Athlete needs to sync activities.</p>
                       </Card>
                     )}
                   </div>
@@ -348,13 +347,13 @@ export function CoachTeamProgress() {
           <Card>
             {members.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-sm text-[var(--muted)]">No active team members yet. Athletes need to sync activities for progress data to appear.</p>
+                <p className="text-sm text-[var(--color-text-tertiary)]">No active team members yet. Athletes need to sync activities for progress data to appear.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-xs text-[var(--muted)] border-b border-[var(--border)]">
+                    <tr className="text-left text-xs text-[var(--color-text-tertiary)] border-b border-[var(--color-border)]">
                       <th className="pb-2 pr-4">Athlete</th>
                       <th className="pb-2 pr-4">Weekly Miles</th>
                       <th className="pb-2 pr-4">Compliance</th>
@@ -365,12 +364,12 @@ export function CoachTeamProgress() {
                   </thead>
                   <tbody>
                     {members.map(m => (
-                      <tr key={m.athlete.id} className="border-b border-[var(--border)] last:border-0 hover:bg-dark-700/50 cursor-pointer" onClick={() => viewAthlete(m.athlete.id)}>
+                      <tr key={m.athlete.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-bg-secondary)] cursor-pointer" onClick={() => viewAthlete(m.athlete.id)}>
                         <td className="py-3 pr-4">
                           <div className="font-medium">{m.athlete.name}</div>
-                          {m.athlete.primary_events && <div className="text-xs text-[var(--muted)]">{m.athlete.primary_events}</div>}
+                          {m.athlete.primary_events && <div className="text-xs text-[var(--color-text-tertiary)]">{m.athlete.primary_events}</div>}
                         </td>
-                        <td className="py-3 pr-4 font-medium">{m.latest_week ? `${m.latest_week.total_distance_miles.toFixed(1)}` : '--'}</td>
+                        <td className="py-3 pr-4 font-medium font-mono">{m.latest_week ? `${m.latest_week.total_distance_miles.toFixed(1)}` : '--'}</td>
                         <td className="py-3 pr-4"><ComplianceBadge pct={m.latest_week?.compliance_pct ?? null} /></td>
                         <td className="py-3 pr-4">{m.latest_week?.avg_pace_per_mile || '--'}</td>
                         <td className="py-3 pr-4">
@@ -388,6 +387,6 @@ export function CoachTeamProgress() {
           </Card>
         )}
       </div>
-    </div>
+    </AppLayout>
   );
 }

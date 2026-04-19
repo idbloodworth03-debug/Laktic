@@ -9,17 +9,21 @@ export const coachProfileSchema = z.object({
 
 export const botCreateSchema = z.object({
   name: z.string().min(1).max(200),
-  philosophy: z.string().max(5000).optional(),
-  event_focus: z.string().max(100).optional(),
-  level_focus: z.string().max(100).optional()
+  philosophy: z.string().max(5000).nullish(),
+  event_focus: z.string().max(100).nullish(),
+  level_focus: z.string().max(100).nullish(),
+  personality: z.string().max(50).nullish(),
+  personality_prompt: z.string().max(2000).nullish(),
 });
 
 export const botUpdateSchema = z.object({
-  name: z.string().min(1).max(200).optional(),
-  philosophy: z.string().max(5000).optional(),
-  event_focus: z.string().max(100).optional(),
-  level_focus: z.string().max(100).optional(),
-  is_published: z.boolean().optional()
+  name: z.string().min(1).max(200).nullish(),
+  philosophy: z.string().max(5000).nullish(),
+  event_focus: z.string().max(100).nullish(),
+  level_focus: z.string().max(100).nullish(),
+  is_published: z.boolean().optional(),
+  personality: z.string().max(50).nullish(),
+  personality_prompt: z.string().max(2000).nullish(),
 });
 
 export const workoutSchema = z.object({
@@ -50,21 +54,62 @@ export const knowledgeUpdateSchema = z.object({
 export const athleteProfileSchema = z.object({
   name: z.string().min(1).max(200),
   weekly_volume_miles: z.number().min(0).max(200).optional(),
-  primary_events: z.string().max(200).optional(),
+  primary_events: z.array(z.string().max(100)).max(20).optional(),
   pr_mile: z.string().max(20).optional(),
   pr_5k: z.string().max(20).optional()
 });
 
 export const athleteProfileUpdateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
-  weekly_volume_miles: z.number().min(0).max(200).optional(),
-  primary_events: z.string().max(200).optional(),
-  pr_mile: z.string().max(20).optional(),
-  pr_5k: z.string().max(20).optional()
+  weekly_volume_miles: z.number().min(0).max(200).nullish(),
+  primary_events: z.array(z.string().max(100)).max(20).nullish(),
+  pr_mile: z.string().max(20).nullish(),
+  pr_5k: z.string().max(20).nullish(),
+  username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/).optional(),
+  bio: z.string().max(500).nullish(),
+  public_sections: z.object({
+    races: z.boolean(),
+    stats: z.boolean(),
+    milestones: z.boolean(),
+  }).optional(),
+  onboarding_completed: z.boolean().optional(),
+  fitness_level: z.string().max(50).nullish(),
+  primary_goal: z.string().max(100).nullish(),
+  training_days_per_week: z.number().int().min(1).max(7).nullish(),
+  biggest_challenge: z.string().max(100).nullish(),
+  injury_notes: z.string().max(1000).nullish(),
+  has_target_race: z.boolean().nullish(),
+  target_race_name: z.string().max(200).nullish(),
+  target_race_date: z.string().nullish(),
+  avatar_url: z.string().url().max(2000).nullish(),
+  current_weekly_mileage: z.number().min(0).max(300).nullish(),
+  pr_10k: z.string().max(20).nullish(),
+  pr_half_marathon: z.string().max(20).nullish(),
+  pr_marathon: z.string().max(20).nullish(),
+  experience_level: z.string().max(50).nullish(),
+  long_run_distance: z.number().min(0).max(100).nullish(),
+  // New onboarding fields
+  pr_800m: z.string().max(20).nullish(),
+  age: z.number().int().min(0).max(120).nullish(),
+  gender: z.string().max(50).nullish(),
+  fitness_rating: z.number().int().min(1).max(10).nullish(),
+  height_ft: z.number().int().min(0).max(10).nullish(),
+  height_in: z.number().int().min(0).max(11).nullish(),
+  weight_lbs: z.number().min(0).max(1000).nullish(),
+  sleep_average: z.string().max(50).nullish(),
+  running_style: z.string().max(2000).nullish(),
+  goal_time: z.string().max(50).nullish(),
+  runner_types: z.array(z.string().max(100)).max(10).nullish(),
+  biggest_challenges: z.array(z.string().max(200)).max(20).nullish(),
+  target_race_distance: z.string().max(100).nullish(),
+  pr_1500m: z.string().max(20).nullish(),
+  season_start_date: z.string().nullish(),
+  season_end_date: z.string().nullish(),
 });
 
 export const chatMessageSchema = z.object({
-  message: z.string().min(1).max(5000)
+  message: z.string().min(1).max(5000),
+  conversationId: z.string().uuid().optional(),
 });
 
 const raceSchema = z.object({
@@ -83,7 +128,9 @@ export const racesSchema = z.object({
 
 export const teamCreateSchema = z.object({
   name: z.string().min(1).max(200),
-  default_bot_id: z.string().uuid().optional()
+  default_bot_id: z.string().uuid().optional(),
+  max_uses: z.number().int().positive().optional(),
+  invite_code_expires_at: z.string().optional()
 });
 
 export const memberStatusSchema = z.object({
@@ -94,13 +141,13 @@ export const memberStatusSchema = z.object({
 
 export const stravaCallbackSchema = z.object({
   code: z.string().min(1),
-  state: z.string().uuid(),
+  state: z.string().min(1), // "${athleteId}" or "${athleteId}|${returnTo}"
   scope: z.string().optional()
 });
 
 export const activitiesQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  per_page: z.coerce.number().int().min(1).max(100).default(20),
+  per_page: z.coerce.number().int().min(1).max(200).default(20),
   after: z.string().optional(),
   before: z.string().optional()
 });

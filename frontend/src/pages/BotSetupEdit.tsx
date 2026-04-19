@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { Navbar, Button, Input, Textarea, Select, Card, Toggle, Badge } from '../components/ui';
+import { AppLayout, Button, Input, Textarea, Select, Card, Toggle, Badge } from '../components/ui';
+import { PRESET_PERSONALITIES, PersonalitySelector } from '../components/PersonalitySelector';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const EVENT_OPTIONS = [
@@ -38,8 +39,9 @@ export function BotSetupEdit() {
   const isEdit = window.location.pathname.includes('edit');
 
   const [bot, setBot] = useState<any>(null);
-  const [botForm, setBotForm] = useState({ name: '', philosophy: '', event_focus: '', level_focus: '' });
+  const [botForm, setBotForm] = useState({ name: '', philosophy: '', event_focus: '', level_focus: '', personality: 'custom', personality_prompt: '' });
   const [workouts, setWorkouts] = useState<Workout[]>(DAYS.map((_, i) => emptyWorkout(i + 1)));
+  const [knowledgeCount, setKnowledgeCount] = useState(0);
   const [saving, setSaving] = useState(false);
   const [savingDay, setSavingDay] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
@@ -50,23 +52,35 @@ export function BotSetupEdit() {
     apiFetch('/api/coach/bot').then((data: any) => {
       if (data.bot) {
         setBot(data.bot);
-        setBotForm({ name: data.bot.name || '', philosophy: data.bot.philosophy || '', event_focus: data.bot.event_focus || '', level_focus: data.bot.level_focus || '' });
+        setBotForm({ name: data.bot.name || '', philosophy: data.bot.philosophy || '', event_focus: data.bot.event_focus || '', level_focus: data.bot.level_focus || '', personality: data.bot.personality || 'custom', personality_prompt: data.bot.personality_prompt || '' });
         const filled = data.workouts || [];
         setWorkouts(DAYS.map((_, i) => {
           const existing = filled.find((w: any) => w.day_of_week === i + 1);
           return existing ? { ...existing, distance_miles: existing.distance_miles?.toString() || '', ai_adjustable: existing.ai_adjustable ?? true } : emptyWorkout(i + 1);
         }));
+        setKnowledgeCount((data.knowledge || []).length);
       }
     });
   }, []);
 
   const saveDraft = async () => {
+    // Hard-block: require name and personality before hitting the API
+    if (!botForm.name.trim()) {
+      setError('Please add a bot name before saving.');
+      return;
+    }
+    if (botForm.personality === 'custom' && !botForm.personality_prompt.trim()) {
+      setError('Please select a coaching personality or write a custom personality prompt before saving.');
+      return;
+    }
+
     setSaving(true); setError('');
     try {
       const payload = {
         ...botForm,
         event_focus: botForm.event_focus || null,
         level_focus: botForm.level_focus || null,
+        personality_prompt: botForm.personality_prompt || null,
       };
       if (!bot) {
         const created = await apiFetch('/api/coach/bot', { method: 'POST', body: JSON.stringify(payload) });
@@ -75,6 +89,11 @@ export function BotSetupEdit() {
         await apiFetch('/api/coach/bot', { method: 'PATCH', body: JSON.stringify(payload) });
       }
       setSaved(true); setTimeout(() => setSaved(false), 2000);
+      // Warn (don't block) if bot has no content yet — publish will still require 5+ workouts + 1 doc
+      const filledWorkouts = workouts.filter(w => !!w.title).length;
+      if (filledWorkouts === 0 && knowledgeCount === 0) {
+        setError('Saved! But your bot has no workouts or knowledge documents yet — add content below and upload coaching docs before publishing.');
+      }
     } catch (e: any) { setError(e.message); }
     finally { setSaving(false); }
   };
@@ -101,63 +120,91 @@ export function BotSetupEdit() {
   };
 
   return (
-    <div className="min-h-screen">
-      <Navbar role="coach" name={profile?.name} onLogout={logout} />
-      <div className="max-w-4xl mx-auto px-6 py-10">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-3">
-          <div>
-            <h1 className="font-display text-2xl sm:text-3xl font-bold">{isEdit ? 'Edit Your Bot' : 'Create Your Bot'}</h1>
-            <p className="text-sm text-[var(--muted)] mt-1">Build your coaching identity. The AI coaches every athlete in your voice.</p>
-          </div>
-          <Link to="/coach/dashboard"><Button variant="ghost" size="sm">← Dashboard</Button></Link>
-        </div>
-
-        {error && <div className="mb-4 text-sm text-red-400 bg-red-900/20 border border-red-900/40 rounded-lg px-3 py-2">{error}</div>}
-
-        {/* Bot info */}
-        <Card className="mb-6">
-          <h3 className="font-display font-semibold mb-4">Bot Identity</h3>
-          <div className="flex flex-col gap-4">
-            <Input label="Bot name" value={botForm.name} onChange={e => setBotForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Coach Smith's Distance Training" />
-            <Textarea label="Coaching philosophy" value={botForm.philosophy} onChange={e => setBotForm(f => ({ ...f, philosophy: e.target.value }))} rows={6} placeholder="Describe your coaching philosophy in detail. The AI will coach athletes in your voice using this text. Include your training principles, workout philosophy, how you approach periodization, what you believe about recovery, how you motivate athletes..." />
-            <div className="grid grid-cols-2 gap-4">
-              <Select label="Event focus" value={botForm.event_focus} onChange={e => setBotForm(f => ({ ...f, event_focus: e.target.value }))} options={EVENT_OPTIONS} />
-              <Select label="Level focus" value={botForm.level_focus} onChange={e => setBotForm(f => ({ ...f, level_focus: e.target.value }))} options={LEVEL_OPTIONS} />
+    <AppLayout role="coach" name={profile?.name} onLogout={logout}>
+      <div className="min-h-screen bg-[var(--color-bg-primary)]">
+        <div className="max-w-4xl mx-auto px-6 py-10">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">{isEdit ? 'Edit Your Bot' : 'Create Your Bot'}</h1>
+              <p className="text-sm text-[var(--color-text-tertiary)] mt-1">Build your coaching identity. The AI coaches every athlete in your voice.</p>
             </div>
+            <Link to="/coach/dashboard"><Button variant="ghost" size="sm">← Dashboard</Button></Link>
           </div>
-          <div className="flex items-center gap-3 mt-4 pt-4 border-t border-[var(--border)]">
-            <Button onClick={saveDraft} loading={saving} variant="secondary">
-              {saved ? '✓ Saved' : 'Save Draft'}
-            </Button>
-            <span className="text-sm text-[var(--muted)]">
-              Ready to publish?{' '}
-              <Link to="/coach/knowledge" className="text-brand-400 hover:underline">
-                Upload training documents first →
-              </Link>
-            </span>
-          </div>
-        </Card>
 
-        {/* Weekly template */}
-        <Card>
-          <h3 className="font-display font-semibold mb-1">Weekly Training Template</h3>
-          <p className="text-sm text-[var(--muted)] mb-5">Define the structure of a typical training week. The AI adapts this for each athlete's fitness level and race schedule.</p>
-          <div className="flex flex-col gap-4">
-            {workouts.map((wo) => (
-              <WorkoutRow
-                key={wo.day_of_week}
-                day={DAYS[wo.day_of_week - 1]}
-                wo={wo}
-                saving={savingDay === wo.day_of_week}
-                onChange={(field: keyof Workout, val: string) => updateWo(wo.day_of_week, field, val)}
-                onSave={() => saveWorkout(wo)}
-                onDelete={() => deleteWorkout(wo.day_of_week)}
+          {error && (
+            <div className="mb-4 text-sm rounded-lg px-3 py-2" style={{ color: 'var(--color-danger)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+              {error}
+            </div>
+          )}
+
+          {/* Bot info */}
+          <Card className="mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <h3 className="font-semibold text-[var(--color-text-primary)]">Bot Identity</h3>
+              {botForm.personality && botForm.personality !== 'custom' && (() => {
+                const preset = PRESET_PERSONALITIES.find(p => p.id === botForm.personality);
+                return preset ? (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: `${preset.color}22`, color: preset.color, border: `1px solid ${preset.color}44` }}>
+                    {preset.label}
+                  </span>
+                ) : null;
+              })()}
+            </div>
+            <div className="flex flex-col gap-4">
+              <PersonalitySelector
+                value={botForm.personality}
+                onSelect={(id, prompt) => setBotForm(f => ({ ...f, personality: id, personality_prompt: prompt }))}
               />
-            ))}
-          </div>
-        </Card>
+              {botForm.personality === 'custom' && (
+                <Textarea
+                  label="Personality prompt (custom)"
+                  value={botForm.personality_prompt}
+                  onChange={e => setBotForm(f => ({ ...f, personality_prompt: e.target.value }))}
+                  rows={3}
+                  placeholder="Describe how this bot should sound and behave. e.g. 'Speak with calm authority, use military-style brevity, never sugarcoat.'"
+                />
+              )}
+              <Input label="Bot name" value={botForm.name} onChange={e => setBotForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Coach Smith's Distance Training" />
+              <Textarea label="Coaching philosophy" value={botForm.philosophy} onChange={e => setBotForm(f => ({ ...f, philosophy: e.target.value }))} rows={6} placeholder="Describe your coaching philosophy in detail. The AI will coach athletes in your voice using this text. Include your training principles, workout philosophy, how you approach periodization, what you believe about recovery, how you motivate athletes..." />
+              <div className="grid grid-cols-2 gap-4">
+                <Select label="Event focus" value={botForm.event_focus} onChange={e => setBotForm(f => ({ ...f, event_focus: e.target.value }))} options={EVENT_OPTIONS} />
+                <Select label="Level focus" value={botForm.level_focus} onChange={e => setBotForm(f => ({ ...f, level_focus: e.target.value }))} options={LEVEL_OPTIONS} />
+              </div>
+            </div>
+            <div className="flex items-center gap-3 mt-4 pt-4 border-t border-[var(--color-border)]">
+              <Button onClick={saveDraft} loading={saving} variant="secondary">
+                {saved ? '✓ Saved' : 'Save Draft'}
+              </Button>
+              <span className="text-sm text-[var(--color-text-tertiary)]">
+                Ready to publish?{' '}
+                <Link to="/coach/knowledge" className="hover:underline" style={{ color: 'var(--color-accent)' }}>
+                  Upload training documents first →
+                </Link>
+              </span>
+            </div>
+          </Card>
+
+          {/* Weekly template */}
+          <Card>
+            <h3 className="font-semibold mb-1 text-[var(--color-text-primary)]">Weekly Training Template</h3>
+            <p className="text-sm text-[var(--color-text-tertiary)] mb-5">Define the structure of a typical training week. The AI adapts this for each athlete's fitness level and race schedule.</p>
+            <div className="flex flex-col gap-4">
+              {workouts.map((wo) => (
+                <WorkoutRow
+                  key={wo.day_of_week}
+                  day={DAYS[wo.day_of_week - 1]}
+                  wo={wo}
+                  saving={savingDay === wo.day_of_week}
+                  onChange={(field: keyof Workout, val: string) => updateWo(wo.day_of_week, field, val)}
+                  onSave={() => saveWorkout(wo)}
+                  onDelete={() => deleteWorkout(wo.day_of_week)}
+                />
+              ))}
+            </div>
+          </Card>
+        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }
 
@@ -166,25 +213,28 @@ function WorkoutRow({ day, wo, saving, onChange, onSave, onDelete }: any) {
   const hasContent = !!wo.title;
 
   return (
-    <div className={`border rounded-xl overflow-hidden transition-colors ${hasContent ? 'border-[var(--border)]' : 'border-dashed border-dark-500'}`}>
+    <div
+      className="rounded-xl overflow-hidden transition-colors"
+      style={{ border: hasContent ? '1px solid var(--color-border)' : '1px dashed var(--color-border)' }}
+    >
       <div className="flex items-center gap-3 px-4 py-3 cursor-pointer" onClick={() => setOpen(o => !o)}>
-        <div className="w-10 text-sm font-medium text-[var(--muted)] shrink-0">{day.slice(0, 3)}</div>
+        <div className="w-10 text-sm font-medium text-[var(--color-text-tertiary)] shrink-0">{day.slice(0, 3)}</div>
         <div className="flex-1 min-w-0">
           {hasContent ? (
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">{wo.title}</span>
+              <span className="text-sm font-medium text-[var(--color-text-primary)]">{wo.title}</span>
               {wo.distance_miles && <Badge label={`${wo.distance_miles}mi`} color="green" />}
               {wo.ai_adjustable && <Badge label="AI-adjustable" color="purple" />}
             </div>
           ) : (
-            <span className="text-sm text-[var(--muted)]">No workout — click to add</span>
+            <span className="text-sm text-[var(--color-text-tertiary)]">No workout — click to add</span>
           )}
         </div>
-        <span className="text-[var(--muted)] text-xs">{open ? '▲' : '▼'}</span>
+        <span className="text-[var(--color-text-tertiary)] text-xs">{open ? '▲' : '▼'}</span>
       </div>
 
       {open && (
-        <div className="px-4 pb-4 flex flex-col gap-3 border-t border-[var(--border)]">
+        <div className="px-4 pb-4 flex flex-col gap-3 border-t border-[var(--color-border)]">
           <div className="pt-3 grid grid-cols-2 gap-3">
             <Input label="Title" value={wo.title} onChange={e => onChange('title', e.target.value)} placeholder="e.g. Easy Recovery Run" />
             <div className="grid grid-cols-2 gap-2">
