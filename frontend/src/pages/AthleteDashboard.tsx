@@ -207,7 +207,7 @@ export function AthleteDashboard() {
 
         {/* Profile completion banner */}
         {profileIncomplete && (
-          <div className="mb-6 flex items-center gap-4 bg-[var(--color-bg-secondary)] border border-[var(--color-accent)]/20 rounded-card px-5 py-3">
+          <div className="mb-6 flex items-start gap-3 bg-[var(--color-bg-secondary)] border border-[var(--color-accent)]/20 rounded-card px-4 py-3">
             <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] flex-shrink-0" />
             <p className="flex-1 text-sm text-[var(--color-text-secondary)]">
               Complete your profile to get more accurate pace zones and a better plan.{' '}
@@ -228,7 +228,7 @@ export function AthleteDashboard() {
             {/* Daily Readiness */}
             <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-5 shadow-card" style={{ background: 'linear-gradient(135deg, var(--color-bg-secondary) 0%, rgba(0,229,160,0.04) 100%)' }}>
               <p className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-4">Daily Readiness</p>
-              <div className="flex items-center gap-6 mb-4">
+              <div className="flex flex-col xs:flex-row items-start xs:items-center gap-4 mb-4">
                 {readinessScore !== null ? (
                   <ReadinessRing score={readinessScore} size={96} />
                 ) : (
@@ -357,7 +357,7 @@ export function AthleteDashboard() {
                 </div>
                 {selectedPred ? (
                   <div className="text-center">
-                    <p className="font-mono text-3xl font-medium text-[var(--color-text-primary)] leading-none mb-1">{selectedPred.predicted_time}</p>
+                    <p className="font-mono text-2xl sm:text-3xl font-medium text-[var(--color-text-primary)] leading-none mb-1">{selectedPred.predicted_time}</p>
                     <p className="text-xs text-[var(--color-text-tertiary)] mb-2">predicted {DISTANCES[selectedDist]}</p>
                     {selectedPred.trend && (
                       <div className={`inline-flex items-center gap-1 text-xs font-medium ${selectedPred.trend === 'up' ? 'text-[var(--color-accent)]' : selectedPred.trend === 'down' ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-tertiary)]'}`}>

@@ -316,7 +316,7 @@ export function CoachDashboard() {
       {/* ── Page shell ──────────────────────────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Page header */}
-        <div className="flex items-center justify-between mb-8 fade-up">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 fade-up gap-3">
           <div>
             <h1 className="font-display text-2xl font-bold text-[var(--color-text-primary)]">
               Coach Dashboard
@@ -327,7 +327,7 @@ export function CoachDashboard() {
                 : 'Set up your bot to start coaching athletes.'}
             </p>
           </div>
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center flex-wrap">
             {!bot && (
               <Link to="/coach/bot/setup">
                 <Button variant="primary">Create Your Bot</Button>
@@ -742,7 +742,8 @@ export function CoachDashboard() {
 
               {/* ── Weekly Training Template ─────────────────────────────── */}
               <Card title="Weekly Training Template">
-                <div className="grid grid-cols-7 gap-1.5">
+                <div className="overflow-x-auto">
+                <div className="grid grid-cols-7 gap-1.5 min-w-[420px]">
                   {DAYS.map((day, i) => {
                     const wo = workouts.find((w: any) => w.day_of_week === i + 1);
                     return (
@@ -773,6 +774,7 @@ export function CoachDashboard() {
                       </div>
                     );
                   })}
+                </div>
                 </div>
                 <Link to="/coach/bot/edit" className="inline-block mt-3">
                   <Button variant="ghost" size="sm">
