@@ -49,8 +49,8 @@ export function BrowseBots() {
   return (
     <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
       <div className="min-h-screen bg-[var(--color-bg-primary)]">
-        <div className="max-w-6xl mx-auto px-6 py-10">
-          <div className="flex items-end justify-between mb-6 fade-up">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 fade-up gap-3">
             <div>
               <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">Find Your Coach Bot</h1>
               <p className="text-sm text-[var(--color-text-tertiary)] mt-1">Subscribe to get a personalized season plan built on your coach's methods.</p>
@@ -171,7 +171,7 @@ export function BotDetail() {
   return (
     <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
       <div className="min-h-screen bg-[var(--color-bg-primary)]">
-        <div className="max-w-4xl mx-auto px-6 py-10">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
           <Link to="/athlete/browse"><Button variant="ghost" size="sm" className="mb-6">← Browse Bots</Button></Link>
 
           {/* Async plan generation progress banner */}

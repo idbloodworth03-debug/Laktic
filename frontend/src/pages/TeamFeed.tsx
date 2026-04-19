@@ -97,7 +97,7 @@ export function TeamFeed() {
     <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
       <div className="min-h-screen bg-[var(--color-bg-primary)]">
         <div className="max-w-2xl mx-auto px-6 py-10">
-          <div className="flex items-end justify-between mb-6 fade-up">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 fade-up gap-3">
             <div>
               <h1 className="text-3xl font-bold">Team Feed</h1>
               <p className="text-sm text-[var(--color-text-tertiary)] mt-1">See what your teammates are up to.</p>

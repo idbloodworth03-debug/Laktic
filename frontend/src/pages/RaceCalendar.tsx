@@ -419,7 +419,7 @@ export function RaceCalendar() {
           onClose={() => setShareData(null)}
         />
       )}
-      <div className="max-w-4xl mx-auto px-6 py-10">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 fade-up gap-3">
           <div>
             <h1 className="font-display text-2xl sm:text-3xl font-bold text-[var(--text)]">Race Calendar</h1>

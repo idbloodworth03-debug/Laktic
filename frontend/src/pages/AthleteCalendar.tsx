@@ -284,7 +284,7 @@ export function AthleteCalendar() {
   return (
     <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
     <div className="min-h-screen bg-[var(--color-bg-primary)]">
-      <div className="max-w-3xl mx-auto px-6 py-10">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 fade-up gap-3">
           <div>

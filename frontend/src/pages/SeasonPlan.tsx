@@ -684,6 +684,8 @@ function PlanMonthView({ plan, races = [] }: { plan: any[]; races?: any[] }) {
           </button>
         </div>
 
+        <div className="overflow-x-auto">
+        <div className="min-w-[380px]">
         <div className="grid grid-cols-7 text-center mb-1">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
             <div key={d} className="text-[11px] uppercase tracking-wide py-1" style={{ color: 'var(--color-text-tertiary)' }}>{d}</div>
@@ -776,6 +778,8 @@ function PlanMonthView({ plan, races = [] }: { plan: any[]; races?: any[] }) {
           })}
         </div>
 
+        </div>
+        </div>
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>
           {['base', 'build', 'sharpening', 'taper', 'race', 'recovery'].map(phase => {
             const cal = PHASE_CAL[phase] ?? PHASE_CAL.base;
@@ -1256,12 +1260,12 @@ export function SeasonPlan() {
       )}
 
       <div className="min-h-screen" style={{ background: 'var(--color-bg-primary)' }}>
-        <div className="max-w-5xl mx-auto px-6 py-8">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
           {/* Header */}
-          <div className="flex items-start justify-between mb-4 fade-up gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-4 fade-up gap-3">
             <div>
-              <h1 className="font-bold text-3xl" style={{ color: 'var(--color-text-primary)' }}>Season Plan</h1>
+              <h1 className="font-bold text-2xl sm:text-3xl" style={{ color: 'var(--color-text-primary)' }}>Season Plan</h1>
               <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
                 Pace · {plan.length} weeks
               </p>

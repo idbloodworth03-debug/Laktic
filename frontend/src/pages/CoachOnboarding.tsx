@@ -98,7 +98,7 @@ function Shell({ step, children, onBack, onNext, nextLabel = 'Continue →', nex
       }} />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[200px] rounded-full bg-brand-500/8 blur-[80px] pointer-events-none" />
 
-      <div className="relative z-10 max-w-2xl mx-auto px-6 py-12">
+      <div className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div className="text-center mb-8 fade-up">
           <div className="font-display font-black text-2xl text-brand-400 tracking-tighter mb-1">LAKTIC</div>
           <p className="text-sm text-[var(--muted)]">Coach Setup — Step {step} of {STEPS.length}</p>

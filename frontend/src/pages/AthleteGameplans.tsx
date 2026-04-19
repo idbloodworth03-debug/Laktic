@@ -149,7 +149,7 @@ export function AthleteGameplans() {
         )}
 
         <div className="max-w-3xl mx-auto px-6 py-10">
-          <div className="flex items-center justify-between mb-6 fade-up">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 fade-up gap-3">
             <div>
               <h1 className="text-3xl font-bold">Race Gameplans</h1>
               <p className="text-sm text-[var(--color-text-tertiary)] mt-1">AI-generated race day strategies</p>
