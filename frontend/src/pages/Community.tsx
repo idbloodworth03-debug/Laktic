@@ -779,7 +779,7 @@ function FriendsTab({ nav: _nav }: { nav: ReturnType<typeof useNavigate> }) {
 
   if (following.length === 0) {
     return (
-      <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 16, padding: '48px 32px', textAlign: 'center', maxWidth: 680 }}>
+      <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 16, padding: '48px 32px', textAlign: 'center', maxWidth: 480, margin: '0 auto', width: '100%' }}>
         <p className="font-bold text-lg mb-2" style={{ color: 'var(--color-text-primary)' }}>No friends yet</p>
         <p className="text-sm" style={{ color: 'var(--color-text-tertiary)', lineHeight: 1.6, maxWidth: 300, margin: '0 auto' }}>
           Search for athletes by username in the <strong>People</strong> tab to start following them.
@@ -789,7 +789,7 @@ function FriendsTab({ nav: _nav }: { nav: ReturnType<typeof useNavigate> }) {
   }
 
   return (
-    <div className="flex flex-col gap-2" style={{ maxWidth: 680 }}>
+    <div className="flex flex-col gap-2" style={{ maxWidth: 480, margin: '0 auto', width: '100%' }}>
       <p className="text-xs mb-1" style={{ color: 'var(--color-text-tertiary)' }}>Following {following.length} {following.length === 1 ? 'athlete' : 'athletes'}</p>
       {following.map(athlete => (
         <AthleteRow key={athlete.id} athlete={{ ...athlete, is_following: true }} onToggleFollow={unfollow} />
@@ -1174,7 +1174,7 @@ export function Community() {
   const { profile, clearAuth, role, logout } = useAuthStore();
   const nav = useNavigate();
   const isCoach = role === 'coach';
-  const [activeSection, setActiveSection] = useState<'feed' | 'friends' | 'friends-runs' | 'people' | 'suggested'>('friends');
+  const [activeSection, setActiveSection] = useState<'feed' | 'friends' | 'friends-runs' | 'people' | 'suggested'>('feed');
 
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [posts, setPosts]           = useState<any[]>([]);
@@ -1313,7 +1313,7 @@ export function Community() {
             <h1 className="font-bold text-2xl sm:text-3xl mb-3" style={{ color: 'var(--color-text-primary)' }}>Community</h1>
             {/* Section tabs */}
             <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              {(['friends', 'friends-runs', 'feed', 'people', 'suggested'] as const).map(s => (
+              {(['feed', 'friends-runs', 'friends', 'people', 'suggested'] as const).map(s => (
                 <button
                   key={s}
                   type="button"
