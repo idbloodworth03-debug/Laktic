@@ -66,7 +66,7 @@ function SetViewOnGPS({ pos }: { pos: [number, number] }) {
   useEffect(() => {
     if (!done.current) {
       done.current = true;
-      map.setView(pos, 20);
+      map.setView(pos, 15);
     }
   }, [pos, map]);
   return null;
@@ -329,7 +329,7 @@ export function RunTracker() {
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <MapContainer
           center={mapCenter}
-          zoom={16}
+          zoom={15}
           maxZoom={20}
           style={{ width: '100%', height: '100%' }}
           zoomControl={false}
