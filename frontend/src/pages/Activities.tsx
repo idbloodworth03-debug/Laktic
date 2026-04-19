@@ -90,8 +90,8 @@ export function Activities() {
 
   return (
     <AppLayout role={role || undefined} name={profile?.name} onLogout={clearAuth}>
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-6 fade-up">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 fade-up gap-3">
           <h1 className="font-display text-2xl font-bold text-[var(--color-text-primary)]">Activities</h1>
         </div>
 

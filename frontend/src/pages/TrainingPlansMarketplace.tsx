@@ -54,7 +54,7 @@ export function TrainingPlansMarketplace() {
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <Navbar role={role ?? 'athlete'} name={profile?.name} onLogout={logout} />
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="font-display text-2xl font-bold">Training Plan Marketplace</h1>
@@ -143,7 +143,7 @@ export function MyPlans() {
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <Navbar role={role ?? 'athlete'} name={profile?.name} onLogout={logout} />
-      <div className="max-w-3xl mx-auto px-6 py-8">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="font-display text-2xl font-bold">My Training Plans</h1>
           <Link to="/marketplace/plans"><Button variant="ghost" size="sm">Browse Marketplace</Button></Link>
@@ -213,7 +213,7 @@ export function CoachPlanManage() {
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <Navbar role="coach" name={profile?.name} onLogout={logout} />
-      <div className="max-w-3xl mx-auto px-6 py-8">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="font-display text-2xl font-bold">My Training Plans</h1>
           <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>+ New Plan</Button>

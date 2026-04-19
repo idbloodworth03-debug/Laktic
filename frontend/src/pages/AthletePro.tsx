@@ -54,7 +54,7 @@ export function AthletePro() {
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <Navbar role="athlete" name={profile?.name} onLogout={logout} />
-      <div className="max-w-2xl mx-auto px-6 py-8">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="font-display text-2xl font-bold">Athlete Pro</h1>
           <Link to="/athlete/dashboard"><Button variant="ghost" size="sm">← Dashboard</Button></Link>

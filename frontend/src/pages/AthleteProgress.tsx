@@ -422,7 +422,7 @@ export function AthleteProgress() {
 
   return (
     <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
-      <div className="max-w-5xl mx-auto px-6 py-10">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         {/* Header */}
         <div className="flex flex-col items-center mb-6 fade-up gap-4">
           <h1 className="font-display text-2xl font-bold text-[var(--color-text-primary)]">Training Progress</h1>

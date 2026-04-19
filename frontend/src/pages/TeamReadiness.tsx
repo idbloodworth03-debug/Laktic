@@ -146,8 +146,8 @@ export function TeamReadiness() {
       <div className="min-h-screen bg-[var(--color-bg-primary)]">
         {selected && <DetailModal athlete={selected} onClose={() => setSelected(null)} />}
 
-        <div className="max-w-5xl mx-auto px-6 py-10">
-          <div className="flex items-center justify-between mb-6 fade-up">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 fade-up gap-3">
             <div>
               <h1 className="text-3xl font-bold">Team Readiness</h1>
               <p className="text-sm text-[var(--color-text-tertiary)] mt-1">
