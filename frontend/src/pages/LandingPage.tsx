@@ -182,9 +182,9 @@ function Hero() {
       <div style={{ position: 'absolute', top: '-15%', right: '0%', width: 800, height: 800, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(0,229,160,0.09) 0%, transparent 65%)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: '5%', left: '-5%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(0,229,160,0.05) 0%, transparent 65%)', pointerEvents: 'none' }} />
 
-      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '60px clamp(24px, 5vw, 64px)', width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
+      <div className="lk-hero-grid" style={{ maxWidth: 1240, margin: '0 auto', padding: '60px clamp(24px, 5vw, 64px)', width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
         {/* Left */}
-        <div style={{ animation: 'fadeUp 0.7s ease both' }}>
+        <div className="lk-hero-left" style={{ animation: 'fadeUp 0.7s ease both' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 14px', borderRadius: 100, background: 'rgba(0,229,160,0.08)', border: '1px solid rgba(0,229,160,0.2)', marginBottom: 32 }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#00E5A0', animation: 'lk-blink 2s ease-in-out infinite' }} />
             <span style={{ fontSize: 12, fontWeight: 600, color: '#00E5A0' }}>Free to start · No credit card</span>
@@ -200,7 +200,7 @@ function Hero() {
             Personalized training plans, real-time adjustments, and race-day strategy — built around you, not a template.
           </p>
 
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="lk-hero-btns" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             <Link to="/athlete/signup" style={{
               display: 'inline-block', padding: '14px 32px', background: '#00E5A0', color: '#000',
               fontWeight: 700, fontSize: 15, borderRadius: 12, textDecoration: 'none', transition: 'all 0.2s',
@@ -390,6 +390,12 @@ export function LandingPage() {
         @media (max-width: 768px) {
           .lk-hero-card-wrap { display: none !important; }
           .lk-nav-links { display: none !important; }
+          .lk-hero-grid { grid-template-columns: 1fr !important; }
+          .lk-hero-left { text-align: center; align-items: center; display: flex; flex-direction: column; }
+          .lk-hero-left h1 { text-align: center; }
+          .lk-hero-left p { text-align: center; margin-left: auto; margin-right: auto; }
+          .lk-hero-left > div:first-child { align-self: center; }
+          .lk-hero-btns { justify-content: center !important; }
         }
       `}</style>
       <Navbar />
