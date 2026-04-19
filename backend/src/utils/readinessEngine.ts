@@ -254,6 +254,22 @@ async function computeCompliance(athleteId: string, supabase: SupabaseClient): P
   }
 }
 
+// ── Injury detection ──────────────────────────────────────────────────────────
+
+function hasRecentInjuryNote(injuryNotes: string | null | undefined, withinDays = 60): boolean {
+  if (!injuryNotes) return false;
+  const today = new Date();
+  // Notes are stamped like "[2026-04-19] broken ankle..."
+  const dateMatches = injuryNotes.matchAll(/\[(\d{4}-\d{2}-\d{2})\]/g);
+  for (const m of dateMatches) {
+    const noteDate = new Date(m[1] + 'T00:00:00Z');
+    const daysAgo = (today.getTime() - noteDate.getTime()) / 86400000;
+    if (daysAgo <= withinDays) return true;
+  }
+  // Fallback: if notes exist but have no date stamps, treat as recent
+  return injuryNotes.trim().length > 0;
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export async function computeReadiness(
@@ -279,7 +295,7 @@ export async function computeReadiness(
       .order('start_date', { ascending: false }),
     supabase
       .from('athlete_profiles')
-      .select('sleep_average, fitness_rating')
+      .select('sleep_average, fitness_rating, injury_notes')
       .eq('id', athleteId)
       .single(),
     supabase
@@ -304,10 +320,28 @@ export async function computeReadiness(
     return daysAgo <= 14;
   }).length;
 
+  const injuryNotes: string | null = (athleteProfile as any)?.injury_notes ?? null;
+  const activeInjury = hasRecentInjuryNote(injuryNotes);
+
   if (recentCount < 3) {
-    // Fall back to today's subjective log score if available, otherwise 70
+    // Injury overrides everything — score bottoms out regardless of activity data
+    if (activeInjury) {
+      return {
+        score: 10,
+        label: 'Injured',
+        color: 'red',
+        recommendation: 'Active injury on record. No training until medically cleared. Follow your healthcare provider\'s guidance.',
+        signals: {
+          atl: 0, ctl: 0, tsb: 0,
+          consecutiveTrainingDays: 0, daysSinceLastRun: 999,
+          recentPaceDeviation: null, sleepHours: null, complianceRate,
+        },
+      };
+    }
+
+    // Fall back to today's subjective log score if available, otherwise 50 (not 70 — no data is unknown, not moderate)
     const logScore: number | null = (todayLog as any)?.score ?? null;
-    const fallback = logScore !== null ? logScore : 70;
+    const fallback = logScore !== null ? logScore : 50;
     const { label, color, recommendation } = labelAndRecommendation(fallback, 0);
     return {
       score: fallback,
@@ -350,12 +384,29 @@ export async function computeReadiness(
   // Apply subjective override from today's log if present (±5 points)
   if (todayLog && typeof (todayLog as any).score === 'number') {
     const subjectiveScore = (todayLog as any).score as number;
-    // Map 0-100 subjective score to ±5 adjustment
     const subjectiveAdj = Math.round(((subjectiveScore - 50) / 50) * 5);
     score += subjectiveAdj;
   }
 
   score = Math.min(100, Math.max(0, score));
+
+  // Injury override — cap score at 15 and force injured label regardless of math
+  if (activeInjury) {
+    return {
+      score: Math.min(score, 15),
+      label: 'Injured',
+      color: 'red',
+      recommendation: 'Active injury on record. No training until medically cleared. Talk to Pace for plan adjustments.',
+      signals: {
+        atl, ctl, tsb,
+        consecutiveTrainingDays,
+        daysSinceLastRun,
+        recentPaceDeviation,
+        sleepHours,
+        complianceRate,
+      },
+    };
+  }
 
   const { label, color, recommendation } = labelAndRecommendation(score, tsb);
 
