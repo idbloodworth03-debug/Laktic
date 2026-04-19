@@ -62,7 +62,42 @@ async function tryRestSql(sql: string): Promise<boolean> {
   } catch { return false; }
 }
 
+const ADD_LAST_ACTIVE_COLUMNS = `
+ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS last_active TIMESTAMPTZ;
+ALTER TABLE public.coach_profiles   ADD COLUMN IF NOT EXISTS last_active TIMESTAMPTZ;
+`;
+
+async function lastActiveExists(): Promise<boolean> {
+  const { error } = await supabase
+    .from('athlete_profiles')
+    .select('last_active')
+    .limit(1);
+  return !error;
+}
+
 export async function applyPendingMigrations(): Promise<void> {
+  // ── Migration 040: last_active columns ────────────────────────────────────
+  if (!(await lastActiveExists())) {
+    console.log('[migrations] last_active columns missing — attempting auto-migration…');
+    let applied = false;
+    for (const fn of ['exec_sql', 'exec', 'run_sql', 'execute_sql', 'pgexec']) {
+      if (await tryRpc(fn, ADD_LAST_ACTIVE_COLUMNS)) {
+        console.log(`[migrations] last_active columns created via rpc.${fn} ✓`);
+        applied = true;
+        break;
+      }
+    }
+    if (!applied && await tryRestSql(ADD_LAST_ACTIVE_COLUMNS)) {
+      console.log('[migrations] last_active columns created via REST SQL ✓');
+      applied = true;
+    }
+    if (!applied) {
+      console.warn('[migrations] ⚠️  Could not auto-add last_active columns. Run manually:\n', ADD_LAST_ACTIVE_COLUMNS);
+    }
+  } else {
+    console.log('[migrations] last_active ✓');
+  }
+
   // ── Migration 036: athlete_follows ────────────────────────────────────────
   if (await tableExists()) {
     console.log('[migrations] athlete_follows ✓');
