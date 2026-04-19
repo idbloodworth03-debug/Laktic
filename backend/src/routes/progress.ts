@@ -104,16 +104,18 @@ router.get(
       total_hours: Math.round(ytdActs.reduce((s, a) => s + ((a.moving_time_seconds || 0) / 3600), 0) * 10) / 10,
     };
 
-    // Streak: consecutive active days going back from today
+    // Streak: consecutive active days ending TODAY — broken the moment today has no run
     const actDates = new Set(acts.map(a => a.start_date.slice(0, 10)));
     let streak = 0;
     const todayStr = now.toISOString().slice(0, 10);
-    const cursor = new Date(actDates.has(todayStr) ? now : new Date(now.getTime() - 86400000));
-    cursor.setHours(0, 0, 0, 0);
-    while (true) {
-      const ds = cursor.toISOString().slice(0, 10);
-      if (actDates.has(ds)) { streak++; cursor.setDate(cursor.getDate() - 1); }
-      else break;
+    if (actDates.has(todayStr)) {
+      const cursor = new Date(now);
+      cursor.setUTCHours(0, 0, 0, 0);
+      while (true) {
+        const ds = cursor.toISOString().slice(0, 10);
+        if (actDates.has(ds)) { streak++; cursor.setUTCDate(cursor.getUTCDate() - 1); }
+        else break;
+      }
     }
 
     // Recent activities list (last 30 days) for daily view
