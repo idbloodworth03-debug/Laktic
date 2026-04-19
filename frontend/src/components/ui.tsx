@@ -25,7 +25,7 @@ export function Button({
     xl: 'px-8 py-3.5 text-base',
   };
   const variants = {
-    primary:   'bg-gradient-to-b from-brand-500 to-brand-600 hover:from-brand-400 hover:to-brand-500 text-white shadow-btn-primary hover:shadow-btn-primary-hover focus-visible:ring-brand-500/50',
+    primary:   'bg-gradient-to-b from-brand-500 to-brand-600 hover:from-brand-400 hover:to-brand-500 hover:-translate-y-px hover:shadow-glow text-white shadow-btn-primary hover:shadow-btn-primary-hover focus-visible:ring-brand-500/50',
     secondary: 'bg-[var(--surface2)] hover:bg-[var(--surface3)] text-[var(--text)] border border-[var(--border)] hover:border-[var(--border2)] focus-visible:ring-brand-500/30',
     ghost:     'text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface2)] focus-visible:ring-[var(--muted2)]',
     danger:    'bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-900/40 hover:border-red-800/60 focus-visible:ring-red-500/30',
@@ -102,7 +102,10 @@ export function Textarea({ label, error, className = '', ...rest }: TextareaProp
 interface CardProps { title?: string; children: React.ReactNode; className?: string; }
 export function Card({ title, children, className = '' }: CardProps) {
   return (
-    <div className={`bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 shadow-card ${className}`}>
+    <div
+      className={`bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 shadow-card transition-all duration-200 hover:border-[var(--border2)] hover:-translate-y-px ${className}`}
+      style={{ backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}
+    >
       {title && (
         <div className="pb-3 mb-4 border-b border-[var(--border)]/70">
           <h3 className="font-display text-sm font-semibold text-[var(--text)] tracking-tight">
