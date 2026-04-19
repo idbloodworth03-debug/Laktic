@@ -329,7 +329,7 @@ export function RunTracker() {
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <MapContainer
           center={mapCenter}
-          zoom={20}
+          zoom={16}
           maxZoom={20}
           style={{ width: '100%', height: '100%' }}
           zoomControl={false}
