@@ -558,8 +558,6 @@ function BottomTabBar({ role, onLogout }: BottomTabBarProps) {
 }
 
 // ── UsernameGate ───────────────────────────────────────────────────────────────
-import { apiFetch } from '../lib/api';
-
 function UsernameGate() {
   const { role, profile, setAuth, session } = useAuthStore();
   const needsUsername = role === 'athlete' && profile && !profile.username;
