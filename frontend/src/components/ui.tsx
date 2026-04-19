@@ -667,9 +667,6 @@ function timeAgoShort(dateStr: string): string {
 
 function NotificationBell() {
   const { role } = useAuthStore();
-  const current = typeof window !== 'undefined' ? window.location.pathname : '';
-  if (!role || !current.includes('/community')) return null;
-
   const [notifs, setNotifs] = React.useState<any[]>([]);
   const [open, setOpen] = React.useState(false);
   const [lastSeen, setLastSeen] = React.useState<string>(
@@ -677,9 +674,13 @@ function NotificationBell() {
   );
   const dropdownRef = React.useRef<HTMLDivElement>(null);
 
+  const current = typeof window !== 'undefined' ? window.location.pathname : '';
+  const visible = !!role && current.includes('/community');
+
   useEffect(() => {
+    if (!visible) return;
     apiFetch('/api/social/follow-notifications').then(setNotifs).catch(() => {});
-  }, []);
+  }, [visible]);
 
   useEffect(() => {
     if (!open) return;
@@ -689,6 +690,8 @@ function NotificationBell() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
+
+  if (!visible) return null;
 
   const unread = notifs.filter(n => n.followed_at > lastSeen).length;
 
