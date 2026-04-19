@@ -24,6 +24,7 @@ function UserDrawer({ user, onClose, onSuspend, onDelete }: { user: any; onClose
     { label: 'Role', value: isCoach ? 'Coach' : 'Athlete' },
     { label: 'Status', value: user.suspended ? 'Suspended' : 'Active' },
     { label: 'Joined', value: new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) },
+    { label: 'Last Active', value: fmtRelative(user.last_active) },
     ...(isCoach ? [{ label: 'License', value: user.license_type || '—' }, { label: 'Certified', value: user.certified_coach ? 'Yes' : 'No' }] : [{ label: 'Tier', value: user.subscription_tier ?? 'free' }]),
   ];
   return (
@@ -96,6 +97,18 @@ function PasswordGate({ onUnlock }: { onUnlock: (key: string) => void }) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+function fmtRelative(iso: string | null | undefined): string {
+  if (!iso) return 'Never';
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return fmtDate(iso);
+}
 const fmtMoney = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 const Th = ({ children, w }: { children: React.ReactNode; w?: number | string }) => <th style={{ padding: '10px 14px', textAlign: 'left', color: 'var(--muted)', fontWeight: 500, fontSize: 12, whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)', width: w }}>{children}</th>;
 const Td = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--text2)', borderBottom: '1px solid var(--border)', ...style }}>{children}</td>;
@@ -342,8 +355,8 @@ export function AdminDashboard() {
                   <tr>
                     <Th w={40}><input type="checkbox" checked={allChecked} onChange={toggleAll} style={{ cursor: 'pointer' }} /></Th>
                     {userTab === 'athletes'
-                      ? ['Name', 'Username', 'Tier', 'Status', 'Joined', 'Actions'].map(h => <Th key={h}>{h}</Th>)
-                      : ['Name', 'Username', 'License', 'Certified', 'Status', 'Joined', 'Actions'].map(h => <Th key={h}>{h}</Th>)
+                      ? ['Name', 'Username', 'Tier', 'Status', 'Joined', 'Last Active', 'Actions'].map(h => <Th key={h}>{h}</Th>)
+                      : ['Name', 'Username', 'License', 'Certified', 'Status', 'Joined', 'Last Active', 'Actions'].map(h => <Th key={h}>{h}</Th>)
                     }
                   </tr>
                 </thead>
@@ -358,6 +371,7 @@ export function AdminDashboard() {
                       <Td><span style={{ padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: a.subscription_tier === 'pro' ? 'rgba(0,229,160,0.15)' : 'rgba(113,113,122,0.15)', color: a.subscription_tier === 'pro' ? '#00E5A0' : 'var(--muted)' }}>{a.subscription_tier ?? 'free'}</span></Td>
                       <Td>{a.suspended ? <span style={{ color: '#f59e0b', fontSize: 12 }}>Suspended</span> : <span style={{ color: '#00E5A0', fontSize: 12 }}>Active</span>}</Td>
                       <Td style={{ color: 'var(--muted)' }}>{fmtDate(a.created_at)}</Td>
+                      <Td style={{ color: a.last_active ? 'var(--text2)' : 'var(--muted)', whiteSpace: 'nowrap' }}>{fmtRelative(a.last_active)}</Td>
                       <Td>
                         <div style={{ display: 'flex', gap: 6 }}>
                           <ActionBtn label={a.suspended ? 'Unsuspend' : 'Suspend'} color={a.suspended ? '#00E5A0' : '#f59e0b'} onClick={() => suspendUser('athletes', a.id, !a.suspended)} />
@@ -376,6 +390,7 @@ export function AdminDashboard() {
                       <Td>{c.certified_coach ? <span style={{ color: '#00E5A0', fontSize: 12 }}>Yes</span> : <span style={{ color: 'var(--muted)', fontSize: 12 }}>No</span>}</Td>
                       <Td>{c.suspended ? <span style={{ color: '#f59e0b', fontSize: 12 }}>Suspended</span> : <span style={{ color: '#00E5A0', fontSize: 12 }}>Active</span>}</Td>
                       <Td style={{ color: 'var(--muted)' }}>{fmtDate(c.created_at)}</Td>
+                      <Td style={{ color: c.last_active ? 'var(--text2)' : 'var(--muted)', whiteSpace: 'nowrap' }}>{fmtRelative(c.last_active)}</Td>
                       <Td>
                         <div style={{ display: 'flex', gap: 6 }}>
                           <ActionBtn label={c.suspended ? 'Unsuspend' : 'Suspend'} color={c.suspended ? '#00E5A0' : '#f59e0b'} onClick={() => suspendUser('coaches', c.id, !c.suspended)} />
