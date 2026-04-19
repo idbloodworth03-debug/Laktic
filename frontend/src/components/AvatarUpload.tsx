@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { apiFetch } from '../lib/api';
-import { useAuthStore } from '../store/authStore';
 import { UserAvatar } from './UserAvatar';
 
 interface AvatarUploadProps {
@@ -12,7 +11,6 @@ interface AvatarUploadProps {
 }
 
 export function AvatarUpload({ currentUrl, name, role, onUpload }: AvatarUploadProps) {
-  const { session } = useAuthStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -40,7 +38,8 @@ export function AvatarUpload({ currentUrl, name, role, onUpload }: AvatarUploadP
     setUploading(true);
     setSuccess(false);
     try {
-      const userId = session?.user?.id;
+      const { data: { session: freshSession } } = await supabase.auth.getSession();
+      const userId = freshSession?.user?.id;
       if (!userId) throw new Error('Not authenticated');
 
       const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
