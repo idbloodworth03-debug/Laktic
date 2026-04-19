@@ -78,7 +78,7 @@ router.get('/coaches', async (req: Request, res: Response) => {
 
   const { data, error } = await supabase
     .from('coach_profiles')
-    .select('id, user_id, name, username, license_type, certified_coach, suspended, created_at')
+    .select('id, user_id, name, username, license_type, certified_coach, suspended, created_at, last_active')
     .order('created_at', { ascending: false })
     .limit(500);
 
@@ -91,7 +91,7 @@ router.get('/athletes', async (req: Request, res: Response) => {
 
   const { data, error } = await supabase
     .from('athlete_profiles')
-    .select('id, user_id, name, username, subscription_tier, suspended, created_at')
+    .select('id, user_id, name, username, subscription_tier, suspended, created_at, last_active')
     .order('created_at', { ascending: false })
     .limit(500);
 
@@ -287,8 +287,8 @@ router.get('/users', async (req: Request, res: Response) => {
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
 
   const [coaches, athletes] = await Promise.all([
-    supabase.from('coach_profiles').select('id, user_id, name, username, license_type, certified_coach, suspended, created_at').order('created_at', { ascending: false }).limit(500),
-    supabase.from('athlete_profiles').select('id, user_id, name, username, subscription_tier, suspended, created_at').order('created_at', { ascending: false }).limit(500),
+    supabase.from('coach_profiles').select('id, user_id, name, username, license_type, certified_coach, suspended, created_at, last_active').order('created_at', { ascending: false }).limit(500),
+    supabase.from('athlete_profiles').select('id, user_id, name, username, subscription_tier, suspended, created_at, last_active').order('created_at', { ascending: false }).limit(500),
   ]);
 
   const users = [
