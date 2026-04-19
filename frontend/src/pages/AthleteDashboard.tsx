@@ -319,7 +319,6 @@ export function AthleteDashboard() {
               {[
                 { label: 'Log Activity',  href: '/athlete/activities', desc: 'Record workout' },
                 { label: 'Race Calendar', href: '/athlete/races', desc: 'Events & goals' },
-                { label: 'Nutrition',     href: '/athlete/nutrition', desc: 'Track intake' },
               ].map(l => (
                 <a key={l.href} href={l.href}
                   className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] hover:border-[var(--color-border-light)] rounded-card p-4 transition-all duration-150 hover:-translate-y-px group"
