@@ -44,6 +44,7 @@ import certificationRouter from './routes/certification';
 import recruitingRouter from './routes/recruiting';
 import adminRouter from './routes/admin';
 import socialRouter from './routes/social';
+import { applyPendingMigrations } from './db/migrations';
 import cron from 'node-cron';
 import { runRaceCountdownCron } from './services/notificationService';
 import { runGameplanCron } from './routes/gameplans';
@@ -127,6 +128,7 @@ try {
   app.listen(env.PORT, () => {
     // eslint-disable-next-line no-console
     console.log(`Laktic backend running on port ${env.PORT}`);
+    applyPendingMigrations().catch(err => console.error('[migrations] unexpected error:', err));
   });
 } catch (err) {
   // eslint-disable-next-line no-console

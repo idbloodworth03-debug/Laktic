@@ -166,4 +166,99 @@ router.get('/is-following/:athleteId', auth, asyncHandler(async (req: AuthReques
   return res.json({ following: !!data });
 }));
 
+// ── POST /api/social/contacts-match — find Laktic users from contact list ─────
+router.post('/contacts-match', auth, requireAthlete, asyncHandler(async (req: AuthRequest, res) => {
+  const { contacts } = req.body;
+  if (!Array.isArray(contacts) || contacts.length === 0) return res.json({ matches: [], nonMatches: [] });
+
+  const callerId = await getAthleteId(req.user!.id);
+
+  // Extract unique emails from contacts (limit to 50 contacts)
+  interface ContactInfo { name: string; email: string; phone?: string }
+  const contactMap = new Map<string, ContactInfo>();
+  for (const c of contacts.slice(0, 50)) {
+    const rawEmail = Array.isArray(c.email) ? c.email[0] : c.email;
+    const email = (rawEmail ?? '').toLowerCase().trim();
+    if (email && email.includes('@') && !contactMap.has(email)) {
+      const rawName = Array.isArray(c.name) ? c.name[0] : c.name;
+      const rawPhone = Array.isArray(c.tel) ? c.tel[0] : (c.phone ?? c.tel);
+      contactMap.set(email, { name: rawName ?? email, email, phone: rawPhone });
+    }
+  }
+
+  const emails = Array.from(contactMap.keys());
+  if (emails.length === 0) return res.json({ matches: [], nonMatches: [] });
+
+  // Look up auth users by email via admin API (service role required)
+  const userLookups = await Promise.allSettled(
+    emails.map(email => (supabase.auth as any).admin.getUserByEmail(email))
+  );
+
+  const matchedUserIds: string[] = [];
+  const matchedEmails = new Set<string>();
+
+  userLookups.forEach((result, i) => {
+    if (result.status === 'fulfilled' && result.value?.data?.user) {
+      matchedUserIds.push(result.value.data.user.id);
+      matchedEmails.add(emails[i]);
+    }
+  });
+
+  // Fetch profiles for matched users, excluding caller
+  let profiles: any[] = [];
+  if (matchedUserIds.length > 0) {
+    let q = supabase
+      .from('athlete_profiles')
+      .select('id, name, username, avatar_url, user_id')
+      .in('user_id', matchedUserIds);
+    if (callerId) q = q.neq('id', callerId);
+    const { data } = await q;
+    profiles = data ?? [];
+  }
+
+  // Attach is_following flag
+  let followingSet = new Set<string>();
+  if (callerId) {
+    const { data: follows } = await supabase
+      .from('athlete_follows').select('following_id').eq('follower_id', callerId);
+    followingSet = new Set((follows ?? []).map((f: any) => f.following_id));
+  }
+
+  const matches = profiles.map(p => ({ ...p, is_following: followingSet.has(p.id) }));
+  const nonMatches = emails
+    .filter(e => !matchedEmails.has(e))
+    .map(e => contactMap.get(e)!);
+
+  return res.json({ matches, nonMatches });
+}));
+
+// ── GET /api/social/suggestions — active athletes not yet followed ─────────────
+router.get('/suggestions', auth, requireAthlete, asyncHandler(async (req: AuthRequest, res) => {
+  const callerId = await getAthleteId(req.user!.id);
+
+  const { data: follows } = callerId
+    ? await supabase.from('athlete_follows').select('following_id').eq('follower_id', callerId)
+    : { data: [] };
+
+  const excludeIds = [
+    ...(follows ?? []).map((f: any) => f.following_id),
+    ...(callerId ? [callerId] : []),
+  ];
+
+  let query = supabase
+    .from('athlete_profiles')
+    .select('id, name, username, avatar_url')
+    .not('username', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  // Supabase JS doesn't support NOT IN directly on arrays > 0
+  if (excludeIds.length > 0) {
+    query = query.not('id', 'in', `(${excludeIds.map(id => `"${id}"`).join(',')})`);
+  }
+
+  const { data } = await query;
+  return res.json(data ?? []);
+}));
+
 export default router;
