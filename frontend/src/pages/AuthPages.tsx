@@ -722,7 +722,7 @@ export function AthleteLogin() {
       }
       try {
         const { season } = await apiFetch('/api/athlete/season');
-        nav(season ? '/athlete/plan' : '/athlete/browse');
+        nav(season ? '/athlete/dashboard' : '/athlete/browse');
       } catch { nav('/athlete/browse'); }
     } catch (e: any) { setError(e.message || 'Sign in failed. Please try again.'); }
     finally { setLoading(false); }
@@ -1016,7 +1016,7 @@ export function UnifiedLogin() {
       } else if (me.role === 'athlete') {
         try {
           const { season } = await apiFetch('/api/athlete/season');
-          nav(season ? '/athlete/plan' : '/athlete/dashboard');
+          nav('/athlete/dashboard');
         } catch { nav('/athlete/dashboard'); }
       } else {
         throw new Error('Unknown account type. Please contact support.');
