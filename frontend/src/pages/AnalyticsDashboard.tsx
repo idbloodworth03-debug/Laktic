@@ -22,16 +22,46 @@ interface WeeklyPoint {
   count: number;
 }
 
+interface ReadinessData {
+  score: number;
+  label: string;
+  color: string;
+  recommendation: string;
+  signals?: {
+    atl: number;
+    ctl: number;
+    tsb: number;
+    consecutiveTrainingDays: number;
+    daysSinceLastRun: number;
+  };
+}
+
+interface Insights {
+  readiness: ReadinessData;
+  paceMessage: string | null;
+  paceMessageAt: string | null;
+}
+
 const TSB_COLORS = {
   atl: '#f97316',
   ctl: '#00E5A0',
   tsb: '#3b82f6',
 };
 
+const READINESS_COLORS: Record<string, string> = {
+  green: '#00E5A0',
+  teal: '#00E5A0',
+  amber: '#f59e0b',
+  orange: '#f97316',
+  red: '#ef4444',
+  gray: '#6b7280',
+};
+
 export function AnalyticsDashboard() {
   const { profile, role } = useAuthStore();
   const [loads, setLoads] = useState<LoadPoint[]>([]);
   const [weekly, setWeekly] = useState<WeeklyPoint[]>([]);
+  const [insights, setInsights] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'atl_ctl' | 'tsb' | 'weekly'>('atl_ctl');
   const logout = async () => { const { supabase } = await import('../lib/supabaseClient'); await supabase.auth.signOut(); useAuthStore.getState().clearAuth(); };
@@ -40,20 +70,28 @@ export function AnalyticsDashboard() {
     Promise.all([
       apiFetch('/api/training-analytics/loads'),
       apiFetch('/api/training-analytics/weekly'),
-    ]).then(([loadsRes, weeklyRes]) => {
+      apiFetch('/api/training-analytics/insights').catch(() => null),
+    ]).then(([loadsRes, weeklyRes, insightsRes]) => {
       setLoads(loadsRes.loads ?? []);
       setWeekly(weeklyRes);
+      if (insightsRes && !insightsRes.error) setInsights(insightsRes);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
-  // Show only last 90 data points for chart readability
   const chartData = loads.slice(-90);
-
   const latest = loads[loads.length - 1];
 
   const formatDate = (d: string) => {
     const date = new Date(d);
     return `${date.getMonth() + 1}/${date.getDate()}`;
+  };
+
+  const formatRelativeTime = (iso: string) => {
+    const diff = Date.now() - new Date(iso).getTime();
+    const hours = Math.floor(diff / 3_600_000);
+    if (hours < 1) return 'just now';
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
   };
 
   const tsbStatus = latest
@@ -62,6 +100,9 @@ export function AnalyticsDashboard() {
     : latest.tsb > -30 ? { label: 'Tired', color: 'amber' as const }
     : { label: 'Very Tired', color: 'red' as const }
     : null;
+
+  const readiness = insights?.readiness;
+  const readinessColor = readiness ? (READINESS_COLORS[readiness.color] ?? '#6b7280') : '#6b7280';
 
   return (
     <div className="min-h-screen bg-[var(--bg)]">
@@ -73,6 +114,46 @@ export function AnalyticsDashboard() {
             <p className="text-sm text-[var(--muted)] mt-1">These metrics show how your training is affecting your body right now.</p>
           </div>
         </div>
+
+        {/* Readiness + Pace insights row */}
+        {readiness && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            {/* Daily readiness */}
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4">
+              <p className="text-xs text-[var(--muted)] mb-2 uppercase tracking-wide font-medium">Daily Readiness</p>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-3xl font-bold" style={{ color: readinessColor }}>{readiness.score}</span>
+                <span className="text-sm font-semibold" style={{ color: readinessColor }}>{readiness.label}</span>
+              </div>
+              <p className="text-xs text-[var(--muted)] leading-relaxed">{readiness.recommendation}</p>
+              {readiness.signals && (
+                <div className="flex gap-4 mt-3 pt-3 border-t border-[var(--border)] text-xs text-[var(--muted)]">
+                  <span><span className="text-orange-400 font-medium">{readiness.signals.atl.toFixed(0)}</span> Fatigue</span>
+                  <span><span className="text-[#00E5A0] font-medium">{readiness.signals.ctl.toFixed(0)}</span> Fitness</span>
+                  {readiness.signals.consecutiveTrainingDays > 0 && (
+                    <span><span className="text-white font-medium">{readiness.signals.consecutiveTrainingDays}</span> day streak</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Latest Pace message */}
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 flex flex-col">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-[var(--muted)] uppercase tracking-wide font-medium">Latest from Pace</p>
+                {insights?.paceMessageAt && (
+                  <span className="text-xs text-[var(--muted)]">{formatRelativeTime(insights.paceMessageAt)}</span>
+                )}
+              </div>
+              {insights?.paceMessage ? (
+                <p className="text-sm text-[var(--text)] leading-relaxed line-clamp-5 flex-1">{insights.paceMessage}</p>
+              ) : (
+                <p className="text-sm text-[var(--muted)] flex-1">Chat with Pace to get personalized training advice that shows up here.</p>
+              )}
+              <a href="/athlete/chat" className="mt-3 text-xs text-[var(--accent)] hover:underline">Open Pace →</a>
+            </div>
+          </div>
+        )}
 
         <div className="mb-6 p-4 rounded-xl text-sm" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <div className="flex flex-col gap-2">
@@ -88,7 +169,6 @@ export function AnalyticsDashboard() {
           <Card><p className="text-center text-[var(--muted)] py-8">No activity data yet. Log activities to see your training load metrics.</p></Card>
         ) : (
           <>
-            {/* Summary cards */}
             {latest && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                 <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 text-center">
@@ -110,7 +190,6 @@ export function AnalyticsDashboard() {
               </div>
             )}
 
-            {/* View toggle */}
             <div className="flex gap-2 mb-4">
               {(['atl_ctl','tsb','weekly'] as const).map(v => (
                 <button

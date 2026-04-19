@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { supabase } from '../db/supabase';
 import { auth, AuthRequest } from '../middleware/auth';
+import { computeReadiness } from '../utils/readinessEngine';
 
 const router = Router();
 
@@ -58,17 +59,17 @@ router.get('/loads', auth, async (req: AuthRequest, res: Response) => {
   const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   const { data: activities, error } = await supabase
-    .from('activities')
-    .select('date, duration_minutes, distance_km')
+    .from('athlete_activities')
+    .select('start_date, moving_time_seconds, distance_meters')
     .eq('athlete_id', profile.id)
-    .gte('date', cutoff)
-    .order('date', { ascending: true });
+    .gte('start_date', cutoff)
+    .order('start_date', { ascending: true });
 
   if (error) return res.status(500).json({ error: error.message });
 
   const withLoad = (activities ?? []).map(a => ({
-    date: a.date,
-    load: Math.round((a.duration_minutes ?? 0) * 1.2),
+    date: (a.start_date as string).split('T')[0],
+    load: Math.round(((a.moving_time_seconds ?? 0) / 60) * 1.2),
   }));
 
   const loads = computeLoads(withLoad);
@@ -88,17 +89,17 @@ router.get('/weekly', auth, async (req: AuthRequest, res: Response) => {
   const cutoff = new Date(Date.now() - weeks * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   const { data: activities, error } = await supabase
-    .from('activities')
-    .select('date, duration_minutes, distance_km, activity_type')
+    .from('athlete_activities')
+    .select('start_date, moving_time_seconds, distance_meters, activity_type')
     .eq('athlete_id', profile.id)
-    .gte('date', cutoff)
-    .order('date', { ascending: true });
+    .gte('start_date', cutoff)
+    .order('start_date', { ascending: true });
 
   if (error) return res.status(500).json({ error: error.message });
 
   const byWeek: Record<string, { week: string; km: number; minutes: number; count: number }> = {};
   for (const a of activities ?? []) {
-    const d = new Date(a.date);
+    const d = new Date((a.start_date as string).split('T')[0]);
     const dayOfWeek = d.getDay();
     const mondayOffset = (dayOfWeek + 6) % 7;
     const monday = new Date(d);
@@ -106,8 +107,8 @@ router.get('/weekly', auth, async (req: AuthRequest, res: Response) => {
     const weekKey = monday.toISOString().split('T')[0];
 
     if (!byWeek[weekKey]) byWeek[weekKey] = { week: weekKey, km: 0, minutes: 0, count: 0 };
-    byWeek[weekKey].km += a.distance_km ?? 0;
-    byWeek[weekKey].minutes += a.duration_minutes ?? 0;
+    byWeek[weekKey].km += (a.distance_meters ?? 0) / 1000;
+    byWeek[weekKey].minutes += (a.moving_time_seconds ?? 0) / 60;
     byWeek[weekKey].count += 1;
   }
 
@@ -120,20 +121,66 @@ router.get('/coach/:athleteId', auth, async (req: AuthRequest, res: Response) =>
   if (!coach) return res.status(403).json({ error: 'Coach only' });
 
   const { data: activities, error } = await supabase
-    .from('activities')
-    .select('date, duration_minutes, distance_km')
+    .from('athlete_activities')
+    .select('start_date, moving_time_seconds, distance_meters')
     .eq('athlete_id', req.params.athleteId)
-    .gte('date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-    .order('date', { ascending: true });
+    .gte('start_date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+    .order('start_date', { ascending: true });
 
   if (error) return res.status(500).json({ error: error.message });
 
   const withLoad = (activities ?? []).map(a => ({
-    date: a.date,
-    load: Math.round((a.duration_minutes ?? 0) * 1.2),
+    date: (a.start_date as string).split('T')[0],
+    load: Math.round(((a.moving_time_seconds ?? 0) / 60) * 1.2),
   }));
 
   res.json({ loads: computeLoads(withLoad) });
+});
+
+// GET /api/training-analytics/insights — readiness + latest Pace message
+router.get('/insights', auth, async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.id;
+  const { data: profile } = await supabase
+    .from('athlete_profiles')
+    .select('id')
+    .eq('user_id', userId)
+    .single();
+  if (!profile) return res.status(403).json({ error: 'Athlete only' });
+
+  const athleteId = profile.id;
+
+  // Fetch readiness
+  const readiness = await computeReadiness(athleteId, supabase);
+
+  // Fetch most recent assistant (Pace) message from any active season
+  const { data: season } = await supabase
+    .from('athlete_seasons')
+    .select('id')
+    .eq('athlete_id', athleteId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  let paceMessage: string | null = null;
+  let paceMessageAt: string | null = null;
+
+  if (season) {
+    const { data: msg } = await supabase
+      .from('chat_messages')
+      .select('content, created_at')
+      .eq('season_id', season.id)
+      .eq('role', 'assistant')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (msg) {
+      paceMessage = msg.content as string;
+      paceMessageAt = msg.created_at as string;
+    }
+  }
+
+  res.json({ readiness, paceMessage, paceMessageAt });
 });
 
 export default router;
