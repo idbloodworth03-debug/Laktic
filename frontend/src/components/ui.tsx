@@ -355,7 +355,6 @@ const ATHLETE_PRIMARY: NavItem[] = [
 
 // More: shown below a divider in sidebar + in mobile "More" drawer
 const ATHLETE_MORE: NavItem[] = [
-  { label: 'Runs',      href: '/athlete/runs',      icon: Footprints    },
   { label: 'Activities', href: '/athlete/activities', icon: Activity    },
   { label: 'Calendar',   href: '/athlete/calendar',   icon: Calendar    },
   { label: 'Analytics',  href: '/athlete/analytics',  icon: BarChart2   },

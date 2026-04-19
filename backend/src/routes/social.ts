@@ -189,20 +189,24 @@ router.post('/contacts-match', auth, requireAthlete, asyncHandler(async (req: Au
   const emails = Array.from(contactMap.keys());
   if (emails.length === 0) return res.json({ matches: [], nonMatches: [] });
 
-  // Look up auth users by email via admin API (service role required)
-  const userLookups = await Promise.allSettled(
-    emails.map(email => (supabase.auth as any).admin.getUserByEmail(email))
-  );
-
+  // Look up auth users by email — fetch all users and filter locally
+  // (Supabase v2 admin API does not expose a getUserByEmail method)
+  const emailSet = new Set(emails);
   const matchedUserIds: string[] = [];
   const matchedEmails = new Set<string>();
 
-  userLookups.forEach((result, i) => {
-    if (result.status === 'fulfilled' && result.value?.data?.user) {
-      matchedUserIds.push(result.value.data.user.id);
-      matchedEmails.add(emails[i]);
+  try {
+    const { data: listData } = await (supabase.auth as any).admin.listUsers({ page: 1, perPage: 1000 });
+    for (const user of listData?.users ?? []) {
+      const e = user.email?.toLowerCase();
+      if (e && emailSet.has(e)) {
+        matchedUserIds.push(user.id);
+        matchedEmails.add(e);
+      }
     }
-  });
+  } catch {
+    // admin API unavailable — return no matches, invite-only mode
+  }
 
   // Fetch profiles for matched users, excluding caller
   let profiles: any[] = [];
@@ -252,9 +256,9 @@ router.get('/suggestions', auth, requireAthlete, asyncHandler(async (req: AuthRe
     .order('created_at', { ascending: false })
     .limit(20);
 
-  // Supabase JS doesn't support NOT IN directly on arrays > 0
   if (excludeIds.length > 0) {
-    query = query.not('id', 'in', `(${excludeIds.map(id => `"${id}"`).join(',')})`);
+    // PostgREST NOT IN: comma-separated UUIDs, no quotes
+    query = query.not('id', 'in', `(${excludeIds.join(',')})`);
   }
 
   const { data } = await query;
