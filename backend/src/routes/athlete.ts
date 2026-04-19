@@ -137,9 +137,17 @@ router.patch(
   requireAthlete,
   validate(athleteProfileUpdateSchema),
   asyncHandler(async (req: AuthRequest, res) => {
+    const update: Record<string, any> = { ...req.body };
+    if (update.birthday) {
+      const dob = new Date(update.birthday);
+      const today = new Date();
+      let age = today.getFullYear() - dob.getFullYear();
+      if (today.getMonth() < dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) age--;
+      update.age = age;
+    }
     const { data, error } = await supabase
       .from('athlete_profiles')
-      .update(req.body)
+      .update(update)
       .eq('id', req.athlete.id)
       .select()
       .single();

@@ -48,6 +48,7 @@ export function AthleteSettings() {
   // About You
   const [aboutName, setAboutName] = useState((profile as any)?.name ?? '');
   const [aboutAge, setAboutAge] = useState<string>((profile as any)?.age?.toString() ?? '');
+  const [aboutBirthday, setAboutBirthday] = useState<string>((profile as any)?.birthday ?? '');
   const [aboutGender, setAboutGender] = useState((profile as any)?.gender ?? '');
   const [aboutExp, setAboutExp] = useState((profile as any)?.experience_level ?? '');
   const [savingAbout, setSavingAbout] = useState(false);
@@ -133,6 +134,7 @@ export function AthleteSettings() {
     if (!p) return;
     setAboutName(p.name ?? p.full_name ?? '');
     setAboutAge(p.age != null ? String(p.age) : '');
+    setAboutBirthday(p.birthday ?? '');
     setAboutGender(p.gender ?? '');
     setAboutExp(p.experience_level ?? '');
     setTrainMpw(p.current_weekly_mileage != null ? String(p.current_weekly_mileage) : '');
@@ -330,7 +332,21 @@ export function AthleteSettings() {
           <div className="flex flex-col gap-4">
             <Input label="Full name" value={aboutName} onChange={e => setAboutName(e.target.value)} />
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Age" type="number" min={10} max={99} value={aboutAge} onChange={e => setAboutAge(e.target.value)} />
+              <div>
+                <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">Birthday</label>
+                <input
+                  type="date"
+                  value={aboutBirthday}
+                  max={new Date().toISOString().split('T')[0]}
+                  onChange={e => setAboutBirthday(e.target.value)}
+                  className="w-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
+                />
+                {aboutBirthday && (
+                  <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
+                    Age: {Math.floor((Date.now() - new Date(aboutBirthday).getTime()) / (365.25 * 24 * 3600 * 1000))}
+                  </p>
+                )}
+              </div>
               <div>
                 <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">Gender</label>
                 <select
@@ -362,7 +378,7 @@ export function AthleteSettings() {
             </div>
             <Button
               variant="primary" size="sm" loading={savingAbout}
-              onClick={() => patchProfile({ name: aboutName, age: aboutAge ? parseInt(aboutAge) : null, gender: aboutGender || null, experience_level: aboutExp || null }, setSavingAbout, setAboutSaved)}
+              onClick={() => patchProfile({ name: aboutName, birthday: aboutBirthday || null, gender: aboutGender || null, experience_level: aboutExp || null }, setSavingAbout, setAboutSaved)}
             >
               {aboutSaved ? 'Saved ✓' : 'Save'}
             </Button>

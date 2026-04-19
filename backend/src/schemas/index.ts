@@ -91,6 +91,7 @@ export const athleteProfileUpdateSchema = z.object({
   // New onboarding fields
   pr_800m: z.string().max(20).nullish(),
   age: z.number().int().min(0).max(120).nullish(),
+  birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
   gender: z.string().max(50).nullish(),
   fitness_rating: z.number().int().min(1).max(10).nullish(),
   height_ft: z.number().int().min(0).max(10).nullish(),

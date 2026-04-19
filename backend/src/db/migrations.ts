@@ -67,6 +67,10 @@ ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS last_active TIMESTA
 ALTER TABLE public.coach_profiles   ADD COLUMN IF NOT EXISTS last_active TIMESTAMPTZ;
 `;
 
+const ADD_BIRTHDAY_COLUMN = `
+ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS birthday DATE;
+`;
+
 async function lastActiveExists(): Promise<boolean> {
   const { error } = await supabase
     .from('athlete_profiles')
@@ -96,6 +100,19 @@ export async function applyPendingMigrations(): Promise<void> {
     }
   } else {
     console.log('[migrations] last_active ✓');
+  }
+
+  // ── Migration 041: birthday column ───────────────────────────────────────
+  const { error: bdErr } = await supabase.from('athlete_profiles').select('birthday').limit(1);
+  if (bdErr) {
+    let applied = false;
+    for (const fn of ['exec_sql', 'exec', 'run_sql', 'execute_sql', 'pgexec']) {
+      if (await tryRpc(fn, ADD_BIRTHDAY_COLUMN)) { applied = true; break; }
+    }
+    if (!applied) await tryRestSql(ADD_BIRTHDAY_COLUMN);
+    console.log('[migrations] birthday column applied');
+  } else {
+    console.log('[migrations] birthday ✓');
   }
 
   // ── Migration 036: athlete_follows ────────────────────────────────────────
