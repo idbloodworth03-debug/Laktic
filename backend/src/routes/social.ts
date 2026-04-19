@@ -68,7 +68,12 @@ router.post('/follow/:athleteId', auth, requireAthlete, asyncHandler(async (req:
   const { error } = await supabase
     .from('athlete_follows')
     .insert({ follower_id: followerId, following_id: followingId });
-  if (error) return res.status(400).json({ error: error.message });
+  if (error) {
+    const msg = error.message?.toLowerCase().includes('schema cache') || error.message?.toLowerCase().includes('does not exist')
+      ? 'Follow feature requires a one-time database migration. Please contact support or run Migration 036 in your Supabase SQL editor.'
+      : error.message;
+    return res.status(400).json({ error: msg });
+  }
 
   return res.json({ following: true });
 }));

@@ -952,7 +952,10 @@ function AthleteRow({ athlete, onToggleFollow }: { athlete: any; onToggleFollow:
     try {
       await onToggleFollow(athlete.id);
     } catch (e: any) {
-      setErr(e?.message || 'Could not update follow. Please try again.');
+      const raw = e?.message ?? '';
+      setErr(raw.includes('migration') || raw.includes('schema') || raw.includes('does not exist')
+        ? 'Follow feature is temporarily unavailable. Please contact support.'
+        : (raw || 'Could not update follow. Please try again.'));
     } finally {
       setBusy(false);
     }
