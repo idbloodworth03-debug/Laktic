@@ -57,9 +57,14 @@ export function MyProfile() {
   }, []);
 
   const save = async () => {
-    const uClean = username.trim().toLowerCase();
-    if (uClean && !/^[a-zA-Z0-9_]{3,20}$/.test(uClean)) {
-      setSaveErr('Username: 3–20 chars, letters/numbers/underscores only.');
+    const uClean = username.trim().toLowerCase().replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20);
+    if (uClean && uClean.length < 3) {
+      setSaveErr('Username must be at least 3 characters.');
+      return;
+    }
+    const nameTrim = name.trim();
+    if (!nameTrim) {
+      setSaveErr('Name cannot be empty.');
       return;
     }
     setSaving(true);
@@ -68,9 +73,9 @@ export function MyProfile() {
     try {
       const updated = await apiFetch('/api/athlete/profile', {
         method: 'PATCH',
-        body: JSON.stringify({ name: name.trim(), username: uClean || undefined, running_style: bio.trim() || null }),
+        body: JSON.stringify({ name: nameTrim, ...(uClean ? { username: uClean } : {}), running_style: bio.trim() || null }),
       });
-      setAuth(session, role as 'athlete', { ...profile, name: name.trim(), username: uClean, running_style: bio.trim(), ...updated });
+      setAuth(session, role as 'athlete', { ...profile, name: nameTrim, username: uClean || profile?.username, running_style: bio.trim(), ...updated });
       setSaveMsg('Saved!');
       setTimeout(() => setSaveMsg(''), 3000);
     } catch (e: any) {
