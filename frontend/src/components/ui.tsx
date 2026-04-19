@@ -10,6 +10,7 @@ import {
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 import { InstallBanner } from './InstallPWA';
+import { apiFetch } from '../lib/api';
 
 // ── Button ─────────────────────────────────────────────────────────────────────
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -653,6 +654,136 @@ function UsernameGate() {
   );
 }
 
+// ── NotificationBell ───────────────────────────────────────────────────────────
+function timeAgoShort(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function NotificationBell() {
+  const { role } = useAuthStore();
+  const current = typeof window !== 'undefined' ? window.location.pathname : '';
+  if (!role || !current.includes('/community')) return null;
+
+  const [notifs, setNotifs] = React.useState<any[]>([]);
+  const [open, setOpen] = React.useState(false);
+  const [lastSeen, setLastSeen] = React.useState<string>(
+    () => localStorage.getItem('notif_last_seen') ?? new Date(0).toISOString()
+  );
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    apiFetch('/api/social/follow-notifications').then(setNotifs).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const unread = notifs.filter(n => n.followed_at > lastSeen).length;
+
+  const handleOpen = () => {
+    const nowOpen = !open;
+    setOpen(nowOpen);
+    if (nowOpen) {
+      const now = new Date().toISOString();
+      setLastSeen(now);
+      localStorage.setItem('notif_last_seen', now);
+    }
+  };
+
+  return (
+    <div ref={dropdownRef} style={{ position: 'fixed', top: 14, right: 60, zIndex: 300 }}>
+      <button
+        onClick={handleOpen}
+        title="Notifications"
+        style={{
+          width: 36, height: 36, borderRadius: '50%',
+          border: '2px solid rgba(0,229,160,0.4)',
+          background: '#111',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+          position: 'relative',
+          padding: 0,
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00E5A0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
+        {unread > 0 && (
+          <span style={{
+            position: 'absolute', top: -4, right: -4,
+            background: '#00E5A0', color: '#000',
+            borderRadius: '50%', width: 16, height: 16,
+            fontSize: 10, fontWeight: 700,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            lineHeight: 1,
+          }}>
+            {unread > 9 ? '9+' : unread}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 44, right: 0,
+          background: '#111', border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 14, width: 280, maxHeight: 360, overflowY: 'auto',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+        }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>
+              Notifications
+            </p>
+          </div>
+          {notifs.length === 0 ? (
+            <div style={{ padding: '28px 16px', textAlign: 'center' }}>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', margin: 0 }}>No notifications yet</p>
+            </div>
+          ) : notifs.map((n, i) => (
+            <div key={n.id ?? i} style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 14px',
+              borderBottom: '1px solid rgba(255,255,255,0.05)',
+              background: n.followed_at > lastSeen ? 'rgba(0,229,160,0.06)' : 'transparent',
+            }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: '50%',
+                background: '#1a1a1a', overflow: 'hidden', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}>
+                {n.avatar_url
+                  ? <img src={n.avatar_url} alt={n.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <span style={{ fontSize: 12, fontWeight: 700, color: '#00E5A0' }}>{(n.name ?? '?').charAt(0).toUpperCase()}</span>
+                }
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#fff', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.name}</p>
+                <p style={{ fontSize: 11, color: 'rgba(0,229,160,0.8)', margin: 0 }}>
+                  followed you · {timeAgoShort(n.followed_at)}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── AppLayout ──────────────────────────────────────────────────────────────────
 // Use this for all authenticated pages. Sticky sidebar + flex layout.
 interface AppLayoutProps { role?: string; name?: string; onLogout?: () => void; children: React.ReactNode; }
@@ -702,6 +833,7 @@ export function AppLayout({ role, name, onLogout, children }: AppLayoutProps) {
   return (
     <div className="app-layout-wrap bg-[var(--color-bg-primary)]">
       <UsernameGate />
+      <NotificationBell />
       <FloatingProfileButton />
       <div className={`app-sidebar-sticky ${collapsed ? 'collapsed' : ''}`}>
         <SidebarContent role={role} name={name} onLogout={onLogout} collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} />

@@ -156,6 +156,28 @@ router.get('/followers', auth, requireAthlete, asyncHandler(async (req: AuthRequ
   return res.json(list);
 }));
 
+// ── GET /api/social/follow-notifications — recent followers with timestamps ────
+router.get('/follow-notifications', auth, requireAthlete, asyncHandler(async (req: AuthRequest, res) => {
+  const callerId = await getAthleteId(req.user!.id);
+  if (!callerId) return res.json([]);
+
+  const { data, error } = await supabase
+    .from('athlete_follows')
+    .select('id, created_at, follower_id, athlete_profiles!follower_id(id, name, username, avatar_url)')
+    .eq('following_id', callerId)
+    .order('created_at', { ascending: false })
+    .limit(30);
+
+  if (error) return res.json([]); // table may not exist yet — degrade gracefully
+
+  const notifs = (data ?? []).map((row: any) => {
+    const p = Array.isArray(row.athlete_profiles) ? row.athlete_profiles[0] : row.athlete_profiles;
+    return p ? { ...p, followed_at: row.created_at } : null;
+  }).filter(Boolean);
+
+  return res.json(notifs);
+}));
+
 // ── GET /api/social/is-following/:athleteId ───────────────────────────────────
 router.get('/is-following/:athleteId', auth, asyncHandler(async (req: AuthRequest, res) => {
   const callerId = await getAthleteId(req.user!.id);
