@@ -91,6 +91,7 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { AthletePro } from './pages/AthletePro';
 import { Privacy } from './pages/Privacy';
 import { Support } from './pages/Support';
+import { NotFound } from './pages/NotFound';
 import { AuthCallback } from './pages/AuthCallback';
 import { EmailConfirmationPending } from './pages/EmailConfirmationPending';
 
@@ -213,7 +214,7 @@ export default function App() {
         <Route path="/admin" element={<AdminDashboard />} />
 
         {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
     </ErrorBoundary>
