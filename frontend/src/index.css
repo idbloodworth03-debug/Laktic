@@ -229,7 +229,7 @@ h1, h2, h3, h4, h5, h6 {
 
 @media (max-width: 768px) {
   .app-sidebar-sticky { display: none; }
-  .app-layout-main { padding-bottom: 64px; }
+  .app-layout-main { padding-bottom: var(--tabnav-h); }
 }
 
 /* ── Legacy fixed sidebar ──────────────────────────────────────────────────── */
@@ -249,17 +249,22 @@ h1, h2, h3, h4, h5, h6 {
 body.with-sidebar > #root { padding-left: 220px; transition: padding-left 200ms ease; }
 @media (max-width: 768px) {
   .app-sidebar-fixed { display: none !important; }
-  body.with-sidebar > #root { padding-left: 0 !important; padding-bottom: 64px; }
+  body.with-sidebar > #root { padding-left: 0 !important; padding-bottom: var(--tabnav-h); }
 }
 
 /* ── Bottom tab bar ─────────────────────────────────────────────────────────── */
+:root { --tabnav-h: calc(64px + env(safe-area-inset-bottom, 0px)); }
+
 .bottom-tab-bar {
   display: none;
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 64px;
+  /* Grow to cover iOS home indicator */
+  height: auto;
+  min-height: 64px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   background: rgba(14,14,14,0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -268,6 +273,8 @@ body.with-sidebar > #root { padding-left: 220px; transition: padding-left 200ms 
 }
 @media (max-width: 768px) {
   .bottom-tab-bar { display: flex; }
+  /* Keep sticky chat input above the tab bar */
+  .chat-input-bar { bottom: var(--tabnav-h); }
 }
 
 /* ── Progress bar ─────────────────────────────────────────────────────────── */

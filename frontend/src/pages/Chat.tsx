@@ -17,7 +17,7 @@ function MessageInput({
 }) {
   return (
     <div
-      className="sticky bottom-0 px-6 py-4"
+      className="sticky bottom-0 chat-input-bar px-6 py-4"
       style={{
         background: 'var(--color-bg-tertiary)',
         borderTop: '1px solid var(--color-border)',
