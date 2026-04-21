@@ -30,7 +30,7 @@ function MessageInput({
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(); } }}
           rows={1}
           placeholder={placeholder}
-          className="flex-1 text-sm placeholder-[var(--color-text-tertiary)] resize-none min-h-[44px] max-h-32 outline-none transition-all duration-150"
+          className="flex-1 text-base placeholder-[var(--color-text-tertiary)] resize-none min-h-[44px] max-h-32 outline-none transition-all duration-150"
           style={{
             background: 'var(--color-bg-secondary)',
             border: '1px solid var(--color-border)',

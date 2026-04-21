@@ -190,7 +190,7 @@ function CommentThread({ postId, onCommentAdded }: { postId: string; onCommentAd
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
             placeholder="Add a comment…"
             maxLength={500}
-            className="flex-1 text-xs outline-none transition-all"
+            className="flex-1 text-base outline-none transition-all"
             style={{
               background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)',
               borderRadius: 20, padding: '7px 14px', color: 'var(--color-text-primary)',
@@ -906,7 +906,7 @@ function PeopleTab() {
             background: 'var(--color-bg-secondary)',
             border: '1px solid var(--color-border)',
             borderRadius: 12, color: 'var(--color-text-primary)',
-            fontSize: 14, outline: 'none',
+            fontSize: 16, outline: 'none',
           }}
         />
         {searching && (

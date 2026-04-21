@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 import { apiFetch } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
-import { AppLayout, Card, Button, Badge, Spinner, Alert, Input } from '../components/ui';
+import { AppLayout, Card, Button, Badge, Spinner, Alert, Input, Select } from '../components/ui';
 import { StravaConnectButton } from '../components/StravaConnectButton';
 import { useNotifications } from '../hooks/useNotifications';
 import { AvatarUpload } from '../components/AvatarUpload';
@@ -333,49 +333,38 @@ export function AthleteSettings() {
             <Input label="Full name" value={aboutName} onChange={e => setAboutName(e.target.value)} />
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">Birthday</label>
-                <input
+                <Input
+                  label="Birthday"
                   type="date"
                   value={aboutBirthday}
                   max={new Date().toISOString().split('T')[0]}
                   onChange={e => setAboutBirthday(e.target.value)}
-                  className="w-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
+                  hint={aboutBirthday ? `Age: ${Math.floor((Date.now() - new Date(aboutBirthday).getTime()) / (365.25 * 24 * 3600 * 1000))}` : undefined}
                 />
-                {aboutBirthday && (
-                  <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
-                    Age: {Math.floor((Date.now() - new Date(aboutBirthday).getTime()) / (365.25 * 24 * 3600 * 1000))}
-                  </p>
-                )}
               </div>
-              <div>
-                <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">Gender</label>
-                <select
-                  value={aboutGender}
-                  onChange={e => setAboutGender(e.target.value)}
-                  className="w-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
-                >
-                  <option value="">Prefer not to say</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="non-binary">Non-binary</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">Experience level</label>
-              <select
-                value={aboutExp}
-                onChange={e => setAboutExp(e.target.value)}
-                className="w-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
+              <Select
+                label="Gender"
+                value={aboutGender}
+                onChange={e => setAboutGender(e.target.value)}
               >
-                <option value="">Select level</option>
-                <option value="beginner">Beginner (0–2 years)</option>
-                <option value="intermediate">Intermediate (2–5 years)</option>
-                <option value="advanced">Advanced (5+ years)</option>
-                <option value="elite">Elite / Competitive</option>
-              </select>
+                <option value="">Prefer not to say</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="non-binary">Non-binary</option>
+                <option value="other">Other</option>
+              </Select>
             </div>
+            <Select
+              label="Experience level"
+              value={aboutExp}
+              onChange={e => setAboutExp(e.target.value)}
+            >
+              <option value="">Select level</option>
+              <option value="beginner">Beginner (0–2 years)</option>
+              <option value="intermediate">Intermediate (2–5 years)</option>
+              <option value="advanced">Advanced (5+ years)</option>
+              <option value="elite">Elite / Competitive</option>
+            </Select>
             <Button
               variant="primary" size="sm" loading={savingAbout}
               onClick={() => patchProfile({ name: aboutName, birthday: aboutBirthday || null, gender: aboutGender || null, experience_level: aboutExp || null }, setSavingAbout, setAboutSaved)}
