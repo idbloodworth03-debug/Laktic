@@ -220,7 +220,7 @@ function PostCard({
   post: any;
   currentProfileId: string | undefined;
   currentRole: string | undefined;
-  onKudo: (id: string) => void;
+  onKudo: (id: string) => Promise<void> | void;
   onDelete: (id: string) => void;
   onEdit: (id: string, newBody: string) => void;
   onOpen?: () => void;
@@ -233,6 +233,7 @@ function PostCard({
     && ((isCoachPost && currentRole === 'coach') || (!isCoachPost && currentRole === 'athlete'));
   const cfg = POST_TYPE_CONFIG[post.feed_type] ?? POST_TYPE_CONFIG.manual;
 
+  const [kudoPending, setKudoPending]   = useState(false);
   const [showComments, setShowComments] = useState(alwaysShowComments ?? false);
   const [commentCount, setCommentCount] = useState<number>(post.comment_count ?? 0);
   const [editMode, setEditMode]         = useState(false);
@@ -241,6 +242,12 @@ function PostCard({
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [hovered, setHovered]           = useState(false);
   const [shared, setShared]             = useState(false);
+
+  const handleKudo = async () => {
+    if (kudoPending) return;
+    setKudoPending(true);
+    try { await onKudo(post.id); } catch {} finally { setKudoPending(false); }
+  };
 
   const handleShare = async () => {
     const text = `${name}: "${post.body}"`;
@@ -384,8 +391,8 @@ function PostCard({
 
       {/* Action bar */}
       <div className="px-4 pb-1 flex items-center gap-0.5" style={{ borderTop: '1px solid var(--color-border)' }}>
-        <ActionBtn active={post.i_kudoed} onClick={() => onKudo(post.id)}>
-          <HeartIcon filled={post.i_kudoed} />
+        <ActionBtn active={post.i_kudoed} onClick={handleKudo} disabled={kudoPending}>
+          {kudoPending ? <Spinner size="sm" /> : <HeartIcon filled={post.i_kudoed} />}
           <span>{post.kudo_count > 0 ? post.kudo_count : ''}</span>
         </ActionBtn>
 
@@ -662,9 +669,9 @@ function PostDetailView({
 }) {
   const [localPost, setLocalPost] = useState(initialPost);
 
-  const handleKudo = (id: string) => {
+  const handleKudo = async (id: string) => {
     setLocalPost((p: any) => ({ ...p, i_kudoed: !p.i_kudoed, kudo_count: p.i_kudoed ? p.kudo_count - 1 : p.kudo_count + 1 }));
-    onKudo(id);
+    await onKudo(id);
   };
 
   const handleDelete = (id: string) => { onDelete(id); onBack(); };
@@ -984,7 +991,10 @@ function AthleteRow({ athlete, onToggleFollow }: { athlete: any; onToggleFollow:
             opacity: busy ? 0.6 : 1,
           }}
         >
-          {busy ? '…' : athlete.is_following ? 'Following' : 'Follow'}
+          {busy
+            ? <span className="flex items-center justify-center" style={{ minWidth: 48 }}><Spinner size="sm" /></span>
+            : athlete.is_following ? 'Following' : 'Follow'
+          }
         </button>
       </div>
       {err && (
