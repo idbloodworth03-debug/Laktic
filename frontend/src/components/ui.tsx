@@ -683,7 +683,8 @@ function NotificationBell() {
   );
   const dropdownRef = React.useRef<HTMLDivElement>(null);
 
-  const visible = !!role;
+  const current = typeof window !== 'undefined' ? window.location.pathname : '';
+  const visible = !!role && current.includes('/community');
 
   useEffect(() => {
     if (!visible) return;
