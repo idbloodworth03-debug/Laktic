@@ -683,12 +683,15 @@ function NotificationBell() {
   );
   const dropdownRef = React.useRef<HTMLDivElement>(null);
 
-  const current = typeof window !== 'undefined' ? window.location.pathname : '';
-  const visible = !!role && current.includes('/community');
+  const visible = !!role;
 
   useEffect(() => {
     if (!visible) return;
     apiFetch('/api/social/follow-notifications').then(setNotifs).catch(() => {});
+    const interval = setInterval(() => {
+      apiFetch('/api/social/follow-notifications').then(setNotifs).catch(() => {});
+    }, 60_000);
+    return () => clearInterval(interval);
   }, [visible]);
 
   useEffect(() => {
@@ -737,11 +740,12 @@ function NotificationBell() {
         {unread > 0 && (
           <span style={{
             position: 'absolute', top: -4, right: -4,
-            background: '#00E5A0', color: '#000',
+            background: '#ef4444', color: '#fff',
             borderRadius: '50%', width: 16, height: 16,
             fontSize: 10, fontWeight: 700,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             lineHeight: 1,
+            boxShadow: '0 0 0 2px #111',
           }}>
             {unread > 9 ? '9+' : unread}
           </span>
