@@ -74,7 +74,12 @@ function PasswordGate({ onUnlock }: { onUnlock: (key: string) => void }) {
       await adminFetch('/api/admin/stats', value);
       sessionStorage.setItem('admin_key', value);
       onUnlock(value);
-    } catch { setError('Wrong password.'); }
+    } catch (e: any) {
+      const msg = e?.message ?? '';
+      setError(msg.includes('fetch') || msg.includes('network') || msg.includes('CORS')
+        ? 'Cannot reach server. Check API connectivity.'
+        : 'Wrong password.');
+    }
     finally { setLoading(false); }
   }
 
