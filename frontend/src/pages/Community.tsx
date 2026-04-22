@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
@@ -973,7 +973,10 @@ function AthleteRow({ athlete, onToggleFollow }: { athlete: any; onToggleFollow:
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <UserAvatar name={athlete.name ?? '?'} url={athlete.avatar_url} size="sm" />
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold truncate" style={{ color: 'var(--color-text-primary)' }}>{athlete.name}</div>
+          {athlete.username
+            ? <Link to={`/athlete/${athlete.username}`} className="text-sm font-semibold truncate block" style={{ color: 'var(--color-text-primary)', textDecoration: 'none' }}>{athlete.name}</Link>
+            : <div className="text-sm font-semibold truncate" style={{ color: 'var(--color-text-primary)' }}>{athlete.name}</div>
+          }
           {athlete.username && (
             <div className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>@{athlete.username}</div>
           )}
