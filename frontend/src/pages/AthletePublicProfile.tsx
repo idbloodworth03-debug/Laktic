@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
-import { Badge, Spinner } from '../components/ui';
+import { Badge, BottomTabBar, Spinner } from '../components/ui';
 import { UserAvatar } from '../components/UserAvatar';
 import { useAuthStore } from '../store/authStore';
 
@@ -59,7 +59,7 @@ function MiniStatCard({ label, value }: { label: string; value: string | number 
 
 export function AthletePublicProfile() {
   const { username } = useParams<{ username: string }>();
-  const { role } = useAuthStore();
+  const { role, logout } = useAuthStore();
   const isLoggedIn = !!role;
   const [athlete, setAthlete] = useState<PublicAthlete | null>(null);
   const [loading, setLoading] = useState(true);
@@ -127,15 +127,17 @@ export function AthletePublicProfile() {
       {/* Top bar */}
       <nav className="border-b border-[var(--color-border)] px-6 py-4 flex items-center justify-between">
         <Link to="/" className="font-sans font-black text-xl text-[var(--color-accent)] tracking-tighter">LAKTIC</Link>
-        <Link
-          to="/register/athlete"
-          className="text-sm bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-black px-4 py-1.5 rounded-lg transition-colors font-semibold"
-        >
-          Join Laktic
-        </Link>
+        {!isLoggedIn && (
+          <Link
+            to="/register/athlete"
+            className="text-sm bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-black px-4 py-1.5 rounded-lg transition-colors font-semibold"
+          >
+            Join Laktic
+          </Link>
+        )}
       </nav>
 
-      <div className="max-w-2xl mx-auto px-6 py-12">
+      <div className="max-w-2xl mx-auto px-6 py-12" style={isLoggedIn ? { paddingBottom: 'calc(var(--tabnav-h) + 48px)' } : undefined}>
         {/* Header */}
         <div className="mb-8 fade-up">
           <div className="flex items-start gap-4 mb-4">
@@ -299,6 +301,7 @@ export function AthletePublicProfile() {
           </div>
         )}
       </div>
+      {isLoggedIn && <BottomTabBar role={role} onLogout={logout} />}
     </div>
   );
 }

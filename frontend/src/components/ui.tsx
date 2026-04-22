@@ -521,7 +521,7 @@ function SidebarContent({ role, name, onLogout, collapsed, onToggle }: SidebarCo
 
 // ── BottomTabBar ───────────────────────────────────────────────────────────────
 interface BottomTabBarProps { role?: string; onLogout?: () => void; }
-function BottomTabBar({ role, onLogout }: BottomTabBarProps) {
+export function BottomTabBar({ role, onLogout }: BottomTabBarProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const current = typeof window !== 'undefined' ? window.location.pathname : '';
   const nav = role === 'athlete' ? ATHLETE_NAV : role === 'coach' ? COACH_NAV : [];
