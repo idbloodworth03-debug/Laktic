@@ -130,15 +130,18 @@ export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
 interface AlertProps { type?: 'success' | 'error' | 'info'; message: string; onClose?: () => void; action?: React.ReactNode; }
 export function Alert({ type = 'info', message, onClose, action }: AlertProps) {
   const styles = {
-    success: { wrap: 'bg-[var(--color-accent-dim)] border-[var(--color-accent)]/20', text: 'text-[var(--color-accent)]', bar: 'bg-[var(--color-accent)]' },
-    error:   { wrap: 'bg-red-500/10 border-red-500/20',   text: 'text-red-400',  bar: 'bg-[var(--color-danger)]' },
-    info:    { wrap: 'bg-blue-500/10 border-blue-500/20', text: 'text-blue-400', bar: 'bg-blue-500' },
+    success: { wrap: 'bg-[var(--color-accent-dim)] border-[var(--color-accent)]/20', text: 'text-[var(--color-accent)]', bar: 'bg-[var(--color-accent)]', icon: '✓' },
+    error:   { wrap: 'bg-red-500/10 border-red-500/20',   text: 'text-red-400',  bar: 'bg-[var(--color-danger)]', icon: '✕' },
+    info:    { wrap: 'bg-blue-500/10 border-blue-500/20', text: 'text-blue-400', bar: 'bg-blue-500', icon: 'ℹ' },
   };
   const st = styles[type];
   return (
     <div className={`relative flex items-center justify-between gap-3 border rounded-btn px-4 py-3 text-sm overflow-hidden ${st.wrap}`}>
       <div className={`absolute left-0 top-0 bottom-0 w-[3px] rounded-r ${st.bar}`} />
-      <span className={`pl-3 leading-snug ${st.text}`}>{message}</span>
+      <div className="flex items-center gap-2 pl-3 min-w-0">
+        <span className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold ${st.bar} ${type === 'success' ? 'text-black' : 'text-white'}`}>{st.icon}</span>
+        <span className={`leading-snug ${st.text}`}>{message}</span>
+      </div>
       <div className="flex items-center gap-2 shrink-0">
         {action}
         {onClose && <button onClick={onClose} className={`opacity-50 hover:opacity-100 text-lg leading-none transition-opacity ${st.text}`}>×</button>}

@@ -293,7 +293,7 @@ export function AthleteDashboard() {
             </div>
 
             {/* Season progress */}
-            {season && (
+            {season ? (
               <Card title="Active Plan">
                 <div className="flex items-center justify-between mb-3">
                   <div>
@@ -309,6 +309,23 @@ export function AthleteDashboard() {
                   </p>
                   <Link to="/athlete/plan" className="flex items-center gap-1 text-xs text-[var(--color-accent)] font-medium hover:opacity-80 transition-opacity">
                     View plan <ChevronRight size={12} />
+                  </Link>
+                </div>
+              </Card>
+            ) : (
+              <Card title="Active Plan">
+                <div className="flex flex-col items-center text-center py-4 gap-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'var(--color-accent-dim)' }}>
+                    <Play size={16} className="text-[var(--color-accent)]" style={{ marginLeft: 2 }} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-[var(--color-text-primary)] mb-1">No plan yet</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)]">Chat with Pace to build your personalized training plan.</p>
+                  </div>
+                  <Link to="/athlete/chat">
+                    <button className="text-xs font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-80" style={{ background: 'var(--color-accent)', color: '#000', border: 'none', cursor: 'pointer' }}>
+                      Get my plan
+                    </button>
                   </Link>
                 </div>
               </Card>

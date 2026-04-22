@@ -234,7 +234,7 @@ function Hero() {
 function StripSection() {
   return (
     <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '20px clamp(24px, 5vw, 64px)' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 24 }}>
+      <div className="lk-stats-strip" style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', alignItems: 'center', gap: '16px 24px' }}>
         {[['GPT-4o', 'Powered by AI'], ['14 days', 'Adaptive window'], ['100%', 'Personalized plans'], ['Strava', 'Connected']].map(([val, lbl]) => (
           <div key={val} style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 20, fontWeight: 600, color: '#00E5A0', letterSpacing: '-0.02em' }}>{val}</span>
@@ -382,7 +382,7 @@ export function LandingPage() {
   }, []);
 
   return (
-    <div style={{ background: '#080808', minHeight: '100vh', fontFamily: "'DM Sans', sans-serif", color: '#fff' }}>
+    <div style={{ background: '#080808', minHeight: '100vh', color: '#fff' }}>
       <style>{`
         @keyframes lk-float  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
         @keyframes lk-float2 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(8px)} }
@@ -396,6 +396,7 @@ export function LandingPage() {
           .lk-hero-left p { text-align: center; margin-left: auto; margin-right: auto; }
           .lk-hero-left > div:first-child { align-self: center; }
           .lk-hero-btns { justify-content: center !important; }
+          .lk-stats-strip { grid-template-columns: 1fr 1fr !important; }
         }
       `}</style>
       <Navbar />
