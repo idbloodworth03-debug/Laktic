@@ -61,10 +61,23 @@ app.use(helmet());
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (mobile, curl, server-to-server)
+      // Allow requests with no origin (mobile apps, curl, server-to-server)
       if (!origin) return callback(null, true);
-      const allowed = [env.FRONTEND_URL];
-      if (allowed.includes(origin)) {
+
+      // Build allowed list from FRONTEND_URL: include both www and non-www variants
+      const base = env.FRONTEND_URL.replace(/\/$/, '');
+      const allowed = new Set<string>([
+        base,
+        base.replace('https://www.', 'https://'),
+        base.replace('https://', 'https://www.'),
+        'http://localhost:5173',
+        'http://localhost:4173',
+      ]);
+      // Also allow any EXTRA_ORIGINS env var (comma-separated)
+      const extra = (process.env.EXTRA_ORIGINS ?? '').split(',').map(s => s.trim()).filter(Boolean);
+      extra.forEach(o => allowed.add(o));
+
+      if (allowed.has(origin)) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));

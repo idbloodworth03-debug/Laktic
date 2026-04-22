@@ -81,6 +81,18 @@
 
 html { font-size: 16px; scroll-behavior: smooth; overflow-x: hidden; }
 
+/* Prevent Chrome/Safari autofill from blowing out the dark background */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-bg-tertiary) inset !important;
+  -webkit-text-fill-color: var(--color-text-primary) !important;
+  caret-color: var(--color-text-primary);
+}
+
 body {
   background: var(--color-bg-primary);
   color: var(--color-text-primary);
