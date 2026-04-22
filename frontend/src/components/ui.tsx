@@ -769,12 +769,21 @@ function NotificationBell() {
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', margin: 0 }}>No notifications yet</p>
             </div>
           ) : notifs.map((n, i) => (
-            <div key={n.id ?? i} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '10px 14px',
-              borderBottom: '1px solid rgba(255,255,255,0.05)',
-              background: n.followed_at > lastSeen ? 'rgba(0,229,160,0.06)' : 'transparent',
-            }}>
+            <Link
+              key={n.id ?? i}
+              to={n.username ? `/athlete/${n.username}` : '#'}
+              onClick={() => setOpen(false)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 14px',
+                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                background: n.followed_at > lastSeen ? 'rgba(0,229,160,0.06)' : 'transparent',
+                textDecoration: 'none',
+                cursor: n.username ? 'pointer' : 'default',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = n.followed_at > lastSeen ? 'rgba(0,229,160,0.06)' : 'transparent'; }}
+            >
               <div style={{
                 width: 32, height: 32, borderRadius: '50%',
                 background: '#1a1a1a', overflow: 'hidden', flexShrink: 0,
@@ -792,7 +801,7 @@ function NotificationBell() {
                   followed you · {timeAgoShort(n.followed_at)}
                 </p>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
