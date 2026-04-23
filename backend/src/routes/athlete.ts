@@ -138,6 +138,17 @@ router.patch(
   validate(athleteProfileUpdateSchema),
   asyncHandler(async (req: AuthRequest, res) => {
     const update: Record<string, any> = { ...req.body };
+
+    if (update.username) {
+      update.username = update.username.toLowerCase();
+      const taken = update.username;
+      const [{ data: a }, { data: c }] = await Promise.all([
+        supabase.from('athlete_profiles').select('id').eq('username', taken).neq('id', req.athlete.id).maybeSingle(),
+        supabase.from('coach_profiles').select('id').eq('username', taken).maybeSingle(),
+      ]);
+      if (a || c) return res.status(409).json({ error: 'That username is already taken.' });
+    }
+
     if (update.birthday) {
       const dob = new Date(update.birthday);
       const today = new Date();
@@ -152,7 +163,10 @@ router.patch(
       .select()
       .single();
 
-    if (error) return res.status(400).json({ error: error.message });
+    if (error) {
+      if (error.code === '23505') return res.status(409).json({ error: 'That username is already taken.' });
+      return res.status(400).json({ error: error.message });
+    }
 
     // When onboarding saves a goal race, also add it to the active season's race_calendar
     // so it appears on the Race Calendar page immediately.

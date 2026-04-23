@@ -58,6 +58,16 @@ router.patch(
     }
     if (Object.keys(update).length === 0) return res.json(req.coach);
 
+    if (update.username) {
+      update.username = (update.username as string).toLowerCase();
+      const taken = update.username as string;
+      const [{ data: c }, { data: a }] = await Promise.all([
+        supabase.from('coach_profiles').select('id').eq('username', taken).neq('id', req.coach.id).maybeSingle(),
+        supabase.from('athlete_profiles').select('id').eq('username', taken).maybeSingle(),
+      ]);
+      if (c || a) return res.status(409).json({ error: 'That username is already taken.' });
+    }
+
     const { data, error } = await supabase
       .from('coach_profiles')
       .update(update)
@@ -65,7 +75,10 @@ router.patch(
       .select()
       .single();
 
-    if (error) return res.status(400).json({ error: error.message });
+    if (error) {
+      if (error.code === '23505') return res.status(409).json({ error: 'That username is already taken.' });
+      return res.status(400).json({ error: error.message });
+    }
     return res.json(data);
   })
 );
