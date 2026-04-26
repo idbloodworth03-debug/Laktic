@@ -22,22 +22,115 @@ const TOPIC_LABELS: Record<string, string> = {
   races: 'Races', fun: 'Fun',
 };
 
+type UserStub = { id: string; name: string; username: string | null; avatar_url: string | null };
+
+function UserListModal({
+  title,
+  users,
+  onClose,
+  onNavigate,
+}: {
+  title: string;
+  users: UserStub[];
+  onClose: () => void;
+  onNavigate: (username: string) => void;
+}) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        zIndex: 1000, padding: '0 0 0 0',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'var(--color-bg-secondary, #111)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '20px 20px 0 0',
+          width: '100%', maxWidth: 480,
+          maxHeight: '75vh',
+          display: 'flex', flexDirection: 'column',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px 14px' }}>
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)' }}>{title}</span>
+          <button
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}
+          >
+            ×
+          </button>
+        </div>
+
+        {/* List */}
+        <div style={{ overflowY: 'auto', flex: 1, padding: '0 12px 20px' }}>
+          {users.length === 0 ? (
+            <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 14, padding: '32px 0' }}>Nobody here yet.</p>
+          ) : (
+            users.map(u => (
+              <button
+                key={u.id}
+                onClick={() => u.username ? onNavigate(u.username) : undefined}
+                disabled={!u.username}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  width: '100%', background: 'none', border: 'none',
+                  padding: '10px 8px', borderRadius: 12, cursor: u.username ? 'pointer' : 'default',
+                  textAlign: 'left',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => { if (u.username) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
+              >
+                {/* Avatar */}
+                <div style={{
+                  width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+                  background: 'rgba(255,255,255,0.08)',
+                  overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {u.avatar_url
+                    ? <img src={u.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <span style={{ fontSize: 18, color: 'rgba(255,255,255,0.3)' }}>{u.name?.[0]?.toUpperCase() ?? '?'}</span>
+                  }
+                </div>
+                {/* Text */}
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>{u.name}</div>
+                  {u.username && (
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>@{u.username}</div>
+                  )}
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function MyProfile() {
   const { profile, role, clearAuth, setAuth, session } = useAuthStore();
   const nav = useNavigate();
 
-  const [name, setName]       = useState(profile?.name ?? '');
+  const [name, setName]         = useState(profile?.name ?? '');
   const [username, setUsername] = useState(profile?.username ?? '');
-  const [bio, setBio]         = useState(profile?.running_style ?? '');
-  const [saving, setSaving]   = useState(false);
-  const [saveMsg, setSaveMsg] = useState('');
-  const [saveErr, setSaveErr] = useState('');
+  const [bio, setBio]           = useState(profile?.running_style ?? '');
+  const [saving, setSaving]     = useState(false);
+  const [saveMsg, setSaveMsg]   = useState('');
+  const [saveErr, setSaveErr]   = useState('');
 
-  const [posts, setPosts]     = useState<any[]>([]);
+  const [posts, setPosts]           = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
 
-  const [followers, setFollowers] = useState<number | null>(null);
-  const [following, setFollowing] = useState<number | null>(null);
+  const [followerList, setFollowerList] = useState<UserStub[]>([]);
+  const [followingList, setFollowingList] = useState<UserStub[]>([]);
+  const [statsLoaded, setStatsLoaded] = useState(false);
+  const [showList, setShowList] = useState<'followers' | 'following' | null>(null);
 
   useEffect(() => {
     apiFetch('/api/community/my-posts')
@@ -50,9 +143,10 @@ export function MyProfile() {
         apiFetch('/api/social/followers'),
         apiFetch('/api/social/following'),
       ]).then(([f1, f2]) => {
-        setFollowers(Array.isArray(f1) ? f1.length : 0);
-        setFollowing(Array.isArray(f2) ? f2.length : 0);
-      }).catch(() => {});
+        setFollowerList(Array.isArray(f1) ? f1 : []);
+        setFollowingList(Array.isArray(f2) ? f2 : []);
+        setStatsLoaded(true);
+      }).catch(() => setStatsLoaded(true));
     }
   }, []);
 
@@ -89,6 +183,11 @@ export function MyProfile() {
     setAuth(session, role as 'athlete', { ...profile, avatar_url: url });
   };
 
+  const openProfile = (username: string) => {
+    setShowList(null);
+    nav(`/athlete/${username}`);
+  };
+
   return (
     <AppLayout role={role ?? undefined} name={profile?.name} onLogout={clearAuth}>
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '24px 16px 80px' }}>
@@ -114,16 +213,26 @@ export function MyProfile() {
         </div>
 
         {/* Follower stats */}
-        {(followers !== null || following !== null) && (
+        {statsLoaded && (
           <div style={{ display: 'flex', justifyContent: 'center', gap: 32, marginBottom: 24 }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'monospace', color: 'var(--color-text-primary)' }}>{followers ?? '—'}</div>
+            <button
+              onClick={() => setShowList('followers')}
+              style={{ textAlign: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: 10, transition: 'background 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+            >
+              <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'monospace', color: 'var(--color-text-primary)' }}>{followerList.length}</div>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Followers</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'monospace', color: 'var(--color-text-primary)' }}>{following ?? '—'}</div>
+            </button>
+            <button
+              onClick={() => setShowList('following')}
+              style={{ textAlign: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: 10, transition: 'background 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+            >
+              <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'monospace', color: 'var(--color-text-primary)' }}>{followingList.length}</div>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Following</div>
-            </div>
+            </button>
           </div>
         )}
 
@@ -221,6 +330,16 @@ export function MyProfile() {
           )}
         </div>
       </div>
+
+      {/* Followers / Following modal */}
+      {showList && (
+        <UserListModal
+          title={showList === 'followers' ? `Followers (${followerList.length})` : `Following (${followingList.length})`}
+          users={showList === 'followers' ? followerList : followingList}
+          onClose={() => setShowList(null)}
+          onNavigate={openProfile}
+        />
+      )}
     </AppLayout>
   );
 }

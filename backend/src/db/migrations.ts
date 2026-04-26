@@ -62,6 +62,14 @@ async function tryRestSql(sql: string): Promise<boolean> {
   } catch { return false; }
 }
 
+const ADD_RUNNING_STYLE_COLUMN = `
+ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS running_style TEXT;
+`;
+
+const ADD_BIO_COLUMN = `
+ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS bio TEXT;
+`;
+
 const ADD_LAST_ACTIVE_COLUMNS = `
 ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS last_active TIMESTAMPTZ;
 ALTER TABLE public.coach_profiles   ADD COLUMN IF NOT EXISTS last_active TIMESTAMPTZ;
@@ -80,6 +88,40 @@ async function lastActiveExists(): Promise<boolean> {
 }
 
 export async function applyPendingMigrations(): Promise<void> {
+  // ── Migration 033: running_style column ───────────────────────────────────
+  const { error: rsErr } = await supabase.from('athlete_profiles').select('running_style').limit(1);
+  if (rsErr) {
+    let applied = false;
+    for (const fn of ['exec_sql', 'exec', 'run_sql', 'execute_sql', 'pgexec']) {
+      if (await tryRpc(fn, ADD_RUNNING_STYLE_COLUMN)) { applied = true; break; }
+    }
+    if (!applied) applied = await tryRestSql(ADD_RUNNING_STYLE_COLUMN);
+    if (applied) {
+      console.log('[migrations] running_style column applied ✓');
+    } else {
+      console.warn('[migrations] ⚠️  Could not auto-add running_style. Run manually in Supabase SQL editor:\n', ADD_RUNNING_STYLE_COLUMN);
+    }
+  } else {
+    console.log('[migrations] running_style ✓');
+  }
+
+  // ── Migration 037: bio column ─────────────────────────────────────────────
+  const { error: bioErr } = await supabase.from('athlete_profiles').select('bio').limit(1);
+  if (bioErr) {
+    let applied = false;
+    for (const fn of ['exec_sql', 'exec', 'run_sql', 'execute_sql', 'pgexec']) {
+      if (await tryRpc(fn, ADD_BIO_COLUMN)) { applied = true; break; }
+    }
+    if (!applied) applied = await tryRestSql(ADD_BIO_COLUMN);
+    if (applied) {
+      console.log('[migrations] bio column applied ✓');
+    } else {
+      console.warn('[migrations] ⚠️  Could not auto-add bio. Run manually in Supabase SQL editor:\n', ADD_BIO_COLUMN);
+    }
+  } else {
+    console.log('[migrations] bio ✓');
+  }
+
   // ── Migration 040: last_active columns ────────────────────────────────────
   if (!(await lastActiveExists())) {
     console.log('[migrations] last_active columns missing — attempting auto-migration…');
