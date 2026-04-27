@@ -42,6 +42,11 @@ interface RaceEntry {
   distance: string;
 }
 
+// DB distance key → display label
+const DIST_KEY_TO_LABEL: Record<string, string> = {
+  '5K': '5K', '10K': '10K', 'half_marathon': 'Half', 'marathon': 'Full',
+};
+
 interface SeasonSummary {
   current_week: number;
   total_weeks: number;
@@ -107,7 +112,7 @@ export function AthleteDashboard() {
   const [loading, setLoading] = useState(true);
   const [readiness, setReadiness] = useState<ReadinessData | null>(null);
   const [season, setSeason] = useState<SeasonSummary | null>(null);
-  const [predictions, setPredictions] = useState<PredictionData[]>([]);
+  const [predictions, setPredictions] = useState<Record<string, PredictionData>>({});
   const [races, setRaces] = useState<RaceEntry[]>([]);
   const [selectedDist, setSelectedDist] = useState(0);
   const [readinessExpanded, setReadinessExpanded] = useState(false);
@@ -138,12 +143,26 @@ export function AthleteDashboard() {
         if (!d?.season) return;
         const s = d.season;
         setSeason({ current_week: s.current_week ?? 1, total_weeks: s.total_weeks ?? 16, phase: s.phase ?? 'base', compliance_pct: s.compliance_pct ?? 0 });
+        // Extract upcoming races from season's race_calendar (no dedicated /races endpoint)
+        const cal: any[] = Array.isArray(s.race_calendar) ? s.race_calendar : [];
+        setRaces(
+          cal
+            .filter((r: any) => r.date && new Date(r.date) > new Date())
+            .slice(0, 3)
+            .map((r: any, i: number) => ({ id: r.id ?? `${r.name}-${i}`, race_name: r.name, race_date: r.date, distance: r.distance || '' }))
+        );
       }).catch(() => {}),
-      apiFetch('/api/predictions').then(d => {
-        setPredictions((d ?? []).map((p: any) => ({ distance: p.distance, predicted_time: p.predicted_time, trend: p.trend })));
-      }).catch(() => {}),
-      apiFetch('/api/athlete/races').then(d => {
-        setRaces((d ?? []).filter((r: any) => new Date(r.race_date) > new Date()).slice(0, 3));
+      apiFetch('/api/predictions/my').then(d => {
+        const map: Record<string, PredictionData> = {};
+        for (const p of d ?? []) {
+          const label = DIST_KEY_TO_LABEL[p.distance] ?? p.distance;
+          map[label] = {
+            distance: label,
+            predicted_time: p.predicted_time_formatted ?? '--',
+            trend: p.trend === 'improving' ? 'up' : p.trend === 'declining' ? 'down' : 'flat',
+          };
+        }
+        setPredictions(map);
       }).catch(() => {}),
     ]).finally(() => setLoading(false));
   }, []);
@@ -180,7 +199,7 @@ export function AthleteDashboard() {
   }
 
   const readinessScore = readiness?.score ?? null;
-  const selectedPred = predictions[selectedDist];
+  const selectedPred = predictions[DISTANCES[selectedDist]];
   const weeksToRace = races[0]?.race_date
     ? Math.max(0, Math.round((new Date(races[0].race_date).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)))
     : null;
@@ -224,7 +243,7 @@ export function AthleteDashboard() {
           {season && <StatTile label="Season Progress" value={`Wk ${season.current_week}/${season.total_weeks}`} sub={`${Math.round((season.current_week / season.total_weeks) * 100)}% complete`} />}
           {season && <StatTile label="Compliance" value={`${season.compliance_pct ?? '--'}%`} sub="This plan" accent />}
           {races[0] && <StatTile label="Next Race" value={`${daysUntil(races[0].race_date)}d`} sub={races[0].race_name} />}
-          {predictions[0] && <StatTile label={`Predicted ${DISTANCES[0]}`} value={predictions[0].predicted_time} sub="Current fitness" />}
+          {predictions['5K'] && <StatTile label="Predicted 5K" value={predictions['5K'].predicted_time} sub="Current fitness" />}
         </div>
 
         {/* Main grid */}
@@ -354,7 +373,7 @@ export function AthleteDashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
             {/* Performance predictions */}
-            {predictions.length > 0 && (
+            {Object.keys(predictions).length > 0 && (
               <Glass style={{ padding: '20px 22px' }}>
                 <SectionLabel>Performance</SectionLabel>
                 <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
