@@ -322,7 +322,7 @@ router.post(
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const [{ data: recentActivities }, { data: latestReadiness }] = await Promise.all([
       supabase.from('athlete_activities')
-        .select('start_date, activity_type, distance_miles, pace, duration')
+        .select('start_date, activity_type, distance_meters, moving_time_seconds, average_speed')
         .eq('athlete_id', req.athlete.id)
         .gte('start_date', thirtyDaysAgo)
         .order('start_date', { ascending: false })

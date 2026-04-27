@@ -46,6 +46,14 @@ function computeLoads(activities: { date: string; load: number }[]) {
   return result;
 }
 
+function toLoad(a: { moving_time_seconds: number | null }): number {
+  return Math.round(((a.moving_time_seconds ?? 0) / 60) * 1.2);
+}
+
+function toDate(a: { start_date: string }): string {
+  return a.start_date.split('T')[0];
+}
+
 router.get('/loads', auth, async (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
   const { data: profile } = await supabase
@@ -58,21 +66,17 @@ router.get('/loads', auth, async (req: AuthRequest, res: Response) => {
   const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   const { data: activities, error } = await supabase
-    .from('activities')
-    .select('date, duration_minutes, distance_km')
+    .from('athlete_activities')
+    .select('start_date, moving_time_seconds, distance_meters')
     .eq('athlete_id', profile.id)
-    .gte('date', cutoff)
-    .order('date', { ascending: true });
+    .gte('start_date', cutoff)
+    .order('start_date', { ascending: true });
 
   if (error) return res.status(500).json({ error: error.message });
 
-  const withLoad = (activities ?? []).map(a => ({
-    date: a.date,
-    load: Math.round((a.duration_minutes ?? 0) * 1.2),
-  }));
+  const withLoad = (activities ?? []).map(a => ({ date: toDate(a), load: toLoad(a) }));
 
-  const loads = computeLoads(withLoad);
-  res.json({ loads });
+  res.json({ loads: computeLoads(withLoad) });
 });
 
 router.get('/weekly', auth, async (req: AuthRequest, res: Response) => {
@@ -88,26 +92,25 @@ router.get('/weekly', auth, async (req: AuthRequest, res: Response) => {
   const cutoff = new Date(Date.now() - weeks * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   const { data: activities, error } = await supabase
-    .from('activities')
-    .select('date, duration_minutes, distance_km, activity_type')
+    .from('athlete_activities')
+    .select('start_date, moving_time_seconds, distance_meters, activity_type')
     .eq('athlete_id', profile.id)
-    .gte('date', cutoff)
-    .order('date', { ascending: true });
+    .gte('start_date', cutoff)
+    .order('start_date', { ascending: true });
 
   if (error) return res.status(500).json({ error: error.message });
 
   const byWeek: Record<string, { week: string; km: number; minutes: number; count: number }> = {};
   for (const a of activities ?? []) {
-    const d = new Date(a.date);
-    const dayOfWeek = d.getDay();
-    const mondayOffset = (dayOfWeek + 6) % 7;
+    const d = new Date(a.start_date);
+    const mondayOffset = (d.getDay() + 6) % 7;
     const monday = new Date(d);
     monday.setDate(d.getDate() - mondayOffset);
     const weekKey = monday.toISOString().split('T')[0];
 
     if (!byWeek[weekKey]) byWeek[weekKey] = { week: weekKey, km: 0, minutes: 0, count: 0 };
-    byWeek[weekKey].km += a.distance_km ?? 0;
-    byWeek[weekKey].minutes += a.duration_minutes ?? 0;
+    byWeek[weekKey].km += (a.distance_meters ?? 0) / 1000;
+    byWeek[weekKey].minutes += (a.moving_time_seconds ?? 0) / 60;
     byWeek[weekKey].count += 1;
   }
 
@@ -120,18 +123,15 @@ router.get('/coach/:athleteId', auth, async (req: AuthRequest, res: Response) =>
   if (!coach) return res.status(403).json({ error: 'Coach only' });
 
   const { data: activities, error } = await supabase
-    .from('activities')
-    .select('date, duration_minutes, distance_km')
+    .from('athlete_activities')
+    .select('start_date, moving_time_seconds, distance_meters')
     .eq('athlete_id', req.params.athleteId)
-    .gte('date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-    .order('date', { ascending: true });
+    .gte('start_date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+    .order('start_date', { ascending: true });
 
   if (error) return res.status(500).json({ error: error.message });
 
-  const withLoad = (activities ?? []).map(a => ({
-    date: a.date,
-    load: Math.round((a.duration_minutes ?? 0) * 1.2),
-  }));
+  const withLoad = (activities ?? []).map(a => ({ date: toDate(a), load: toLoad(a) }));
 
   res.json({ loads: computeLoads(withLoad) });
 });

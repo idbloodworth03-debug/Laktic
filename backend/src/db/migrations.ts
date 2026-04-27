@@ -70,6 +70,12 @@ const ADD_BIO_COLUMN = `
 ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS bio TEXT;
 `;
 
+const ADD_PR_SEASON_COLUMNS = `
+ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS pr_1500m TEXT;
+ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS season_start_date DATE;
+ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS season_end_date DATE;
+`;
+
 const ADD_LAST_ACTIVE_COLUMNS = `
 ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS last_active TIMESTAMPTZ;
 ALTER TABLE public.coach_profiles   ADD COLUMN IF NOT EXISTS last_active TIMESTAMPTZ;
@@ -120,6 +126,23 @@ export async function applyPendingMigrations(): Promise<void> {
     }
   } else {
     console.log('[migrations] bio ✓');
+  }
+
+  // ── Migration 042: pr_1500m, season_start_date, season_end_date ──────────
+  const { error: prSeasonErr } = await supabase.from('athlete_profiles').select('pr_1500m').limit(1);
+  if (prSeasonErr) {
+    let applied = false;
+    for (const fn of ['exec_sql', 'exec', 'run_sql', 'execute_sql', 'pgexec']) {
+      if (await tryRpc(fn, ADD_PR_SEASON_COLUMNS)) { applied = true; break; }
+    }
+    if (!applied) applied = await tryRestSql(ADD_PR_SEASON_COLUMNS);
+    if (applied) {
+      console.log('[migrations] pr_1500m / season dates applied ✓');
+    } else {
+      console.warn('[migrations] ⚠️  Could not auto-add pr_1500m/season dates. Run manually:\n', ADD_PR_SEASON_COLUMNS);
+    }
+  } else {
+    console.log('[migrations] pr_1500m / season dates ✓');
   }
 
   // ── Migration 040: last_active columns ────────────────────────────────────
