@@ -70,6 +70,17 @@ const ADD_BIO_COLUMN = `
 ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS bio TEXT;
 `;
 
+const ADD_ADMIN_COLUMNS = `
+CREATE TABLE IF NOT EXISTS public.banned_emails (
+  id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email     TEXT NOT NULL UNIQUE,
+  reason    TEXT,
+  banned_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS suspended BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.coach_profiles   ADD COLUMN IF NOT EXISTS suspended BOOLEAN NOT NULL DEFAULT FALSE;
+`;
+
 const ADD_PR_SEASON_COLUMNS = `
 ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS pr_1500m TEXT;
 ALTER TABLE public.athlete_profiles ADD COLUMN IF NOT EXISTS season_start_date DATE;
@@ -126,6 +137,23 @@ export async function applyPendingMigrations(): Promise<void> {
     }
   } else {
     console.log('[migrations] bio ✓');
+  }
+
+  // ── Migration 039: banned_emails table + suspended columns ───────────────
+  const { error: suspendedErr } = await supabase.from('athlete_profiles').select('suspended').limit(1);
+  if (suspendedErr) {
+    let applied = false;
+    for (const fn of ['exec_sql', 'exec', 'run_sql', 'execute_sql', 'pgexec']) {
+      if (await tryRpc(fn, ADD_ADMIN_COLUMNS)) { applied = true; break; }
+    }
+    if (!applied) applied = await tryRestSql(ADD_ADMIN_COLUMNS);
+    if (applied) {
+      console.log('[migrations] admin columns (suspended, banned_emails) applied ✓');
+    } else {
+      console.warn('[migrations] ⚠️  Could not auto-add admin columns. Run manually:\n', ADD_ADMIN_COLUMNS);
+    }
+  } else {
+    console.log('[migrations] suspended / banned_emails ✓');
   }
 
   // ── Migration 042: pr_1500m, season_start_date, season_end_date ──────────
