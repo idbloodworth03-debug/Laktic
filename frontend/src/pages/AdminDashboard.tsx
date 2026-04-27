@@ -1,5 +1,4 @@
 import { useState, useEffect, FormEvent } from 'react';
-import { apiFetch } from '../lib/api';
 
 function DeltaBadge({ current, previous }: { current: number; previous: number }) {
   if (previous === 0 && current === 0) return null;
@@ -54,11 +53,20 @@ function UserDrawer({ user, onClose, onSuspend, onDelete }: { user: any; onClose
   );
 }
 
-function adminFetch(path: string, key: string, options: RequestInit = {}) {
-  return apiFetch(path, {
+const BASE = (import.meta.env.VITE_API_URL as string) || 'http://localhost:3001';
+
+async function adminFetch(path: string, key: string, options: RequestInit = {}) {
+  const res = await fetch(`${BASE}${path}`, {
     ...options,
-    headers: { ...(options.headers as Record<string, string> ?? {}), 'x-admin-key': key },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-admin-key': key,
+      ...(options.headers as Record<string, string> ?? {}),
+    },
   });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+  return json;
 }
 
 // ── Password gate ─────────────────────────────────────────────────────────────
