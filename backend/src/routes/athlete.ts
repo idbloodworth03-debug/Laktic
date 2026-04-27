@@ -109,6 +109,21 @@ router.post(
 
     if (error) {
       console.error('[POST /athlete/profile] insert error:', error.message, '| code:', error.code);
+      // 23505 = unique_violation — profile already exists (race condition between two concurrent
+      // creation paths: AuthCallback.tsx and advanceAfterConfirm in Onboarding.tsx).
+      // Treat as success: fetch and return the existing profile row.
+      if (error.code === '23505') {
+        const { data: existing, error: fetchErr } = await supabase
+          .from('athlete_profiles')
+          .select('*')
+          .eq('user_id', req.user!.id)
+          .single();
+        if (fetchErr || !existing) {
+          return res.status(400).json({ error: error.message });
+        }
+        console.log('[POST /athlete/profile] duplicate — returning existing profile:', existing.id);
+        return res.json(existing);
+      }
       return res.status(400).json({ error: error.message });
     }
 
