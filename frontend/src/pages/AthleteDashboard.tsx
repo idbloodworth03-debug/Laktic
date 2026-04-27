@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { AppLayout, Card, Badge, ReadinessRing, ProgressBar, Spinner, StatCard } from '../components/ui';
+import { AppLayout, ReadinessRing, ProgressBar, Spinner } from '../components/ui';
 import { PaceZonesCard } from '../components/PaceZonesCard';
 import { PhaseIndicator } from '../components/PhaseIndicator';
 import { RacePredictionsCard } from '../components/RacePredictionsCard';
@@ -29,14 +29,6 @@ interface ReadinessData {
   needsMoreData?: boolean;
 }
 
-interface WorkoutDay {
-  day: string;
-  title: string;
-  phase: string;
-  distance_miles?: number;
-  description?: string;
-}
-
 interface PredictionData {
   distance: string;
   predicted_time: string;
@@ -59,18 +51,54 @@ interface SeasonSummary {
 
 const DISTANCES = ['5K', '10K', 'Half', 'Full'];
 
-const PHASE_COLOR: Record<string, string> = {
-  base: 'text-[var(--color-text-tertiary)]',
-  build: 'text-blue-400',
-  sharpening: 'text-purple-400',
-  taper: 'text-amber-400',
-  race: 'text-[var(--color-accent)]',
-  recovery: 'text-[var(--color-text-tertiary)]',
+const PHASE_STYLE: Record<string, { color: string; bg: string }> = {
+  base:       { color: 'rgba(255,255,255,0.5)',  bg: 'rgba(255,255,255,0.06)' },
+  build:      { color: '#60a5fa',                bg: 'rgba(96,165,250,0.1)'   },
+  sharpening: { color: '#a78bfa',                bg: 'rgba(167,139,250,0.1)'  },
+  taper:      { color: '#F59E0B',                bg: 'rgba(245,158,11,0.1)'   },
+  race:       { color: '#00E5A0',                bg: 'rgba(0,229,160,0.1)'    },
+  recovery:   { color: 'rgba(255,255,255,0.5)',  bg: 'rgba(255,255,255,0.06)' },
 };
 
 function daysUntil(dateStr: string) {
-  const d = Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
-  return d;
+  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
+}
+
+function Glass({ children, className = '', style = {} }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+  return (
+    <div
+      className={className}
+      style={{
+        background: 'rgba(255,255,255,0.035)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 18,
+        transition: 'border-color 0.2s ease',
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function StatTile({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: boolean }) {
+  return (
+    <Glass style={{ padding: '18px 20px' }}>
+      <p style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>{label}</p>
+      <p style={{ fontFamily: "'DM Mono', monospace", fontSize: 28, fontWeight: 600, color: accent ? '#00E5A0' : '#fff', lineHeight: 1, marginBottom: 4 }}>{value}</p>
+      {sub && <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)' }}>{sub}</p>}
+    </Glass>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 14 }}>
+      {children}
+    </p>
+  );
 }
 
 export function AthleteDashboard() {
@@ -79,23 +107,14 @@ export function AthleteDashboard() {
   const [loading, setLoading] = useState(true);
   const [readiness, setReadiness] = useState<ReadinessData | null>(null);
   const [season, setSeason] = useState<SeasonSummary | null>(null);
-  const [todayWorkouts, setTodayWorkouts] = useState<WorkoutDay[]>([]);
   const [predictions, setPredictions] = useState<PredictionData[]>([]);
   const [races, setRaces] = useState<RaceEntry[]>([]);
   const [selectedDist, setSelectedDist] = useState(0);
-
-  // Profile completion banner
+  const [readinessExpanded, setReadinessExpanded] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(() =>
     localStorage.getItem('laktic_profile_banner_dismissed') === 'true'
   );
-  const dismissBanner = () => {
-    localStorage.setItem('laktic_profile_banner_dismissed', 'true');
-    setBannerDismissed(true);
-  };
 
-  const [readinessExpanded, setReadinessExpanded] = useState(false);
-
-  // Readiness modal state
   const [showReadinessModal, setShowReadinessModal] = useState(false);
   const [readinessRating, setReadinessRating] = useState<number | null>(null);
   const [readinessNotes, setReadinessNotes] = useState('');
@@ -105,7 +124,6 @@ export function AthleteDashboard() {
 
   const logout = async () => { await supabase.auth.signOut(); clearAuth(); nav('/'); };
 
-  // After Strava OAuth during onboarding, show MeetPace before the dashboard
   useEffect(() => {
     if (sessionStorage.getItem('laktic_post_strava')) {
       sessionStorage.removeItem('laktic_post_strava');
@@ -117,17 +135,15 @@ export function AthleteDashboard() {
     Promise.allSettled([
       apiFetch('/api/athlete/readiness').then(d => setReadiness(d)).catch(() => {}),
       apiFetch('/api/athlete/season').then(d => {
-        if (!d?.season) return; // no plan yet — dashboard shows empty state
+        if (!d?.season) return;
         const s = d.season;
         setSeason({ current_week: s.current_week ?? 1, total_weeks: s.total_weeks ?? 16, phase: s.phase ?? 'base', compliance_pct: s.compliance_pct ?? 0 });
       }).catch(() => {}),
       apiFetch('/api/predictions').then(d => {
-        const list: PredictionData[] = (d ?? []).map((p: any) => ({ distance: p.distance, predicted_time: p.predicted_time, trend: p.trend }));
-        setPredictions(list);
+        setPredictions((d ?? []).map((p: any) => ({ distance: p.distance, predicted_time: p.predicted_time, trend: p.trend })));
       }).catch(() => {}),
       apiFetch('/api/athlete/races').then(d => {
-        const upcoming = (d ?? []).filter((r: any) => new Date(r.race_date) > new Date()).slice(0, 3);
-        setRaces(upcoming);
+        setRaces((d ?? []).filter((r: any) => new Date(r.race_date) > new Date()).slice(0, 3));
       }).catch(() => {}),
     ]).finally(() => setLoading(false));
   }, []);
@@ -137,21 +153,8 @@ export function AthleteDashboard() {
     setSavingReadiness(true);
     setReadinessError('');
     try {
-      // Map 1-10 overall feeling to mood/energy (1-5 scale)
       const factor = Math.ceil(readinessRating / 2);
-      const payload = {
-        mood: factor,
-        energy: factor,
-        notes: readinessNotes.trim() || null,
-      };
-      console.log('[readiness] sending payload:', JSON.stringify(payload));
-      const data = await apiFetch('/api/recovery/readiness', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-      console.log('[readiness] response:', JSON.stringify(data));
-      // Guard: only update state if the response has the expected shape
-      // Bust cache and refetch computed readiness
+      await apiFetch('/api/recovery/readiness', { method: 'POST', body: JSON.stringify({ mood: factor, energy: factor, notes: readinessNotes.trim() || null }) });
       apiFetch('/api/athlete/readiness?bust=1').then(d => setReadiness(d)).catch(() => {});
       setReadinessSuccess(true);
       setTimeout(() => {
@@ -162,7 +165,6 @@ export function AthleteDashboard() {
         setReadinessError('');
       }, 1200);
     } catch (err: any) {
-      console.error('[readiness submit error]', err);
       setReadinessError(err?.message || 'Failed to save readiness. Try again.');
     } finally {
       setSavingReadiness(false);
@@ -171,7 +173,7 @@ export function AthleteDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[var(--color-bg-primary)] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--color-bg-primary)' }}>
         <Spinner size="lg" />
       </div>
     );
@@ -179,24 +181,21 @@ export function AthleteDashboard() {
 
   const readinessScore = readiness?.score ?? null;
   const selectedPred = predictions[selectedDist];
-
-  const profileIncomplete = !bannerDismissed && (
-    !profile?.pr_5k || !profile?.target_race_date || !(profile as any)?.current_weekly_mileage
-  );
-
   const weeksToRace = races[0]?.race_date
     ? Math.max(0, Math.round((new Date(races[0].race_date).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)))
     : null;
+  const profileIncomplete = !bannerDismissed && (!profile?.pr_5k || !profile?.target_race_date || !(profile as any)?.current_weekly_mileage);
 
   return (
     <AppLayout role="athlete" name={profile?.name} onLogout={logout}>
-      <div className="p-6 md:p-8 pb-36 md:pb-8">
+      <div style={{ padding: 'clamp(24px, 3vw, 40px)', paddingBottom: 80 }}>
+
         {/* Header */}
-        <div className="mb-8 fade-up">
-          <p className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-1">
+        <div className="fade-up" style={{ marginBottom: 32 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.28)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
-          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">
+          <h1 style={{ fontSize: 'clamp(22px, 2.5vw, 30px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.2 }}>
             {(() => {
               const firstName = profile?.name?.split(' ')[0] ?? '';
               const tod = new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening';
@@ -207,299 +206,309 @@ export function AthleteDashboard() {
 
         {/* Profile completion banner */}
         {profileIncomplete && (
-          <div className="mb-6 flex items-start gap-3 bg-[var(--color-bg-secondary)] border border-[var(--color-accent)]/20 rounded-card px-4 py-3">
-            <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] flex-shrink-0" />
-            <p className="flex-1 text-sm text-[var(--color-text-secondary)]">
+          <div className="fade-up" style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px', background: 'rgba(0,229,160,0.06)', border: '1px solid rgba(0,229,160,0.2)', borderRadius: 12 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#00E5A0', flexShrink: 0, marginTop: 5 }} />
+            <p style={{ flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.55 }}>
               Complete your profile to get more accurate pace zones and a better plan.{' '}
-              <a href="/athlete/settings" className="text-[var(--color-accent)] font-medium hover:opacity-80 transition-opacity">Update profile →</a>
+              <a href="/athlete/settings" style={{ color: '#00E5A0', fontWeight: 600, textDecoration: 'none' }}>Update profile →</a>
             </p>
-            <button onClick={dismissBanner} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors p-1">
+            <button onClick={() => { localStorage.setItem('laktic_profile_banner_dismissed', 'true'); setBannerDismissed(true); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: 2, lineHeight: 1 }}>
               <X size={14} />
             </button>
           </div>
         )}
 
-        {/* 2-column grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)] gap-6">
+        {/* Stat strip */}
+        <div className="fade-up-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 20 }}>
+          {season && <StatTile label="Season Progress" value={`Wk ${season.current_week}/${season.total_weeks}`} sub={`${Math.round((season.current_week / season.total_weeks) * 100)}% complete`} />}
+          {season && <StatTile label="Compliance" value={`${season.compliance_pct ?? '--'}%`} sub="This plan" accent />}
+          {races[0] && <StatTile label="Next Race" value={`${daysUntil(races[0].race_date)}d`} sub={races[0].race_name} />}
+          {predictions[0] && <StatTile label={`Predicted ${DISTANCES[0]}`} value={predictions[0].predicted_time} sub="Current fitness" />}
+        </div>
 
-          {/* ── LEFT COLUMN ── */}
-          <div className="flex flex-col gap-5 fade-up-1">
+        {/* Main grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.5fr)', gap: 16, alignItems: 'start' }}
+          className="fade-up-2 lk-dash-grid">
 
-            {/* Daily Readiness */}
-            <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-5 shadow-card" style={{ background: 'linear-gradient(135deg, var(--color-bg-secondary) 0%, rgba(0,229,160,0.04) 100%)' }}>
-              <p className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-4">Daily Readiness</p>
-              <div className="flex flex-col xs:flex-row items-start xs:items-center gap-4 mb-4">
+          {/* LEFT COLUMN */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+            {/* Readiness */}
+            <Glass style={{ padding: '20px 22px', background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(0,229,160,0.04) 100%)' }}>
+              <SectionLabel>Daily Readiness</SectionLabel>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 14 }}>
                 {readinessScore !== null ? (
-                  <ReadinessRing score={readinessScore} size={96} />
+                  <ReadinessRing score={readinessScore} size={88} />
                 ) : (
-                  <div className="w-24 h-24 rounded-full bg-[var(--color-bg-tertiary)] border-2 border-dashed border-[var(--color-border-light)] flex items-center justify-center">
-                    <span className="font-mono text-2xl text-[var(--color-text-tertiary)]">--</span>
+                  <div style={{ width: 88, height: 88, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', border: '2px dashed rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, color: 'rgba(255,255,255,0.25)' }}>--</span>
                   </div>
                 )}
-                <div className="flex-1 min-w-0">
+                <div style={{ flex: 1 }}>
                   {readiness ? (
                     <>
-                      <p className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">
-                        {readiness.label} Readiness
-                      </p>
-                      <p className="text-xs text-[var(--color-text-tertiary)] leading-relaxed">
-                        {readiness.recommendation}
-                      </p>
+                      <p style={{ fontSize: 15, fontWeight: 700, marginBottom: 5 }}>{readiness.label} Readiness</p>
+                      <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', lineHeight: 1.65 }}>{readiness.recommendation}</p>
                     </>
                   ) : (
-                    <p className="text-xs text-[var(--color-text-tertiary)]">Computing readiness...</p>
+                    <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>Computing readiness...</p>
                   )}
+                  <button onClick={() => setShowReadinessModal(true)}
+                    style={{ marginTop: 10, fontSize: 11, color: '#00E5A0', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 600 }}>
+                    + Add today's feel
+                  </button>
                 </div>
               </div>
 
-              {/* Expandable signals */}
               {readiness?.signals && (
-                <div className="border-t border-[var(--color-border)] pt-3">
-                  <button
-                    onClick={() => setReadinessExpanded(e => !e)}
-                    className="flex items-center gap-1 text-[11px] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
-                  >
-                    <span>What affects this?</span>
-                    <span>{readinessExpanded ? '▲' : '▼'}</span>
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 12 }}>
+                  <button onClick={() => setReadinessExpanded(e => !e)}
+                    style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    What affects this? <span>{readinessExpanded ? '▲' : '▼'}</span>
                   </button>
                   {readinessExpanded && (
-                    <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
+                    <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px' }}>
                       {[
-                        { label: 'ATL (acute)', val: readiness.signals.atl },
+                        { label: 'ATL (acute)',   val: readiness.signals.atl },
                         { label: 'CTL (fitness)', val: readiness.signals.ctl },
-                        { label: 'TSB (form)', val: readiness.signals.tsb },
-                        { label: 'Compliance', val: `${readiness.signals.complianceRate}%` },
-                        { label: 'Training streak', val: `${readiness.signals.consecutiveTrainingDays}d` },
-                        { label: 'Last run', val: readiness.signals.daysSinceLastRun < 999 ? `${readiness.signals.daysSinceLastRun}d ago` : '—' },
+                        { label: 'TSB (form)',    val: readiness.signals.tsb },
+                        { label: 'Compliance',   val: `${readiness.signals.complianceRate}%` },
+                        { label: 'Streak',       val: `${readiness.signals.consecutiveTrainingDays}d` },
+                        { label: 'Last run',     val: readiness.signals.daysSinceLastRun < 999 ? `${readiness.signals.daysSinceLastRun}d ago` : '—' },
                       ].map(({ label, val }) => (
-                        <div key={label} className="flex items-baseline justify-between">
-                          <span className="text-[10px] text-[var(--color-text-tertiary)]">{label}</span>
-                          <span className="font-mono text-[11px] text-[var(--color-accent)]">{val}</span>
+                        <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{label}</span>
+                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: '#00E5A0' }}>{val}</span>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
               )}
+            </Glass>
 
-              {/* Add feel button */}
-              <div className="mt-3 flex justify-end">
-                <button onClick={() => setShowReadinessModal(true)}
-                  className="text-[11px] text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)] transition-colors"
-                >
-                  + Add today's feel
-                </button>
-              </div>
-            </div>
-
-            {/* Season progress */}
+            {/* Active Plan */}
             {season ? (
-              <Card title="Active Plan">
-                <div className="flex items-center justify-between mb-3">
+              <Glass style={{ padding: '20px 22px' }}>
+                <SectionLabel>Active Plan</SectionLabel>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                   <div>
-                    <p className="text-sm font-medium text-[var(--color-text-primary)]">Week {season.current_week} of {season.total_weeks}</p>
-                    <p className={`text-xs font-medium capitalize mt-0.5 ${PHASE_COLOR[season.phase] || 'text-[var(--color-text-tertiary)]'}`}>{season.phase} phase</p>
+                    <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Week {season.current_week} of {season.total_weeks}</p>
+                    <span style={{
+                      display: 'inline-block', fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 100, textTransform: 'capitalize',
+                      color: PHASE_STYLE[season.phase]?.color ?? '#fff',
+                      background: PHASE_STYLE[season.phase]?.bg ?? 'rgba(255,255,255,0.06)',
+                    }}>{season.phase} phase</span>
                   </div>
-                  <span className="font-mono text-[var(--color-accent)] text-sm">{Math.round((season.current_week / season.total_weeks) * 100)}%</span>
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, color: '#00E5A0' }}>
+                    {Math.round((season.current_week / season.total_weeks) * 100)}%
+                  </span>
                 </div>
                 <ProgressBar value={season.current_week} max={season.total_weeks} className="mb-4" />
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-[var(--color-text-tertiary)]">
-                    Compliance: <span className="font-mono text-[var(--color-text-primary)]">{season.compliance_pct ?? '--'}%</span>
-                  </p>
-                  <Link to="/athlete/plan" className="flex items-center gap-1 text-xs text-[var(--color-accent)] font-medium hover:opacity-80 transition-opacity">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
+                    Compliance: <span style={{ fontFamily: "'DM Mono',monospace", color: '#fff' }}>{season.compliance_pct ?? '--'}%</span>
+                  </span>
+                  <Link to="/athlete/plan" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#00E5A0', fontWeight: 600, textDecoration: 'none' }}>
                     View plan <ChevronRight size={12} />
                   </Link>
                 </div>
-              </Card>
+              </Glass>
             ) : (
-              <Card title="Active Plan">
-                <div className="flex flex-col items-center text-center py-4 gap-3">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'var(--color-accent-dim)' }}>
-                    <Play size={16} className="text-[var(--color-accent)]" style={{ marginLeft: 2 }} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-[var(--color-text-primary)] mb-1">No plan yet</p>
-                    <p className="text-xs text-[var(--color-text-tertiary)]">Chat with Pace to build your personalized training plan.</p>
-                  </div>
+              <Glass style={{ padding: '20px 22px' }}>
+                <SectionLabel>Active Plan</SectionLabel>
+                <div style={{ textAlign: 'center', padding: '12px 0' }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>No plan yet</p>
+                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', marginBottom: 14 }}>Chat with Pace to build your personalized training plan.</p>
                   <Link to="/athlete/chat">
-                    <button className="text-xs font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-80" style={{ background: 'var(--color-accent)', color: '#000', border: 'none', cursor: 'pointer' }}>
+                    <button style={{ padding: '8px 20px', background: '#00E5A0', color: '#000', fontFamily: 'inherit', fontWeight: 700, fontSize: 13, borderRadius: 100, border: 'none', cursor: 'pointer' }}>
                       Get my plan
                     </button>
                   </Link>
                 </div>
-              </Card>
+              </Glass>
             )}
 
-            {/* Quick links */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Quick actions */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {[
-                { label: 'Log Activity',  href: '/athlete/activities', desc: 'Record workout' },
-                { label: 'Race Calendar', href: '/athlete/races', desc: 'Events & goals' },
+                { label: 'Log Activity',   href: '/athlete/activities', desc: 'Record workout' },
+                { label: 'Race Calendar',  href: '/athlete/races',      desc: 'Events & goals' },
+                { label: 'Analytics',      href: '/athlete/analytics',  desc: 'Training load'  },
+                { label: 'Chat with Pace', href: '/athlete/chat',       desc: 'Ask anything'   },
               ].map(l => (
-                <a key={l.href} href={l.href}
-                  className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] hover:border-[var(--color-border-light)] rounded-card p-4 transition-all duration-150 hover:-translate-y-px group"
-                >
-                  <p className="text-sm font-medium text-[var(--color-text-primary)] group-hover:text-[var(--color-accent)] transition-colors">{l.label}</p>
-                  <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{l.desc}</p>
+                <a key={l.href} href={l.href} style={{ textDecoration: 'none' }}>
+                  <Glass style={{ padding: '14px 16px', cursor: 'pointer' }} className="glass-hover">
+                    <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 3 }}>{l.label}</p>
+                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>{l.desc}</p>
+                  </Glass>
                 </a>
               ))}
             </div>
 
-            {/* Phase indicator */}
-            {season && (
-              <PhaseIndicator phase={season.phase} weeksToRace={weeksToRace} />
-            )}
-
-            {/* Race predictions */}
-            <RacePredictionsCard />
-
-            {/* Pace zones */}
-            <PaceZonesCard />
+            {season && <PhaseIndicator phase={season.phase} weeksToRace={weeksToRace} />}
           </div>
 
-          {/* ── RIGHT COLUMN ── */}
-          <div className="flex flex-col gap-5 fade-up-3">
+          {/* RIGHT COLUMN */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-            {/* Performance Predictions */}
+            {/* Performance predictions */}
             {predictions.length > 0 && (
-              <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-5 shadow-card">
-                <p className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-4">Performance</p>
-                <div className="flex gap-1.5 mb-4">
+              <Glass style={{ padding: '20px 22px' }}>
+                <SectionLabel>Performance</SectionLabel>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
                   {DISTANCES.map((d, i) => (
-                    <button key={d} onClick={() => setSelectedDist(i)}
-                      className={`flex-1 py-1.5 rounded-pill text-[11px] font-semibold transition-all duration-150 ${selectedDist === i ? 'bg-[var(--color-accent)] text-black' : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]'}`}
-                    >{d}</button>
+                    <button key={d} onClick={() => setSelectedDist(i)} style={{
+                      flex: 1, padding: '6px 0', borderRadius: 100, fontSize: 11, fontWeight: 700,
+                      border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s ease',
+                      background: selectedDist === i ? '#00E5A0' : 'rgba(255,255,255,0.06)',
+                      color: selectedDist === i ? '#000' : 'rgba(255,255,255,0.45)',
+                    }}>{d}</button>
                   ))}
                 </div>
                 {selectedPred ? (
-                  <div className="text-center">
-                    <p className="font-mono text-2xl sm:text-3xl font-medium text-[var(--color-text-primary)] leading-none mb-1">{selectedPred.predicted_time}</p>
-                    <p className="text-xs text-[var(--color-text-tertiary)] mb-2">predicted {DISTANCES[selectedDist]}</p>
+                  <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                    <p style={{ fontFamily: "'DM Mono',monospace", fontSize: 34, fontWeight: 600, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1, marginBottom: 6 }}>{selectedPred.predicted_time}</p>
+                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 10 }}>predicted {DISTANCES[selectedDist]}</p>
                     {selectedPred.trend && (
-                      <div className={`inline-flex items-center gap-1 text-xs font-medium ${selectedPred.trend === 'up' ? 'text-[var(--color-accent)]' : selectedPred.trend === 'down' ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-tertiary)]'}`}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600,
+                        background: selectedPred.trend === 'up' ? 'rgba(0,229,160,0.1)' : selectedPred.trend === 'down' ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.06)',
+                        color: selectedPred.trend === 'up' ? '#00E5A0' : selectedPred.trend === 'down' ? '#ef4444' : 'rgba(255,255,255,0.45)' }}>
                         {selectedPred.trend === 'up' ? <TrendingUp size={12} /> : selectedPred.trend === 'down' ? <TrendingDown size={12} /> : <Minus size={12} />}
                         {selectedPred.trend === 'up' ? 'Improving' : selectedPred.trend === 'down' ? 'Declining' : 'Stable'}
                       </div>
                     )}
                   </div>
                 ) : (
-                  <p className="text-center text-xs text-[var(--color-text-tertiary)] py-2">No prediction yet</p>
+                  <p style={{ textAlign: 'center', fontSize: 12, color: 'rgba(255,255,255,0.28)', padding: '12px 0' }}>No prediction yet</p>
                 )}
-                <Link to="/athlete/progress" className="flex items-center justify-center gap-1 text-xs text-[var(--color-accent)] font-medium mt-4 hover:opacity-80">
+                <Link to="/athlete/progress" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, fontSize: 12, color: '#00E5A0', fontWeight: 600, textDecoration: 'none', marginTop: 16 }}>
                   Full analytics <ArrowRight size={11} />
                 </Link>
-              </div>
+              </Glass>
             )}
 
-            {/* Upcoming Races */}
+            {/* Upcoming races */}
             {races.length > 0 && (
-              <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-5 shadow-card">
-                <p className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-4">Upcoming Races</p>
-                <div className="flex flex-col gap-3">
-                  {races.map(race => {
+              <Glass style={{ padding: '20px 22px' }}>
+                <SectionLabel>Upcoming Races</SectionLabel>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {races.map((race, i) => {
                     const days = daysUntil(race.race_date);
                     return (
-                      <div key={race.id} className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-[13px] font-medium text-[var(--color-text-primary)] truncate">{race.race_name}</p>
-                          <p className="text-[11px] text-[var(--color-text-tertiary)]">{race.distance}</p>
+                      <div key={race.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: i < races.length - 1 ? 12 : 0, borderBottom: i < races.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>{race.race_name}</p>
+                          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>{race.distance}</p>
                         </div>
-                        <div className="shrink-0 text-right">
-                          <p className="font-mono text-sm font-medium text-[var(--color-accent)]">{days}d</p>
-                          <p className="text-[10px] text-[var(--color-text-tertiary)]">away</p>
+                        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
+                          <p style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, fontWeight: 700, color: '#00E5A0', lineHeight: 1 }}>{days}</p>
+                          <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.28)', marginTop: 1 }}>days away</p>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-                <Link to="/athlete/races" className="flex items-center justify-center gap-1 text-xs text-[var(--color-accent)] font-medium mt-4 hover:opacity-80">
+                <Link to="/athlete/races" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, fontSize: 12, color: '#00E5A0', fontWeight: 600, textDecoration: 'none', marginTop: 16 }}>
                   All races <ArrowRight size={11} />
                 </Link>
-              </div>
+              </Glass>
             )}
 
-            {/* Analytics snippet */}
-            <Link to="/athlete/analytics">
-              <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-5 shadow-card hover:border-[var(--color-border-light)] hover:-translate-y-px transition-all duration-150 group">
-                <p className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-3">Training Load</p>
-                <p className="text-sm text-[var(--color-text-secondary)] mb-3">View ATL · CTL · TSB trends and weekly volume charts.</p>
-                <div className="flex items-center gap-1 text-xs text-[var(--color-accent)] font-medium group-hover:gap-2 transition-all">
+            <RacePredictionsCard />
+            <PaceZonesCard />
+
+            {/* Analytics link */}
+            <Link to="/athlete/analytics" style={{ textDecoration: 'none' }}>
+              <Glass style={{ padding: '18px 20px', cursor: 'pointer' }} className="glass-hover">
+                <SectionLabel>Training Load</SectionLabel>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginBottom: 12, lineHeight: 1.6 }}>
+                  View ATL · CTL · TSB trends and weekly volume charts.
+                </p>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#00E5A0', fontWeight: 600 }}>
                   Open analytics <ArrowRight size={11} />
-                </div>
-              </div>
+                </span>
+              </Glass>
             </Link>
           </div>
         </div>
       </div>
 
-      {/* ── Readiness Modal ── */}
+      {/* Readiness Modal */}
       {showReadinessModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) setShowReadinessModal(false); }}>
-          <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-card p-6 w-full max-w-sm shadow-xl">
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-base font-semibold text-[var(--color-text-primary)]">How are you feeling today?</h2>
-              <button onClick={() => { setShowReadinessModal(false); setReadinessError(''); }} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors">
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}
+          onClick={e => { if (e.target === e.currentTarget) setShowReadinessModal(false); }}>
+          <div style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '28px 24px', width: '100%', maxWidth: 380, boxShadow: '0 32px 80px rgba(0,0,0,0.7)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700 }}>How are you feeling?</h2>
+              <button onClick={() => { setShowReadinessModal(false); setReadinessError(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', lineHeight: 1 }}>
                 <X size={16} />
               </button>
             </div>
-            <p className="text-xs text-[var(--color-text-tertiary)] mb-5">Rate your overall readiness on a 1–10 scale.</p>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginBottom: 20 }}>Rate your readiness on a 1–10 scale.</p>
 
-            {/* 1-10 scale */}
-            <div className="grid grid-cols-5 gap-2 mb-5">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, marginBottom: 8 }}>
               {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                <button
-                  key={n}
-                  onClick={() => setReadinessRating(n)}
-                  className={`h-10 rounded-pill text-sm font-semibold transition-all duration-150 ${readinessRating === n ? 'bg-[var(--color-accent)] text-black scale-105' : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-border-light)]'}`}
-                >{n}</button>
+                <button key={n} onClick={() => setReadinessRating(n)} style={{
+                  height: 40, borderRadius: 100, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                  background: readinessRating === n ? '#00E5A0' : 'rgba(255,255,255,0.06)',
+                  color: readinessRating === n ? '#000' : 'rgba(255,255,255,0.55)',
+                  transform: readinessRating === n ? 'scale(1.08)' : 'none',
+                }}>{n}</button>
               ))}
             </div>
-            <div className="flex justify-between text-[10px] text-[var(--color-text-tertiary)] mb-5 px-1">
-              <span>Very tired</span>
-              <span>Feeling great</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(255,255,255,0.25)', marginBottom: 20, padding: '0 4px' }}>
+              <span>Very tired</span><span>Feeling great</span>
             </div>
 
-            {/* Notes */}
-            <textarea
-              value={readinessNotes}
-              onChange={e => setReadinessNotes(e.target.value)}
-              placeholder="Optional notes (soreness, sleep quality, stress...)"
-              className="w-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-card px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] resize-none focus:outline-none focus:border-[var(--color-accent)]/50 mb-4"
-              rows={3}
-            />
+            <textarea value={readinessNotes} onChange={e => setReadinessNotes(e.target.value)}
+              placeholder="Optional notes (soreness, sleep, stress...)"
+              rows={3} style={{
+                width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#fff', fontFamily: 'inherit',
+                resize: 'none', outline: 'none', marginBottom: 16,
+              }} />
 
-            {readinessError && (
-              <p className="text-xs text-red-400 mb-3 text-center">{readinessError}</p>
-            )}
-            <div className="flex gap-3">
-              <button
-                onClick={() => { setShowReadinessModal(false); setReadinessError(''); }}
-                className="flex-1 py-2 text-sm text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
-              >Cancel</button>
-              <button
-                onClick={submitReadiness}
-                disabled={readinessRating === null || savingReadiness}
-                className={`flex-1 py-2 rounded-pill text-sm font-semibold transition-all duration-150 ${readinessSuccess ? 'bg-[var(--color-accent)] text-black' : readinessRating === null ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] cursor-not-allowed' : 'bg-[var(--color-accent)] text-black hover:opacity-90'}`}
-              >
-                {savingReadiness ? 'Saving...' : readinessSuccess ? 'Saved!' : 'Submit'}
+            {readinessError && <p style={{ fontSize: 12, color: '#ef4444', textAlign: 'center', marginBottom: 12 }}>{readinessError}</p>}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => { setShowReadinessModal(false); setReadinessError(''); }}
+                style={{ flex: 1, padding: '10px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'rgba(255,255,255,0.35)', fontFamily: 'inherit' }}>
+                Cancel
+              </button>
+              <button onClick={submitReadiness} disabled={readinessRating === null || savingReadiness} style={{
+                flex: 1, padding: '10px', borderRadius: 100, fontSize: 13, fontWeight: 700, border: 'none',
+                cursor: readinessRating === null ? 'not-allowed' : 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                background: readinessSuccess ? '#00E5A0' : readinessRating === null ? 'rgba(255,255,255,0.06)' : '#00E5A0',
+                color: readinessRating === null ? 'rgba(255,255,255,0.3)' : '#000',
+                opacity: savingReadiness ? 0.7 : 1,
+              }}>
+                {savingReadiness ? 'Saving...' : readinessSuccess ? 'Saved ✓' : 'Submit'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Track Run — mobile only, fixed above bottom tab bar */}
-      <div className="md:hidden fixed left-4 right-4 z-30" style={{ bottom: '76px' }}>
-        <button
-          onClick={() => nav('/athlete/track')}
-          className="w-full flex items-center justify-center gap-2 py-4 rounded-full font-semibold text-[15px]"
-          style={{ background: '#00E5A0', boxShadow: '0 4px 24px rgba(0,229,160,0.35)' }}
-        >
+      {/* Track Run — mobile CTA */}
+      <div className="md:hidden" style={{ position: 'fixed', left: 16, right: 16, bottom: 76, zIndex: 30 }}>
+        <button onClick={() => nav('/athlete/track')} style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          padding: '16px', borderRadius: 100, background: '#00E5A0', border: 'none', cursor: 'pointer',
+          fontFamily: 'inherit', fontWeight: 700, fontSize: 15, color: '#000',
+          boxShadow: '0 4px 24px rgba(0,229,160,0.35)',
+        }}>
           <Play size={16} fill="black" />
-          <span style={{ color: '#000' }}>Track Run</span>
+          Track Run
         </button>
       </div>
+
+      <style>{`
+        @media (max-width: 900px) {
+          .lk-dash-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </AppLayout>
   );
 }
