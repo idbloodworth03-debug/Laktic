@@ -10,6 +10,7 @@ type PublicAthlete = {
   name: string;
   username: string;
   avatar_url: string | null;
+  bio: string | null;
   primary_events: string[];
   pr_mile: string | null;
   pr_5k: string | null;
@@ -172,6 +173,11 @@ export function AthletePublicProfile() {
               )}
             </div>
           </div>
+
+          {/* Bio */}
+          {athlete.bio && (
+            <p className="text-sm text-[var(--color-text-secondary)] mt-3 mb-1 leading-relaxed">{athlete.bio}</p>
+          )}
 
           {/* PRs */}
           {(athlete.pr_mile || athlete.pr_5k) && (

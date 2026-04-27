@@ -10,7 +10,7 @@ router.get('/athlete/:username', asyncHandler(async (req, res) => {
 
   const { data: athlete } = await supabase
     .from('athlete_profiles')
-    .select('id, name, username, primary_events, weekly_volume_miles, pr_mile, pr_5k, public_sections, avatar_url')
+    .select('id, name, username, primary_events, weekly_volume_miles, pr_mile, pr_5k, public_sections, avatar_url, running_style')
     .eq('username', username)
     .single();
 
@@ -109,6 +109,7 @@ router.get('/athlete/:username', asyncHandler(async (req, res) => {
     milestones,
     activities: recentActivities ?? [],
     avatar_url: athlete.avatar_url ?? null,
+    bio: (athlete as any).running_style ?? null,
     public_sections: sections,
   });
 }));
