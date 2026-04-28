@@ -83,11 +83,11 @@ router.get('/coaches', async (req: Request, res: Response) => {
     .limit(500);
 
   if (error) {
-    ({ data, error } = await supabase
+    ({ data, error } = (await supabase
       .from('coach_profiles')
       .select('id, user_id, name, username, license_type, certified_coach, suspended, created_at')
       .order('created_at', { ascending: false })
-      .limit(500));
+      .limit(500)) as any);
   }
 
   if (error) return res.status(500).json({ error: error.message });
@@ -104,11 +104,11 @@ router.get('/athletes', async (req: Request, res: Response) => {
     .limit(500);
 
   if (error) {
-    ({ data, error } = await supabase
+    ({ data, error } = (await supabase
       .from('athlete_profiles')
       .select('id, user_id, name, username, subscription_tier, suspended, created_at')
       .order('created_at', { ascending: false })
-      .limit(500));
+      .limit(500)) as any);
   }
 
   if (error) return res.status(500).json({ error: error.message });
@@ -306,8 +306,8 @@ router.get('/users', async (req: Request, res: Response) => {
     supabase.from('coach_profiles').select('id, user_id, name, username, license_type, certified_coach, suspended, created_at, last_active').order('created_at', { ascending: false }).limit(500),
     supabase.from('athlete_profiles').select('id, user_id, name, username, subscription_tier, suspended, created_at, last_active').order('created_at', { ascending: false }).limit(500),
   ]);
-  if (coaches.error) coaches = await supabase.from('coach_profiles').select('id, user_id, name, username, license_type, certified_coach, suspended, created_at').order('created_at', { ascending: false }).limit(500);
-  if (athletes.error) athletes = await supabase.from('athlete_profiles').select('id, user_id, name, username, subscription_tier, suspended, created_at').order('created_at', { ascending: false }).limit(500);
+  if (coaches.error) coaches = (await supabase.from('coach_profiles').select('id, user_id, name, username, license_type, certified_coach, suspended, created_at').order('created_at', { ascending: false }).limit(500)) as any;
+  if (athletes.error) athletes = (await supabase.from('athlete_profiles').select('id, user_id, name, username, subscription_tier, suspended, created_at').order('created_at', { ascending: false }).limit(500)) as any;
 
   const users = [
     ...(coaches.data ?? []).map((c: any) => {
