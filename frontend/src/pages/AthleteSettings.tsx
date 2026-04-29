@@ -89,6 +89,11 @@ export function AthleteSettings() {
   const [savingHealth, setSavingHealth] = useState(false);
   const [healthSaved, setHealthSaved] = useState(false);
 
+  // Bio
+  const [bio, setBio] = useState((profile as any)?.bio ?? '');
+  const [savingBio, setSavingBio] = useState(false);
+  const [bioSaved, setBioSaved] = useState(false);
+
   // Running Style
   const [runningStyle, setRunningStyle] = useState((profile as any)?.running_style ?? '');
   const [savingStyle, setSavingStyle] = useState(false);
@@ -153,6 +158,7 @@ export function AthleteSettings() {
     setPr5k(p.pr_5k ?? '');
     setHealthInjury(p.injury_notes ?? '');
     setHealthSleep(p.sleep_average ?? '');
+    setBio(p.bio ?? '');
     setRunningStyle(p.running_style ?? '');
     setUsername(p.username ?? '');
     setPublicSections(p.public_sections ?? { races: true, stats: true, milestones: true });
@@ -514,7 +520,31 @@ export function AthleteSettings() {
           </div>
         </Card>
 
-        {/* ── 5. Health ─────────────────────────────────────────────────── */}
+        {/* ── 5. Bio ────────────────────────────────────────────────────── */}
+        <Card title="Bio" className="mb-6">
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-1">About you</label>
+              <textarea
+                value={bio}
+                onChange={e => setBio(e.target.value)}
+                rows={3}
+                maxLength={500}
+                placeholder="e.g. D1 runner at Penn State. 800m/1500m specialist. Training for a sub-4 mile."
+                className="w-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent)] resize-none"
+              />
+              <p className="text-xs text-[var(--color-text-tertiary)] mt-1.5">Shown on your public profile.</p>
+            </div>
+            <Button
+              variant="primary" size="sm" loading={savingBio}
+              onClick={() => patchProfile({ bio: bio || null }, setSavingBio, setBioSaved)}
+            >
+              {bioSaved ? 'Saved ✓' : 'Save'}
+            </Button>
+          </div>
+        </Card>
+
+        {/* ── 6. Running Style ──────────────────────────────────────────── */}
         <Card title="Running Style" className="mb-6">
           <div className="flex flex-col gap-4">
             <div>
