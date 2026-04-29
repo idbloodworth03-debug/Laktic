@@ -1068,7 +1068,7 @@ export function Onboarding() {
 
       // STEP 2 — Age + Gender
       case 2: return (
-        <Shell step={step} onBack={back} onNext={next} nextDisabled={!data.age}>
+        <Shell step={step} onBack={back} onNext={next} nextDisabled={!data.age || !data.gender}>
           <h2 style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 700, letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: '36px' }}>
             How old are you, <span style={{ color: '#00E5A0' }}>{data.name}</span>?
           </h2>
@@ -1172,7 +1172,7 @@ export function Onboarding() {
 
       // STEP 7 — Schedule (mandatory)
       case 7: return (
-        <Shell step={step} onBack={back} onNext={next} nextDisabled={data.trainingDays === null}>
+        <Shell step={step} onBack={back} onNext={next} nextDisabled={data.trainingDays === null || !data.weeklyMileage}>
           <h2 style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 700, letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: '36px' }}>
             How many days a week can you train?
           </h2>
@@ -1268,7 +1268,7 @@ export function Onboarding() {
 
       // STEP 10 — Training Profile (mandatory)
       case 10: return (
-        <Shell step={step} onBack={back} onNext={next}>
+        <Shell step={step} onBack={back} onNext={next} nextDisabled={!data.weight || !data.sleep}>
           <h2 style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 700, letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: '12px' }}>
             Your Training Profile.
           </h2>
@@ -1388,7 +1388,7 @@ export function Onboarding() {
 
       // STEP 14 — Biggest Challenges (multi-select)
       case 14: return (
-        <Shell step={step} onBack={back} onNext={next}>
+        <Shell step={step} onBack={back} onNext={next} nextDisabled={data.biggestChallenges.length === 0}>
           <h2 style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 700, letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: '12px' }}>
             What's your biggest challenge right now?
           </h2>
