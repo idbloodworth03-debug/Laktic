@@ -1285,12 +1285,10 @@ export function Onboarding() {
               <StyledInput type="number" placeholder="8" value={data.heightIn} onChange={e => set({ heightIn: e.target.value })} />
             </div>
           </div>
-          <HelperText>Not sure? Enter 0 and we'll adjust as we learn more about you.</HelperText>
           <div style={{ marginTop: '24px', marginBottom: '8px' }}>
             <FieldLabel>Weight (lbs)</FieldLabel>
             <StyledInput type="number" placeholder="155" value={data.weight} onChange={e => set({ weight: e.target.value })} style={{ maxWidth: '160px' }} />
           </div>
-          <HelperText>Not sure? Enter 0 and we'll adjust as we learn more about you.</HelperText>
           <div style={{ marginTop: '28px' }}>
             <FieldLabel>How much sleep do you average per night?</FieldLabel>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
