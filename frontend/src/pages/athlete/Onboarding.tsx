@@ -1079,8 +1079,14 @@ export function Onboarding() {
           <div style={{ marginTop: '32px' }}>
             <FieldLabel>Gender</FieldLabel>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              {['Male', 'Female', 'Prefer not to say'].map(g => (
-                <Pill key={g} label={g} selected={data.gender === g} onClick={() => set({ gender: g })} />
+              {[
+                { value: 'male', label: 'Male' },
+                { value: 'female', label: 'Female' },
+                { value: 'non-binary', label: 'Non-binary' },
+                { value: 'other', label: 'Other' },
+                { value: 'prefer_not_to_say', label: 'Prefer not to say' },
+              ].map(g => (
+                <Pill key={g.value} label={g.label} selected={data.gender === g.value} onClick={() => set({ gender: g.value })} />
               ))}
             </div>
           </div>
@@ -1095,8 +1101,10 @@ export function Onboarding() {
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {[
-              { value: '1_to_3_years', label: '1 to 3 years' },
-              { value: '3_plus_years', label: '3 or more years' },
+              { value: 'beginner', label: 'Beginner (0–2 years)' },
+              { value: 'intermediate', label: 'Intermediate (2–5 years)' },
+              { value: 'advanced', label: 'Advanced (5+ years)' },
+              { value: 'elite', label: 'Elite / Competitive' },
             ].map(o => (
               <OptionCard key={o.value} label={o.label} selected={data.experience === o.value} onClick={() => set({ experience: o.value })} />
             ))}
@@ -1137,15 +1145,9 @@ export function Onboarding() {
           <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.4)', marginBottom: '32px' }}>Select all that apply.</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
             {[
-              { label: '800m',  value: '800m'  },
-              { label: 'Mile',  value: 'mile'  },
-              { label: '1500m', value: '1500m' },
-              { label: '3000m', value: '3000m' },
-              { label: '5K',    value: '5k'    },
-              { label: '10K',   value: '10k'   },
-              { label: 'Other', value: 'other' },
+              '800m', '1500m', 'Mile', '3000m', '5K', '10K', 'Half Marathon', 'Marathon', 'Other',
             ].map(d => (
-              <Pill key={d.value} label={d.label} selected={data.distances.includes(d.value)} onClick={() => toggleArr('distances', d.value)} />
+              <Pill key={d} label={d} selected={data.distances.includes(d)} onClick={() => toggleArr('distances', d)} />
             ))}
           </div>
         </Shell>

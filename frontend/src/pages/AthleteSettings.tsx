@@ -65,7 +65,7 @@ export function AthleteSettings() {
   const [trainSaved, setTrainSaved] = useState(false);
 
   // Your Races
-  const PRIMARY_EVENT_OPTIONS = ['800m', '1500m', 'Mile', '5K', '10K', 'Half Marathon', 'Marathon'];
+  const PRIMARY_EVENT_OPTIONS = ['800m', '1500m', 'Mile', '3000m', '5K', '10K', 'Half Marathon', 'Marathon', 'Other'];
   const [raceEvents, setRaceEvents] = useState<string[]>((profile as any)?.primary_events ?? []);
   const [raceDist, setRaceDist] = useState((profile as any)?.target_race_distance ?? '');
   const [raceDate, setRaceDate] = useState((profile as any)?.target_race_date ?? '');
@@ -347,11 +347,12 @@ export function AthleteSettings() {
                 value={aboutGender}
                 onChange={e => setAboutGender(e.target.value)}
               >
-                <option value="">Prefer not to say</option>
+                <option value="">Select gender</option>
                 <option value="male">Male</option>
                 <option value="female">Female</option>
                 <option value="non-binary">Non-binary</option>
                 <option value="other">Other</option>
+                <option value="prefer_not_to_say">Prefer not to say</option>
               </Select>
             </div>
             <Select
@@ -381,7 +382,7 @@ export function AthleteSettings() {
             <div>
               <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-2">Training days per week</label>
               <div className="flex gap-2 flex-wrap">
-                {[2, 3, 4, 5, 6, 7].map(d => (
+                {[1, 2, 3, 4, 5, 6, 7].map(d => (
                   <button
                     key={d}
                     onClick={() => setTrainDays(d)}
@@ -550,16 +551,21 @@ export function AthleteSettings() {
                 className="w-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-tertiary)] focus:outline-none focus:border-[var(--color-accent)] resize-none"
               />
             </div>
-            <Input
-              label="Average sleep (hours)"
-              type="number"
-              min={0}
-              max={24}
-              step={0.5}
-              value={healthSleep}
-              onChange={e => setHealthSleep(e.target.value)}
-              placeholder="e.g. 7.5"
-            />
+            <div>
+              <label className="block text-xs font-medium text-[var(--color-text-tertiary)] mb-2">Average sleep per night</label>
+              <div className="flex gap-2 flex-wrap">
+                {['Less than 6hrs', '6–7hrs', '7–8hrs', '8+ hrs'].map(s => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setHealthSleep(s)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${healthSleep === s ? 'bg-[var(--color-accent)] text-black' : 'bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
             <Button
               variant="primary" size="sm" loading={savingHealth}
               onClick={() => patchProfile({ injury_notes: healthInjury || null, sleep_average: healthSleep || null }, setSavingHealth, setHealthSaved)}
